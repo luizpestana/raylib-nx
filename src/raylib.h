@@ -179,6 +179,14 @@
 #define MAP_DIFFUSE             MATERIAL_MAP_DIFFUSE
 #define UNCOMPRESSED_R8G8B8A8   PIXELFORMAT_UNCOMPRESSED_R8G8B8A8
 
+// Resolution Constants for Nintendo Switch
+#if defined(PLATFORM_NX) 
+    #define NX_WIDTH_HANDHELD = 1280;
+    #define NX_HEIGHT_HANDHELD = 720;
+    #define NX_WIDTH_DOCKED = 1920;
+    #define NX_HEIGHT_DOCKED = 1080;
+#endif
+
 //----------------------------------------------------------------------------------
 // Structures Definition
 //----------------------------------------------------------------------------------

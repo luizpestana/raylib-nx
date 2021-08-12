@@ -716,6 +716,9 @@ void InitWindow(int width, int height, const char *title)
 #if defined(PLATFORM_NX) && defined(NX_USB_DEBUGGER)
     NxUsbDebuggerInit();
 #endif
+#if defined(PLATFORM_NX)
+    romfsInit();
+#endif
     TRACELOG(LOG_INFO, "Initializing raylib %s", RAYLIB_VERSION);
 
     if ((title != NULL) && (title[0] != 0)) CORE.Window.title = title;
@@ -1029,6 +1032,8 @@ void CloseWindow(void)
     CORE.Window.ready = false;
     TRACELOG(LOG_INFO, "Window closed successfully");
 #if defined(PLATFORM_NX) && defined(NX_USB_DEBUGGER)
+    // Exit RomFS
+    romfsExit();
     NxUsbDebuggerEnd();
 #endif
 }
@@ -4833,6 +4838,19 @@ void PollInputEvents(void)
 #endif
 
 #if defined(PLATFORM_NX)
+    /* Dunno if this works imma try it later
+    if (appletGetOperationMode() == AppletOperationMode_Console)
+    {
+        CORE.Window.display.width = 1920;
+        CORE.Window.display.height = 1080;
+    }
+    else if (appletGetOperationMode() == AppletOperationMode_Handheld)
+    {
+        CORE.Window.display.width = 1280;
+        CORE.Window.display.height = 720;
+    }
+    */
+
     int nxGamepadIndex = 0;
 
     // Scan the gamepad. This should be done once for each frame
