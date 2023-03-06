@@ -54,7 +54,7 @@
     raylib-parser is licensed under an unmodified zlib/libpng license, which is an OSI-certified,
     BSD-like license that allows static linking with closed source software:
 
-    Copyright (c) 2021-2022 Ramon Santamaria (@raysan5)
+    Copyright (c) 2021-2023 Ramon Santamaria (@raysan5)
 
 **********************************************************************************************/
 
@@ -70,7 +70,7 @@
 #define MAX_ALIASES_TO_PARSE      64    // Maximum number of aliases to parse
 #define MAX_ENUMS_TO_PARSE        64    // Maximum number of enums to parse
 #define MAX_CALLBACKS_TO_PARSE    64    // Maximum number of callbacks to parse
-#define MAX_FUNCS_TO_PARSE       512    // Maximum number of functions to parse
+#define MAX_FUNCS_TO_PARSE      1024    // Maximum number of functions to parse
 
 #define MAX_LINE_LENGTH          512    // Maximum length of one line (including comments)
 
@@ -209,8 +209,8 @@ int main(int argc, char* argv[])
 
     if (buffer == NULL)
     {
-	    printf("Could not read input file: %s\n", inFileName);
-	    return 1;
+        printf("Could not read input file: %s\n", inFileName);
+        return 1;
     }
 
     // Preprocess buffer to get separate lines
@@ -1073,7 +1073,7 @@ static void ShowCommandLineInfo(void)
     printf("//                                                                              //\n");
     printf("// more info and bugs-report: github.com/raysan5/raylib/parser                  //\n");
     printf("//                                                                              //\n");
-    printf("// Copyright (c) 2021-2022 Ramon Santamaria (@raysan5)                          //\n");
+    printf("// Copyright (c) 2021-2023 Ramon Santamaria (@raysan5)                          //\n");
     printf("//                                                                              //\n");
     printf("//////////////////////////////////////////////////////////////////////////////////\n\n");
 

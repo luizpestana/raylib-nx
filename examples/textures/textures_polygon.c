@@ -9,7 +9,7 @@
 *   Example licensed under an unmodified zlib/libpng license, which is an OSI-certified,
 *   BSD-like license that allows static linking with closed source software
 *
-*   Copyright (c) 2021-2022 Chris Camacho (@codifies) and Ramon Santamaria (@raysan5)
+*   Copyright (c) 2021-2023 Chris Camacho (@codifies) and Ramon Santamaria (@raysan5)
 *
 ********************************************************************************************/
 
@@ -91,7 +91,7 @@ int main(void)
 
             DrawText("textured polygon", 20, 20, 20, DARKGRAY);
 
-            DrawTexturePoly(texture, (Vector2){ GetScreenWidth()/2, GetScreenHeight()/2 },
+            DrawTexturePoly(texture, (Vector2){ GetScreenWidth()/2.0f, GetScreenHeight()/2.0f },
                             positions, texcoords, MAX_POINTS, WHITE);
 
         EndDrawing();

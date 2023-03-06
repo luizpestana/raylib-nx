@@ -14,6 +14,7 @@ Some people ported raylib to other languages in form of bindings or wrappers to 
 | claylib/wrap       | **4.2** | [Common Lisp](https://common-lisp.net/)   | Zlib | https://github.com/defun-games/claylib |
 | chez-raylib        | auto    | [Chez Scheme](https://cisco.github.io/ChezScheme/) | GPLv3 | https://github.com/Yunoinsky/chez-raylib |
 | raylib-cr          | **4.5-dev (7e7939e)** | [Crystal](https://crystal-lang.org/)    | Apache-2.0 | https://github.com/sol-vin/raylib-cr |
+| ray-cyber          | **4.2** | [Cyber](https://cyberscript.dev)  | MIT | https://github.com/fubark/ray-cyber |
 | raylib-c3          | **4.5-dev** | [C3](https://c3-lang.org/)    | MIT | https://github.com/Its-Kenta/Raylib-C3 |
 | dart-raylib        | **4.0** | [Dart](https://dart.dev/)               | MIT | https://gitlab.com/wolfenrain/dart-raylib   |
 | bindbc-raylib3     | **4.0** | [D](https://dlang.org/)              | BSL-1.0 | https://github.com/o3o/bindbc-raylib3     |
@@ -27,22 +28,25 @@ Some people ported raylib to other languages in form of bindings or wrappers to 
 | raylib-guile       | auto    | [Guile](https://www.gnu.org/software/guile/) | Zlib | https://github.com/petelliott/raylib-guile |
 | gforth-raylib      | 3.5     | [Gforth](https://gforth.org/)            | MIT  | https://github.com/ArnautDaniel/gforth-raylib   |
 | h-raylib           | 4.5-dev | [Haskell](https://haskell.org/)          | Apache-2.0 | https://github.com/Anut-py/h-raylib       |
-| raylib-hx          | 4.0     | [Haxe](https://haxe.org/)                | Zlib | https://github.com/foreignsasquatch/raylib-hx    |
+| raylib-hx          | **4.2**     | [Haxe](https://haxe.org/)                | Zlib | https://github.com/foreignsasquatch/raylib-hx    |
 | hb-raylib          | 3.5     | [Harbour](https://harbour.github.io)                 | MIT | https://github.com/MarcosLeonardoMendezGerencir/hb-raylib |
 | jaylib             | **4.2** | [Java](https://en.wikipedia.org/wiki/Java_(programming_language)) | GPLv3+CE | https://github.com/electronstudio/jaylib/  |
 | raylib-j           | **4.0** | [Java](https://en.wikipedia.org/wiki/Java_(programming_language)) | Zlib | https://github.com/CreedVI/Raylib-J |
 | raylib.jl          | **4.2** | [Julia](https://julialang.org/)      | Zlib | https://github.com/irishgreencitrus/raylib.jl |
 | kaylib             | 3.7     | [Kotlin/native](https://kotlinlang.org) | ? | https://github.com/electronstudio/kaylib      |
+| kaylib             | **4.5-dev**| [Kotlin/native](https://kotlinlang.org) | Zlib | https://codeberg.org/Kenta/Kaylib      |
 | raylib-lua         | **4.2** | [Lua](http://www.lua.org/)           | ISC | https://github.com/TSnake41/raylib-lua        |
 | raylua             | **4.0** | [Lua](http://www.lua.org/)           | MIT | https://github.com/Rabios/raylua              |
 | nelua-raylib       | 4.0     | [nelua](https://nelua.io/)           | MIT | https://github.com/AKDev21/nelua-raylib       |
+| Raylib-Nelua       | **4.5-dev**     | [nelua](https://nelua.io/)       | MIT | https://github.com/Its-Kenta/Raylib-Nelua     |
 | NimraylibNow!      | 4.2     | [Nim](https://nim-lang.org/)         | MIT | https://github.com/greenfork/nimraylib_now    |
 | raylib-Forever     | auto    | [Nim](https://nim-lang.org/)         | ? | https://github.com/Guevara-chan/Raylib-Forever  |
 | naylib             | auto    | [Nim](https://nim-lang.org/)         | MIT | https://github.com/planetis-m/naylib          |
 | node-raylib        | **4.0** | [Node.js](https://nodejs.org/en/)    | Zlib     | https://github.com/RobLoach/node-raylib         |
 | raylib_odin_bindings | 4.0-dev | [Odin](https://odin-lang.org/)     | MIT | https://github.com/Deathbat2190/raylib_odin_bindings |
 | raylib-odin        | **4.0** | [Odin](https://odin-lang.org/)       | BSD-3Clause | https://github.com/odin-lang/Odin/tree/master/vendor/raylib  |
-| raylib-ocaml       | **4.0** | [OCaml](https://ocaml.org/)          | MIT | https://github.com/tjammer/raylib-ocaml        |
+| raylib-ocaml       | **4.2** | [OCaml](https://ocaml.org/)          | MIT | https://github.com/tjammer/raylib-ocaml        |
+| TurboRaylib        | **4.2** | [Object Pascal](https://en.wikipedia.org/wiki/Object_Pascal) | MIT | https://github.com/turborium/TurboRaylib |
 | Ray4Laz            | **4.2** | [Free Pascal](https://en.wikipedia.org/wiki/Free_Pascal)| Zlib |  https://github.com/GuvaCode/Ray4Laz |
 | Raylib.4.0.Pascal  | **4.0** | [Free Pascal](https://en.wikipedia.org/wiki/Free_Pascal)| Zlib |  https://github.com/sysrpl/Raylib.4.0.Pascal |
 | pyraylib           | 3.7     | [Python](https://www.python.org/)    | Zlib    | https://github.com/Ho011/pyraylib         |
