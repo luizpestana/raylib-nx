@@ -4794,16 +4794,8 @@ static bool InitGraphicsDevice(int width, int height)
 
 #if defined(PLATFORM_NX)
     CORE.Window.gbmSurface = nwindowGetDefault();
-    if (appletGetOperationMode() == AppletOperationMode_Console)
-    {
-        CORE.Window.display.width = 1920;
-        CORE.Window.display.height = 1080;
-    }
-    else if (appletGetOperationMode() == AppletOperationMode_Handheld)
-    {
-        CORE.Window.display.width = 1280;
-        CORE.Window.display.height = 720;
-    }
+    CORE.Window.display.width = 1280;
+    CORE.Window.display.height = 720;
 #endif
 
 #if defined(PLATFORM_DRM) || defined(PLATFORM_NX)

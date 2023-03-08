@@ -31,3 +31,10 @@ jobs:
         cd examples
         make PLATFORM=PLATFORM_NX -B -j$(nproc)
         cd ..
+
+    - name: Upload Examples
+      uses: actions/upload-artifact@v3
+      with:
+        name: switch-examples
+        path: |
+          examples/**/*.nro
