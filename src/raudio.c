@@ -179,6 +179,9 @@ typedef struct tagBITMAPINFOHEADER {
 #define MA_COINIT_VALUE  2              // [2] COINIT_APARTMENTTHREADED: Each object has its own thread (apartment model)
 
 #define MINIAUDIO_IMPLEMENTATION
+#if defined(PLATFORM_NX)
+    #include <miniaudio_switch.h>       // Miniaudio fixes for switch
+#endif
 //#define MA_DEBUG_OUTPUT
 #include "external/miniaudio.h"         // Audio device initialization and management
 #if defined(PLATFORM_NX)

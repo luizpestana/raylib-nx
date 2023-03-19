@@ -636,5 +636,6 @@ ifeq ($(PLATFORM),PLATFORM_NX)
 	-name "*.map" -o \
 	-name "*.nacp" -o \
 	-name "*.nro" \) -delete
+	rm -fv *.o
 endif
 	@echo Cleaning done
