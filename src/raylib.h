@@ -1,6 +1,6 @@
 /**********************************************************************************************
 *
-*   raylib v4.5-dev - A simple and easy-to-use library to enjoy videogames programming (www.raylib.com)
+*   raylib v4.5 - A simple and easy-to-use library to enjoy videogames programming (www.raylib.com)
 *
 *   FEATURES:
 *       - NO external dependencies, all required libraries included with raylib
@@ -84,7 +84,7 @@
 #define RAYLIB_VERSION_MAJOR 4
 #define RAYLIB_VERSION_MINOR 5
 #define RAYLIB_VERSION_PATCH 0
-#define RAYLIB_VERSION  "4.5-dev"
+#define RAYLIB_VERSION  "4.5"
 
 // Function specifiers in case library is build/used as a shared library (Windows)
 // NOTE: Microsoft specifiers to tell compiler that symbols are imported/exported from a .dll
@@ -1158,6 +1158,7 @@ RLAPI float GetGesturePinchAngle(void);                 // Get gesture pinch ang
 // Camera System Functions (Module: rcamera)
 //------------------------------------------------------------------------------------
 RLAPI void UpdateCamera(Camera *camera, int mode);      // Update camera position for selected mode
+RLAPI void UpdateCameraPro(Camera *camera, Vector3 movement, Vector3 rotation, float zoom); // Update camera movement/rotation
 
 //------------------------------------------------------------------------------------
 // Basic Shapes Drawing Functions (Module: shapes)
