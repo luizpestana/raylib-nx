@@ -1307,7 +1307,7 @@ Music LoadMusicStream(const char *fileName)
 #if defined(SUPPORT_FILEFORMAT_QOA)
     else if (IsFileExtension(fileName, ".qoa"))
     {
-        qoaplay_desc *ctxQoa = qoaplay_open((char *)fileName);
+        qoaplay_desc *ctxQoa = qoaplay_open(fileName);
         music.ctxType = MUSIC_AUDIO_QOA;
         music.ctxData = ctxQoa;
 
