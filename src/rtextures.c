@@ -326,8 +326,6 @@ Image LoadImageAnim(const char *fileName, int *frames)
         frameCount = 1;
     }
 
-    // TODO: Support APNG animated images
-
     *frames = frameCount;
     return image;
 }
@@ -340,28 +338,30 @@ Image LoadImageFromMemory(const char *fileType, const unsigned char *fileData, i
 
     if ((false)
 #if defined(SUPPORT_FILEFORMAT_PNG)
-        || (strcmp(fileType, ".png") == 0)
+        || (strcmp(fileType, ".png") == 0) || (strcmp(fileType, ".PNG") == 0)
 #endif
 #if defined(SUPPORT_FILEFORMAT_BMP)
-        || (strcmp(fileType, ".bmp") == 0)
+        || (strcmp(fileType, ".bmp") == 0) || (strcmp(fileType, ".BMP") == 0)
 #endif
 #if defined(SUPPORT_FILEFORMAT_TGA)
-        || (strcmp(fileType, ".tga") == 0)
+        || (strcmp(fileType, ".tga") == 0) || (strcmp(fileType, ".TGA") == 0)
 #endif
 #if defined(SUPPORT_FILEFORMAT_JPG)
-        || ((strcmp(fileType, ".jpg") == 0) || (strcmp(fileType, ".jpeg") == 0))
+        || (strcmp(fileType, ".jpg") == 0) || (strcmp(fileType, ".jpeg") == 0)
+        || (strcmp(fileType, ".JPG") == 0) || (strcmp(fileType, ".JPEG") == 0)
 #endif
 #if defined(SUPPORT_FILEFORMAT_GIF)
-        || (strcmp(fileType, ".gif") == 0)
+        || (strcmp(fileType, ".gif") == 0) || (strcmp(fileType, ".GIF") == 0)
 #endif
 #if defined(SUPPORT_FILEFORMAT_PIC)
-        || (strcmp(fileType, ".pic") == 0)
+        || (strcmp(fileType, ".pic") == 0) || (strcmp(fileType, ".PIC") == 0)
 #endif
 #if defined(SUPPORT_FILEFORMAT_PNM)
-        || ((strcmp(fileType, ".ppm") == 0) || (strcmp(fileType, ".pgm") == 0))
+        || (strcmp(fileType, ".ppm") == 0) || (strcmp(fileType, ".pgm") == 0)
+        || (strcmp(fileType, ".PPM") == 0) || (strcmp(fileType, ".PGM") == 0)
 #endif
 #if defined(SUPPORT_FILEFORMAT_PSD)
-        || (strcmp(fileType, ".psd") == 0)
+        || (strcmp(fileType, ".psd") == 0) || (strcmp(fileType, ".PSD") == 0)
 #endif
         )
     {
@@ -386,7 +386,7 @@ Image LoadImageFromMemory(const char *fileType, const unsigned char *fileData, i
 #endif
     }
 #if defined(SUPPORT_FILEFORMAT_HDR)
-    else if (strcmp(fileType, ".hdr") == 0)
+    else if ((strcmp(fileType, ".hdr") == 0) || (strcmp(fileType, ".HDR") == 0))
     {
 #if defined(STBI_REQUIRED)
         if (fileData != NULL)
@@ -409,7 +409,7 @@ Image LoadImageFromMemory(const char *fileType, const unsigned char *fileData, i
     }
 #endif
 #if defined(SUPPORT_FILEFORMAT_QOI)
-    else if (strcmp(fileType, ".qoi") == 0)
+    else if ((strcmp(fileType, ".qoi") == 0) || (strcmp(fileType, ".QOI") == 0))
     {
         qoi_desc desc = { 0 };
         image.data = qoi_decode(fileData, dataSize, &desc, 4);
@@ -420,31 +420,31 @@ Image LoadImageFromMemory(const char *fileType, const unsigned char *fileData, i
     }
 #endif
 #if defined(SUPPORT_FILEFORMAT_DDS)
-    else if (strcmp(fileType, ".dds") == 0)
+    else if ((strcmp(fileType, ".dds") == 0) || (strcmp(fileType, ".DDS") == 0))
     {
         image.data = rl_load_dds_from_memory(fileData, dataSize, &image.width, &image.height, &image.format, &image.mipmaps);
     }
 #endif
 #if defined(SUPPORT_FILEFORMAT_PKM)
-    else if (strcmp(fileType, ".pkm") == 0)
+    else if ((strcmp(fileType, ".pkm") == 0) || (strcmp(fileType, ".PKM") == 0))
     {
         image.data = rl_load_pkm_from_memory(fileData, dataSize, &image.width, &image.height, &image.format, &image.mipmaps);
     }
 #endif
 #if defined(SUPPORT_FILEFORMAT_KTX)
-    else if (strcmp(fileType, ".ktx") == 0)
+    else if ((strcmp(fileType, ".ktx") == 0) || (strcmp(fileType, ".KTX") == 0))
     {
         image.data = rl_load_ktx_from_memory(fileData, dataSize, &image.width, &image.height, &image.format, &image.mipmaps);
     }
 #endif
 #if defined(SUPPORT_FILEFORMAT_PVR)
-    else if (strcmp(fileType, ".pvr") == 0)
+    else if ((strcmp(fileType, ".pvr") == 0) || (strcmp(fileType, ".PVR") == 0))
     {
         image.data = rl_load_pvr_from_memory(fileData, dataSize, &image.width, &image.height, &image.format, &image.mipmaps);
     }
 #endif
 #if defined(SUPPORT_FILEFORMAT_ASTC)
-    else if (strcmp(fileType, ".astc") == 0)
+    else if ((strcmp(fileType, ".astc") == 0) || (strcmp(fileType, ".ASTC") == 0))
     {
         image.data = rl_load_astc_from_memory(fileData, dataSize, &image.width, &image.height, &image.format, &image.mipmaps);
     }
@@ -524,6 +524,8 @@ void UnloadImage(Image image)
 bool ExportImage(Image image, const char *fileName)
 {
     int success = 0;
+
+    if ((image.width == 0) || (image.height == 0) || (image.data == NULL)) return success;
 
 #if defined(SUPPORT_IMAGE_EXPORT)
     int channels = 4;
@@ -1250,6 +1252,7 @@ Image ImageText(const char *text, int fontSize, Color color)
 }
 
 // Create an image from text (custom sprite font)
+// WARNING: Module required: rtext
 Image ImageTextEx(Font font, const char *text, float fontSize, float spacing, Color tint)
 {
     Image imText = { 0 };
@@ -1303,7 +1306,6 @@ Image ImageTextEx(Font font, const char *text, float fontSize, float spacing, Co
 
         // Using nearest-neighbor scaling algorithm for default font
         // TODO: Allow defining the preferred scaling mechanism externally
-        // WARNING: Module required: rtext
         if (font.texture.id == GetFontDefault().texture.id) ImageResizeNN(&imText, (int)(imSize.x*scaleFactor), (int)(imSize.y*scaleFactor));
         else ImageResize(&imText, (int)(imSize.x*scaleFactor), (int)(imSize.y*scaleFactor));
     }
@@ -2692,9 +2694,9 @@ void ImageClearBackground(Image *dst, Color color)
     int bytesPerPixel = GetPixelDataSize(1, 1, dst->format);
 
     // Repeat the first pixel data throughout the image
-    for (int i = 1; i < dst->width * dst->height; i++)
+    for (int i = 1; i < dst->width*dst->height; i++)
     {
-        memcpy(pSrcPixel + i * bytesPerPixel, pSrcPixel, bytesPerPixel);
+        memcpy(pSrcPixel + i*bytesPerPixel, pSrcPixel, bytesPerPixel);
     }
 }
 
@@ -2996,6 +2998,12 @@ void ImageDrawRectangleRec(Image *dst, Rectangle rec, Color color)
     // Security check to avoid program crash
     if ((dst->data == NULL) || (dst->width == 0) || (dst->height == 0)) return;
 
+    // Security check to avoid drawing out of bounds in case of bad user data
+    if (rec.x < 0) { rec.width -= rec.x; rec.x = 0; }
+    if (rec.y < 0) { rec.height -= rec.y; rec.y = 0; }
+    if (rec.width < 0) rec.width = 0;
+    if (rec.height < 0) rec.height = 0;
+
     int sy = (int)rec.y;
     int ey = sy + (int)rec.height;
 
@@ -3008,13 +3016,13 @@ void ImageDrawRectangleRec(Image *dst, Rectangle rec, Color color)
         // Fill in the first pixel of the row based on image format
         ImageDrawPixel(dst, sx, y, color);
 
-        int bytesOffset = ((y * dst->width) + sx) * bytesPerPixel;
+        int bytesOffset = ((y*dst->width) + sx)*bytesPerPixel;
         unsigned char *pSrcPixel = (unsigned char *)dst->data + bytesOffset;
 
         // Repeat the first pixel data throughout the row
         for (int x = 1; x < (int)rec.width; x++)
         {
-            memcpy(pSrcPixel + x * bytesPerPixel, pSrcPixel, bytesPerPixel);
+            memcpy(pSrcPixel + x*bytesPerPixel, pSrcPixel, bytesPerPixel);
         }
     }
 }

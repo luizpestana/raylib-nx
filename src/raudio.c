@@ -769,7 +769,7 @@ Wave LoadWaveFromMemory(const char *fileType, const unsigned char *fileData, int
 
     if (false) { }
 #if defined(SUPPORT_FILEFORMAT_WAV)
-    else if (strcmp(fileType, ".wav") == 0)
+    else if ((strcmp(fileType, ".wav") == 0) || (strcmp(fileType, ".WAV") == 0))
     {
         drwav wav = { 0 };
         bool success = drwav_init_memory(&wav, fileData, dataSize, NULL);
@@ -791,7 +791,7 @@ Wave LoadWaveFromMemory(const char *fileType, const unsigned char *fileData, int
     }
 #endif
 #if defined(SUPPORT_FILEFORMAT_OGG)
-    else if (strcmp(fileType, ".ogg") == 0)
+    else if ((strcmp(fileType, ".ogg") == 0) || (strcmp(fileType, ".OGG") == 0))
     {
         stb_vorbis *oggData = stb_vorbis_open_memory((unsigned char *)fileData, dataSize, NULL, NULL);
 
@@ -813,7 +813,7 @@ Wave LoadWaveFromMemory(const char *fileType, const unsigned char *fileData, int
     }
 #endif
 #if defined(SUPPORT_FILEFORMAT_MP3)
-    else if (strcmp(fileType, ".mp3") == 0)
+    else if ((strcmp(fileType, ".mp3") == 0) || (strcmp(fileType, ".MP3") == 0))
     {
         drmp3_config config = { 0 };
         unsigned long long int totalFrameCount = 0;
@@ -833,7 +833,7 @@ Wave LoadWaveFromMemory(const char *fileType, const unsigned char *fileData, int
     }
 #endif
 #if defined(SUPPORT_FILEFORMAT_QOA)
-    else if (strcmp(fileType, ".qoa") == 0)
+    else if ((strcmp(fileType, ".qoa") == 0) || (strcmp(fileType, ".QOA") == 0))
     {
         qoa_desc qoa = { 0 };
 
@@ -852,7 +852,7 @@ Wave LoadWaveFromMemory(const char *fileType, const unsigned char *fileData, int
     }
 #endif
 #if defined(SUPPORT_FILEFORMAT_FLAC)
-    else if (strcmp(fileType, ".flac") == 0)
+    else if ((strcmp(fileType, ".flac") == 0) || (strcmp(fileType, ".FLAC") == 0))
     {
         unsigned long long int totalFrameCount = 0;
 
@@ -1058,29 +1058,30 @@ bool ExportWaveAsCode(Wave wave, const char *fileName)
     byteCount += sprintf(txtData + byteCount, "//                                                                              //\n");
     byteCount += sprintf(txtData + byteCount, "//////////////////////////////////////////////////////////////////////////////////\n\n");
 
-    char fileNameLower[256] = { 0 };
-    char fileNameUpper[256] = { 0 };
-    for (int i = 0; fileName[i] != '.'; i++) { fileNameLower[i] = fileName[i]; }      // Get filename without extension
-    for (int i = 0; fileNameLower[i] != '\0'; i++) if (fileNameLower[i] >= 'a' && fileNameLower[i] <= 'z') { fileNameUpper[i] = fileNameLower[i] - 32; }
+    // Get file name from path and convert variable name to uppercase
+    char varFileName[256] = { 0 };
+    strcpy(varFileName, GetFileNameWithoutExt(fileName));
+    for (int i = 0; varFileName[i] != '\0'; i++) if (varFileName[i] >= 'a' && varFileName[i] <= 'z') { varFileName[i] = varFileName[i] - 32; }
 
+    //Add wave information
     byteCount += sprintf(txtData + byteCount, "// Wave data information\n");
-    byteCount += sprintf(txtData + byteCount, "#define %s_FRAME_COUNT      %u\n", fileNameUpper, wave.frameCount);
-    byteCount += sprintf(txtData + byteCount, "#define %s_SAMPLE_RATE      %u\n", fileNameUpper, wave.sampleRate);
-    byteCount += sprintf(txtData + byteCount, "#define %s_SAMPLE_SIZE      %u\n", fileNameUpper, wave.sampleSize);
-    byteCount += sprintf(txtData + byteCount, "#define %s_CHANNELS         %u\n\n", fileNameUpper, wave.channels);
+    byteCount += sprintf(txtData + byteCount, "#define %s_FRAME_COUNT      %u\n", varFileName, wave.frameCount);
+    byteCount += sprintf(txtData + byteCount, "#define %s_SAMPLE_RATE      %u\n", varFileName, wave.sampleRate);
+    byteCount += sprintf(txtData + byteCount, "#define %s_SAMPLE_SIZE      %u\n", varFileName, wave.sampleSize);
+    byteCount += sprintf(txtData + byteCount, "#define %s_CHANNELS         %u\n\n", varFileName, wave.channels);
 
     // Write wave data as an array of values
     // Wave data is exported as byte array for 8/16bit and float array for 32bit float data
     // NOTE: Frame data exported is channel-interlaced: frame01[sampleChannel1, sampleChannel2, ...], frame02[], frame03[]
     if (wave.sampleSize == 32)
     {
-        byteCount += sprintf(txtData + byteCount, "static float %sData[%i] = {\n", fileNameLower, waveDataSize/4);
+        byteCount += sprintf(txtData + byteCount, "static float %s_DATA[%i] = {\n", varFileName, waveDataSize/4);
         for (int i = 1; i < waveDataSize/4; i++) byteCount += sprintf(txtData + byteCount, ((i%TEXT_BYTES_PER_LINE == 0)? "%.4ff,\n    " : "%.4ff, "), ((float *)wave.data)[i - 1]);
         byteCount += sprintf(txtData + byteCount, "%.4ff };\n", ((float *)wave.data)[waveDataSize/4 - 1]);
     }
     else
     {
-        byteCount += sprintf(txtData + byteCount, "static unsigned char %sData[%i] = { ", fileNameLower, waveDataSize);
+        byteCount += sprintf(txtData + byteCount, "static unsigned char %s_DATA[%i] = { ", varFileName, waveDataSize);
         for (int i = 1; i < waveDataSize; i++) byteCount += sprintf(txtData + byteCount, ((i%TEXT_BYTES_PER_LINE == 0)? "0x%x,\n    " : "0x%x, "), ((unsigned char *)wave.data)[i - 1]);
         byteCount += sprintf(txtData + byteCount, "0x%x };\n", ((unsigned char *)wave.data)[waveDataSize - 1]);
     }
@@ -1408,7 +1409,7 @@ Music LoadMusicStream(const char *fileName)
         else if (music.ctxType == MUSIC_AUDIO_MP3) { drmp3_uninit((drmp3 *)music.ctxData); RL_FREE(music.ctxData); }
     #endif
     #if defined(SUPPORT_FILEFORMAT_QOA)
-        else if (music.ctxType == MUSIC_AUDIO_QOA) { /*TODO: Release QOA context data*/ RL_FREE(music.ctxData); }
+        else if (music.ctxType == MUSIC_AUDIO_QOA) qoaplay_close((qoaplay_desc *)music.ctxData);
     #endif
     #if defined(SUPPORT_FILEFORMAT_FLAC)
         else if (music.ctxType == MUSIC_AUDIO_FLAC) drflac_free((drflac *)music.ctxData, NULL);
@@ -1445,7 +1446,7 @@ Music LoadMusicStreamFromMemory(const char *fileType, const unsigned char *data,
 
     if (false) { }
 #if defined(SUPPORT_FILEFORMAT_WAV)
-    else if (strcmp(fileType, ".wav") == 0)
+    else if ((strcmp(fileType, ".wav") == 0) || (strcmp(fileType, ".WAV") == 0))
     {
         drwav *ctxWav = RL_CALLOC(1, sizeof(drwav));
 
@@ -1467,7 +1468,7 @@ Music LoadMusicStreamFromMemory(const char *fileType, const unsigned char *data,
     }
 #endif
 #if defined(SUPPORT_FILEFORMAT_OGG)
-    else if (strcmp(fileType, ".ogg") == 0)
+    else if ((strcmp(fileType, ".ogg") == 0) || (strcmp(fileType, ".OGG") == 0))
     {
         // Open ogg audio stream
         music.ctxType = MUSIC_AUDIO_OGG;
@@ -1489,7 +1490,7 @@ Music LoadMusicStreamFromMemory(const char *fileType, const unsigned char *data,
     }
 #endif
 #if defined(SUPPORT_FILEFORMAT_MP3)
-    else if (strcmp(fileType, ".mp3") == 0)
+    else if ((strcmp(fileType, ".mp3") == 0) || (strcmp(fileType, ".MP3") == 0))
     {
         drmp3 *ctxMp3 = RL_CALLOC(1, sizeof(drmp3));
         int success = drmp3_init_memory(ctxMp3, (const void*)data, dataSize, NULL);
@@ -1507,7 +1508,7 @@ Music LoadMusicStreamFromMemory(const char *fileType, const unsigned char *data,
     }
 #endif
 #if defined(SUPPORT_FILEFORMAT_QOA)
-    else if (strcmp(fileType, ".qoa") == 0)
+    else if ((strcmp(fileType, ".qoa") == 0) || (strcmp(fileType, ".QOA") == 0))
     {
         qoaplay_desc *ctxQoa = qoaplay_open_memory(data, dataSize);
         music.ctxType = MUSIC_AUDIO_QOA;
@@ -1525,7 +1526,7 @@ Music LoadMusicStreamFromMemory(const char *fileType, const unsigned char *data,
     }
 #endif
 #if defined(SUPPORT_FILEFORMAT_FLAC)
-    else if (strcmp(fileType, ".flac") == 0)
+    else if ((strcmp(fileType, ".flac") == 0) || (strcmp(fileType, ".FLAC") == 0))
     {
         music.ctxType = MUSIC_AUDIO_FLAC;
         music.ctxData = drflac_open_memory((const void*)data, dataSize, NULL);
@@ -1542,7 +1543,7 @@ Music LoadMusicStreamFromMemory(const char *fileType, const unsigned char *data,
     }
 #endif
 #if defined(SUPPORT_FILEFORMAT_XM)
-    else if (strcmp(fileType, ".xm") == 0)
+    else if ((strcmp(fileType, ".xm") == 0) || (strcmp(fileType, ".XM") == 0))
     {
         jar_xm_context_t *ctxXm = NULL;
         int result = jar_xm_create_context_safe(&ctxXm, (const char *)data, dataSize, AUDIO.System.device.sampleRate);
@@ -1567,7 +1568,7 @@ Music LoadMusicStreamFromMemory(const char *fileType, const unsigned char *data,
     }
 #endif
 #if defined(SUPPORT_FILEFORMAT_MOD)
-    else if (strcmp(fileType, ".mod") == 0)
+    else if ((strcmp(fileType, ".mod") == 0) || (strcmp(fileType, ".MOD") == 0))
     {
         jar_mod_context_t *ctxMod = (jar_mod_context_t *)RL_MALLOC(sizeof(jar_mod_context_t));
         int result = 0;

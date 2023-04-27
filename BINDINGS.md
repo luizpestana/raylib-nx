@@ -8,7 +8,7 @@ Some people ported raylib to other languages in form of bindings or wrappers to 
 |:------------------:|:---------------:|:---------:|:----------:|-----------------------------------------------------------|
 | raylib             | **4.5** | [C/C++](https://en.wikipedia.org/wiki/C_(programming_language))    | Zlib | https://github.com/raysan5/raylib          |
 | raylib-boo         | 3.7     | [Boo](http://boo-language.github.io/)| MIT | https://github.com/Rabios/raylib-boo          |
-| Raylib-cs          | 4.2     | [C#](https://en.wikipedia.org/wiki/C_Sharp_(programming_language)) | Zlib | https://github.com/ChrisDill/Raylib-cs     |
+| Raylib-cs          | **4.5** | [C#](https://en.wikipedia.org/wiki/C_Sharp_(programming_language)) | Zlib | https://github.com/ChrisDill/Raylib-cs     |
 | Raylib-CsLo        | 4.2     | [C#](https://en.wikipedia.org/wiki/C_Sharp_(programming_language)) | MPL-2.0 | https://github.com/NotNotTech/Raylib-CsLo  |
 | cl-raylib          | 4.0     | [Common Lisp](https://common-lisp.net/)   | MIT | https://github.com/longlene/cl-raylib     |
 | claylib/wrap       | 4.2     | [Common Lisp](https://common-lisp.net/)   | Zlib | https://github.com/defun-games/claylib |
@@ -35,7 +35,7 @@ Some people ported raylib to other languages in form of bindings or wrappers to 
 | raylib-j           | 4.0     | [Java](https://en.wikipedia.org/wiki/Java_(programming_language)) | Zlib | https://github.com/CreedVI/Raylib-J |
 | raylib.jl          | 4.2     | [Julia](https://julialang.org/)      | Zlib | https://github.com/irishgreencitrus/raylib.jl |
 | kaylib             | 3.7     | [Kotlin/native](https://kotlinlang.org) | ? | https://github.com/electronstudio/kaylib      |
-| kaylib             | **4.5-dev**| [Kotlin/native](https://kotlinlang.org) | Zlib | https://codeberg.org/Kenta/Kaylib      |
+| kaylib             | **4.5**| [Kotlin/native](https://kotlinlang.org) | Zlib | https://codeberg.org/Soutaisei/Kaylib   |
 | raylib-lua         | **4.5**     | [Lua](http://www.lua.org/)           | ISC | https://github.com/TSnake41/raylib-lua        |
 | raylua             | 4.0     | [Lua](http://www.lua.org/)           | MIT | https://github.com/Rabios/raylua              |
 | nelua-raylib       | 4.0     | [nelua](https://nelua.io/)           | MIT | https://github.com/AKDev21/nelua-raylib       |
@@ -54,7 +54,7 @@ Some people ported raylib to other languages in form of bindings or wrappers to 
 | raylib-python-cffi | 4.2 | [Python](https://www.python.org/)    | EPL-2.0 | https://github.com/electronstudio/raylib-python-cffi |
 | raylibpyctbg     | **4.5** | [Python](https://www.python.org/)          | MIT | https://github.com/overdev/raylibpyctbg                |
 | raylib-py          | **4.5** | [Python](https://www.python.org/)          | MIT | https://github.com/overdev/raylib-py       |
-| raylib-python-ctypes | 4.2 | [Python](https://www.python.org/)    | MIT | https://github.com/sDos280/raylib-python-ctypes |
+| raylib-python-ctypes | 4.6-dev | [Python](https://www.python.org/)    | MIT | https://github.com/sDos280/raylib-python-ctypes |
 | raylib-php         | 3.5     | [PHP](https://en.wikipedia.org/wiki/PHP) | Zlib | https://github.com/joseph-montanez/raylib-php   |
 | raylib-phpcpp      | 3.5     | [PHP](https://en.wikipedia.org/wiki/PHP) | Zlib | https://github.com/oraoto/raylib-phpcpp         |
 | raylibr            | 4.0     | [R](https://www.r-project.org)       | MIT | https://github.com/jeroenjanssens/raylibr         |
