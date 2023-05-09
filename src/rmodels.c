@@ -3,21 +3,20 @@
 *   rmodels - Basic functions to draw 3d shapes and load and draw 3d models
 *
 *   CONFIGURATION:
+*       #define SUPPORT_MODULE_RMODELS
+*           rmodels module is included in the build
 *
-*   #define SUPPORT_MODULE_RMODELS
-*       rmodels module is included in the build
+*       #define SUPPORT_FILEFORMAT_OBJ
+*       #define SUPPORT_FILEFORMAT_MTL
+*       #define SUPPORT_FILEFORMAT_IQM
+*       #define SUPPORT_FILEFORMAT_GLTF
+*       #define SUPPORT_FILEFORMAT_VOX
+*       #define SUPPORT_FILEFORMAT_M3D
+*           Selected desired fileformats to be supported for model data loading.
 *
-*   #define SUPPORT_FILEFORMAT_OBJ
-*   #define SUPPORT_FILEFORMAT_MTL
-*   #define SUPPORT_FILEFORMAT_IQM
-*   #define SUPPORT_FILEFORMAT_GLTF
-*   #define SUPPORT_FILEFORMAT_VOX
-*   #define SUPPORT_FILEFORMAT_M3D
-*       Selected desired fileformats to be supported for model data loading.
-*
-*   #define SUPPORT_MESH_GENERATION
-*       Support procedural mesh generation functions, uses external par_shapes.h library
-*       NOTE: Some generated meshes DO NOT include generated texture coordinates
+*       #define SUPPORT_MESH_GENERATION
+*           Support procedural mesh generation functions, uses external par_shapes.h library
+*           NOTE: Some generated meshes DO NOT include generated texture coordinates
 *
 *
 *   LICENSE: zlib/libpng
@@ -2940,11 +2939,8 @@ Mesh GenMeshCubicmap(Image cubicmap, Vector3 cubeSize)
 
     Color *pixels = LoadImageColors(cubicmap);
 
-    int mapWidth = cubicmap.width;
-    int mapHeight = cubicmap.height;
-
     // NOTE: Max possible number of triangles numCubes*(12 triangles by cube)
-    int maxTriangles = cubicmap.width*cubicmap.height*12;
+    int maxTriangles = cubicmap.width * cubicmap.height * 12;
 
     int vCounter = 0;       // Used to count vertices
     int tcCounter = 0;      // Used to count texcoords
@@ -2981,9 +2977,9 @@ Mesh GenMeshCubicmap(Image cubicmap, Vector3 cubeSize)
     RectangleF topTexUV = { 0.0f, 0.5f, 0.5f, 0.5f };
     RectangleF bottomTexUV = { 0.5f, 0.5f, 0.5f, 0.5f };
 
-    for (int z = 0; z < mapHeight; ++z)
+    for (int z = 0; z < cubicmap.height; ++z)
     {
-        for (int x = 0; x < mapWidth; ++x)
+        for (int x = 0; x < cubicmap.width; ++x)
         {
             // Define the 8 vertex of the cube, we will combine them accordingly later...
             Vector3 v1 = { w*(x - 0.5f), h2, h*(z - 0.5f) };
@@ -5379,6 +5375,9 @@ static ModelAnimation *LoadModelAnimationsGLTF(const char *fileName, unsigned in
                     animDuration = (t > animDuration)? t : animDuration;
                 }
 
+                strncpy(animations[i].name, animData.name, sizeof(animations[i].name));
+                animations[i].name[sizeof(animations[i].name) - 1] = '\0';
+                
                 animations[i].frameCount = (int)(animDuration*1000.0f/GLTF_ANIMDELAY);
                 animations[i].framePoses = RL_MALLOC(animations[i].frameCount*sizeof(Transform *));
 
