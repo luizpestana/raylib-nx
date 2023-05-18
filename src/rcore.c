@@ -3944,7 +3944,7 @@ bool IsMouseButtonUp(int button)
 // Get mouse position X
 int GetMouseX(void)
 {
-#if defined(PLATFORM_ANDROID)
+#if defined(PLATFORM_ANDROID) || defined(PLATFORM_NX)
     return (int)CORE.Input.Touch.position[0].x;
 #else
     return (int)((CORE.Input.Mouse.currentPosition.x + CORE.Input.Mouse.offset.x)*CORE.Input.Mouse.scale.x);
@@ -3954,7 +3954,7 @@ int GetMouseX(void)
 // Get mouse position Y
 int GetMouseY(void)
 {
-#if defined(PLATFORM_ANDROID)
+#if defined(PLATFORM_ANDROID) || defined(PLATFORM_NX)
     return (int)CORE.Input.Touch.position[0].y;
 #else
     return (int)((CORE.Input.Mouse.currentPosition.y + CORE.Input.Mouse.offset.y)*CORE.Input.Mouse.scale.y);
@@ -3966,7 +3966,7 @@ Vector2 GetMousePosition(void)
 {
     Vector2 position = { 0 };
 
-#if defined(PLATFORM_ANDROID) || defined(PLATFORM_WEB)
+#if defined(PLATFORM_ANDROID) || defined(PLATFORM_WEB) || defined(PLATFORM_NX)
     position = GetTouchPosition(0);
 #else
     position.x = (CORE.Input.Mouse.currentPosition.x + CORE.Input.Mouse.offset.x)*CORE.Input.Mouse.scale.x;
@@ -4018,7 +4018,7 @@ float GetMouseWheelMove(void)
 {
     float result = 0.0f;
 
-#if !defined(PLATFORM_ANDROID)
+#if !defined(PLATFORM_ANDROID) && !defined(PLATFORM_NX)
     if (fabsf(CORE.Input.Mouse.currentWheelMove.x) > fabsf(CORE.Input.Mouse.currentWheelMove.y)) result = (float)CORE.Input.Mouse.currentWheelMove.x;
     else result = (float)CORE.Input.Mouse.currentWheelMove.y;
 #endif
@@ -5371,6 +5371,9 @@ void PollInputEvents(void)
             CORE.Input.Touch.deltaTime[i] = state.touches[i].delta_time;
         }
         CORE.Input.Touch.pointCount = state.count;
+
+        if (CORE.Input.Touch.pointCount > 0) CORE.Input.Touch.currentTouchState[MOUSE_BUTTON_LEFT] = 1;
+        else CORE.Input.Touch.currentTouchState[MOUSE_BUTTON_LEFT] = 0;
     }
 
     CORE.Input.Gamepad.axisCount = 6;
