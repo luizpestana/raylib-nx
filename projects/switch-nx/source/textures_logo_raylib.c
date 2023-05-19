@@ -11,6 +11,8 @@
 
 #include <switch.h>
 #include "raylib.h"
+#define RAYGUI_IMPLEMENTATION
+#include "raygui.h"
 
 int main(void)
 {
@@ -21,6 +23,9 @@ int main(void)
     //--------------------------------------------------------------------------------------
     const int screenWidth = 1280;
     const int screenHeight = 720;
+
+    char textBoxText[64] = "Text box";
+    bool textBoxEditMode = false;
 
     InitWindow(screenWidth, screenHeight, "raylib [textures] example - texture loading and drawing");
 
@@ -40,7 +45,9 @@ int main(void)
         //----------------------------------------------------------------------------------
         BeginDrawing();
 
-            ClearBackground(RAYWHITE);
+            ClearBackground(GetColor(GuiGetStyle(DEFAULT, BACKGROUND_COLOR)));
+
+            if (GuiTextBox((Rectangle){ 25, 215, 125, 30 }, textBoxText, 64, textBoxEditMode)) textBoxEditMode = !textBoxEditMode;
 
             DrawTexture(texture, screenWidth/2 - texture.width/2, screenHeight/2 - texture.height/2, WHITE);
 
