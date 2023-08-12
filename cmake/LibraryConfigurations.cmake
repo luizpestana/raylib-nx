@@ -43,7 +43,7 @@ if (${PLATFORM} MATCHES "Desktop")
         if ("${OPENGL_LIBRARIES}" STREQUAL "")
             set(OPENGL_LIBRARIES "GL")
         endif ()
-        
+
         set(LIBS_PRIVATE m atomic pthread ${OPENGL_LIBRARIES} ${OSS_LIBRARY})
 
         if ("${CMAKE_SYSTEM_NAME}" MATCHES "(Net|Open)BSD")
@@ -104,6 +104,21 @@ elseif ("${PLATFORM}" MATCHES "DRM")
     endif ()
     set(LIBS_PRIVATE ${GLESV2} ${EGL} ${DRM} ${GBM} atomic pthread m dl)
 
+elseif ("${PLATFORM}" MATCHES "Nintendo Switch")
+    set(THREADS_PREFER_PTHREAD_FLAG ON)
+    set(PLATFORM_CPP "PLATFORM_NX")
+    set(GRAPHICS "GRAPHICS_API_OPENGL_ES2")
+
+    add_definitions(-DPLATFORM_NX)
+
+    find_library(EGL EGL)
+    find_library(DRM drm_nouveau)
+    find_library(GLAPI glapi)
+    find_library(GLESV2 GLESv2)
+    include_directories(${DEVKITPRO}/portlibs/switch/include/)
+
+    set(LIBS_PRIVATE ${GLESV2} ${GLAPI} ${EGL} ${Threads} ${DRM} pthread)
+    link_libraries("${LIBS_PRIVATE}")
 endif ()
 
 if (NOT ${OPENGL_VERSION})

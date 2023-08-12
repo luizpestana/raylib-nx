@@ -15,7 +15,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     endif()
 
     message(STATUS "Setting build type to '${default_build_type}' as none was specified.")
-    
+
     set(CMAKE_BUILD_TYPE "${default_build_type}" CACHE STRING "Choose the type of build." FORCE)
     set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
@@ -41,6 +41,10 @@ set(raylib_sources
 if (NOT ${PLATFORM} MATCHES "Web")
     include(GlfwImport)
 endif ()
+
+if(${PLATFORM} MATCHES "Nintendo Switch")
+    include_directories(BEFORE SYSTEM switch-nx)
+endif()
 
 # Sets additional platform options and link libraries for each platform
 # also selects the proper graphics API and version for that platform
