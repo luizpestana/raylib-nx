@@ -286,6 +286,11 @@ ifeq ($(PLATFORM),PLATFORM_DRM)
     INCLUDE_PATHS += -I/usr/include/libdrm
 endif
 
+# Include GLFW required for examples/others/rlgl_standalone.c
+ifeq ($(USE_EXTERNAL_GLFW),FALSE)
+all others: INCLUDE_PATHS += -I$(RAYLIB_PATH)/src/external/glfw/include
+endif
+
 # Define library paths containing required libs: LDFLAGS
 #------------------------------------------------------------------------------------------------
 LDFLAGS = -L. -L$(RAYLIB_RELEASE_PATH) -L$(RAYLIB_PATH)/src
@@ -437,6 +442,7 @@ CORE = \
     core/core_input_gamepad \
     core/core_input_multitouch \
     core/core_input_gestures \
+    core/core_input_gestures_web \
     core/core_2d_camera \
     core/core_2d_camera_platformer \
     core/core_2d_camera_mouse_zoom \
@@ -501,7 +507,8 @@ TEXTURES = \
     textures/textures_draw_tiled \
     textures/textures_polygon \
     textures/textures_gif_player \
-    textures/textures_fog_of_war
+    textures/textures_fog_of_war \
+    textures/textures_svg_loading
 
 TEXT = \
     text/text_raylib_fonts \
@@ -555,6 +562,7 @@ SHADERS = \
     shaders/shaders_simple_mask \
     shaders/shaders_spotlight \
     shaders/shaders_hot_reloading \
+    shaders/shaders_lightmap \
     shaders/shaders_mesh_instancing \
     shaders/shaders_multi_sample2d \
     shaders/shaders_write_depth \
@@ -565,15 +573,24 @@ AUDIO = \
     audio/audio_music_stream \
     audio/audio_raw_stream \
     audio/audio_sound_loading \
+    audio/audio_sound_multi \
     audio/audio_stream_effects \
     audio/audio_mixed_processor
+
+OTHERS = \
+    others/easings_testbed \
+    others/embedded_files_loading \
+    others/raylib_opengl_interop \
+    others/raymath_vector_angle \
+    others/rlgl_compute_shader \
+    others/rlgl_standalone
 
 CURRENT_MAKEFILE = $(lastword $(MAKEFILE_LIST))
 
 # Define processes to execute
 #------------------------------------------------------------------------------------------------
 # Default target entry
-all: $(CORE) $(SHAPES) $(TEXT) $(TEXTURES) $(MODELS) $(SHADERS) $(AUDIO)
+all: $(CORE) $(SHAPES) $(TEXT) $(TEXTURES) $(MODELS) $(SHADERS) $(AUDIO) $(OTHERS)
 
 core: $(CORE)
 shapes: $(SHAPES)
@@ -582,6 +599,7 @@ text: $(TEXT)
 models: $(MODELS)
 shaders: $(SHADERS)
 audio: $(AUDIO)
+others: $(OTHERS)
 
 # Generic compilation pattern
 # NOTE: Examples must be ready for Android compilation!

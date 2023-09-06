@@ -255,6 +255,7 @@ endif
 ifeq ($(PLATFORM),PLATFORM_WEB)
     # On HTML5 OpenGL ES 2.0 is used, emscripten translates it to WebGL 1.0
     GRAPHICS = GRAPHICS_API_OPENGL_ES2
+    #GRAPHICS = GRAPHICS_API_OPENGL_ES3      # Uncomment to use ES3/WebGL2 (preliminary support).
 endif
 ifeq ($(PLATFORM),PLATFORM_ANDROID)
     # By default use OpenGL ES 2.0 on Android
@@ -542,7 +543,7 @@ ifeq ($(PLATFORM),PLATFORM_DRM)
     endif
 endif
 ifeq ($(PLATFORM),PLATFORM_ANDROID)
-    LDFLAGS += -Wl,-soname,libraylib.$(API_VERSION).so -Wl,--exclude-libs,libatomic.a
+    LDFLAGS += -Wl,-soname,libraylib.$(RAYLIB_API_VERSION).so -Wl,--exclude-libs,libatomic.a
     LDFLAGS += -Wl,--build-id -Wl,-z,noexecstack -Wl,-z,relro -Wl,-z,now -Wl,--warn-shared-textrel -Wl,--fatal-warnings
     # Force linking of library module to define symbol
     LDFLAGS += -u ANativeActivity_onCreate
@@ -837,19 +838,19 @@ ifeq ($(ROOT),root)
     # and $(RAYLIB_H_INSTALL_PATH). Please confirm each item.
     ifeq ($(PLATFORM_OS),LINUX)
         ifeq ($(RAYLIB_LIBTYPE),SHARED)
-		rm --force --interactive --verbose $(RAYLIB_INSTALL_PATH)/libraylib.so
-		rm --force --interactive --verbose $(RAYLIB_INSTALL_PATH)/libraylib.so.$(RAYLIB_API_VERSION)
-		rm --force --interactive --verbose $(RAYLIB_INSTALL_PATH)/libraylib.so.$(RAYLIB_VERSION)
-        # Uncomment to clean up the runtime linker cache. See install target.
-		ldconfig
+			rm --force --interactive --verbose $(RAYLIB_INSTALL_PATH)/libraylib.so
+			rm --force --interactive --verbose $(RAYLIB_INSTALL_PATH)/libraylib.so.$(RAYLIB_API_VERSION)
+			rm --force --interactive --verbose $(RAYLIB_INSTALL_PATH)/libraylib.so.$(RAYLIB_VERSION)
+            # Uncomment to clean up the runtime linker cache. See install target.
+			ldconfig
         else
-		rm --force --interactive --verbose $(RAYLIB_INSTALL_PATH)/libraylib.a
+			rm --force --interactive --verbose $(RAYLIB_INSTALL_PATH)/libraylib.a
         endif
 		rm --force --interactive --verbose $(RAYLIB_H_INSTALL_PATH)/raylib.h
 		rm --force --interactive --verbose $(RAYLIB_H_INSTALL_PATH)/raymath.h
 		rm --force --interactive --verbose $(RAYLIB_H_INSTALL_PATH)/rlgl.h
 		@echo "raylib development files removed!"
-        else
+    else
 		@echo "This function currently works on GNU/Linux systems. Add yours today (^;"
     endif
 else
