@@ -534,6 +534,7 @@ AUDIO = \
     audio/audio_stream_effects \
     audio/audio_mixed_processor
 
+ifneq ($(PLATFORM),PLATFORM_NX)
 OTHERS = \
     others/easings_testbed \
     others/embedded_files_loading \
@@ -541,6 +542,7 @@ OTHERS = \
     others/raymath_vector_angle \
     others/rlgl_compute_shader \
     others/rlgl_standalone
+endif
 
 CURRENT_MAKEFILE = $(lastword $(MAKEFILE_LIST))
 
