@@ -788,7 +788,7 @@ Image GenImageFontAtlas(const GlyphInfo *glyphs, Rectangle **glyphRecs, int glyp
                 }
             }
 
-            // Copy pixel data from fc.data to atlas
+            // Copy pixel data from glyph image to atlas
             for (int y = 0; y < glyphs[i].image.height; y++)
             {
                 for (int x = 0; x < glyphs[i].image.width; x++)
@@ -1676,6 +1676,7 @@ const char *TextToPascal(const char *text)
     {
         // Upper case first character
         if ((text[0] >= 'a') && (text[0] <= 'z')) buffer[0] = text[0] - 32;
+        else buffer[0] = text[0];
 
         // Check for next separator to upper case another character
         for (int i = 1, j = 1; (i < MAX_TEXT_BUFFER_LENGTH - 1) && (text[j] != '\0'); i++, j++)
