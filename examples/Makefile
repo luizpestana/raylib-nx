@@ -1,6 +1,25 @@
 #**************************************************************************************************
 #
-#   raylib makefile for Desktop platforms, Raspberry Pi, Android and HTML5
+#   raylib makefile for multiple platforms
+#
+#   This file supports building raylib examples for the following platforms:
+#
+#     > PLATFORM_DESKTOP (GLFW backend):
+#         - Windows (Win32, Win64)
+#         - Linux (X11/Wayland desktop mode)
+#         - macOS/OSX (x64, arm64)
+#         - FreeBSD, OpenBSD, NetBSD, DragonFly (X11 desktop)
+#     > PLATFORM_DESKTOP_SDL (SDL backend):
+#         - Windows (Win32, Win64)
+#         - Linux (X11/Wayland desktop mode)
+#         - Others (not tested)
+#     > PLATFORM_WEB:
+#         - HTML5 (WebAssembly)
+#     > PLATFORM_DRM:
+#         - Raspberry Pi 0-5 (DRM/KMS)
+#         - Linux DRM subsystem (KMS mode)
+#     > PLATFORM_ANDROID:
+#         - Android (ARM, ARM64)
 #
 #   Copyright (c) 2013-2023 Ramon Santamaria (@raysan5)
 #
@@ -25,13 +44,16 @@
 
 # Define required environment variables
 #------------------------------------------------------------------------------------------------
-# Define target platform: PLATFORM_DESKTOP, PLATFORM_DRM, PLATFORM_ANDROID, PLATFORM_WEB, PLATFORM_NX
+# Define target platform: PLATFORM_DESKTOP, PLATFORM_DESKTOP_SDL, PLATFORM_DRM, PLATFORM_ANDROID, PLATFORM_WEB
 PLATFORM              ?= PLATFORM_DESKTOP
 
 # Define required raylib variables
 PROJECT_NAME          ?= raylib_examples
-RAYLIB_VERSION        ?= 4.5.0
+RAYLIB_VERSION        ?= 5.0.0
 RAYLIB_PATH           ?= ..
+
+# Define raylib source code path
+RAYLIB_SRC_PATH       ?= ../src
 
 # Locations of raylib.h and libraylib.a/libraylib.so
 # NOTE: Those variables are only used for PLATFORM_OS: LINUX, BSD
@@ -47,6 +69,11 @@ BUILD_MODE            ?= RELEASE
 # Use external GLFW library instead of rglfw module
 USE_EXTERNAL_GLFW     ?= FALSE
 
+# PLATFORM_DESKTOP_SDL: It requires SDL library to be provided externally
+# WARNING: Library is not included in raylib, it MUST be configured by users
+SDL_INCLUDE_PATH      ?= $(RAYLIB_SRC_PATH)/external/SDL2-2.28.4/include
+SDL_LIBRARY_PATH      ?= $(RAYLIB_SRC_PATH)/external/SDL2-2.28.4/lib/x64
+
 # Use Wayland display server protocol on Linux desktop (by default it uses X11 windowing system)
 # NOTE: This variable is only used for PLATFORM_OS: LINUX
 USE_WAYLAND_DISPLAY   ?= FALSE
@@ -58,8 +85,8 @@ BUILD_WEB_HEAP_SIZE   ?= 134217728
 BUILD_WEB_RESOURCES   ?= TRUE
 BUILD_WEB_RESOURCES_PATH  ?= $(dir $<)resources@resources
 
-# Determine PLATFORM_OS in case PLATFORM_DESKTOP or PLATFORM_WEB selected
-ifeq ($(PLATFORM),$(filter $(PLATFORM),PLATFORM_DESKTOP PLATFORM_WEB))
+# Determine PLATFORM_OS when required
+ifeq ($(PLATFORM),$(filter $(PLATFORM),PLATFORM_DESKTOP PLATFORM_DESKTOP_SDL PLATFORM_WEB))
     # No uname.exe on MinGW!, but OS=Windows_NT on Windows!
     # ifeq ($(UNAME),Msys) -> Windows
     ifeq ($(OS),Windows_NT)
@@ -175,7 +202,7 @@ ifeq ($(PLATFORM),PLATFORM_ANDROID)
     MAKE = mingw32-make
 endif
 ifeq ($(PLATFORM),PLATFORM_WEB)
-    MAKE = mingw32-make
+    MAKE = emmake make
 endif
 
 # Define compiler flags: CFLAGS
@@ -236,7 +263,6 @@ INCLUDE_PATHS = -I. -I$(RAYLIB_PATH)/src -I$(RAYLIB_PATH)/src/external
 
 # Define additional directories containing required header files
 ifeq ($(PLATFORM),PLATFORM_NX)
-    INCLUDE_PATHS += -I$(RAYLIB_PATH)/src/switch-nx
     LIBDIRS := $(PORTLIBS) $(LIBNX)
     ARCH    :=  -march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
     CFLAGS  +=  -ffunction-sections $(ARCH) $(foreach dir,$(LIBDIRS),-I$(dir)/include) -D__SWITCH__
@@ -249,7 +275,11 @@ ifeq ($(PLATFORM),PLATFORM_DESKTOP)
         INCLUDE_PATHS += -I$(RAYLIB_INCLUDE_PATH)
     endif
 endif
+ifeq ($(PLATFORM),PLATFORM_DESKTOP_SDL)
+    INCLUDE_PATHS += -I$(SDL_INCLUDE_PATH)
+endif
 ifeq ($(PLATFORM),PLATFORM_DRM)
+    INCLUDE_PATHS += -I$(RAYLIB_INCLUDE_PATH)
     INCLUDE_PATHS += -I/usr/include/libdrm
 endif
 
@@ -277,6 +307,17 @@ ifeq ($(PLATFORM),PLATFORM_DESKTOP)
     ifeq ($(PLATFORM_OS),BSD)
         LDFLAGS += -Lsrc -L$(RAYLIB_LIB_PATH)
     endif
+endif
+ifeq ($(PLATFORM),PLATFORM_DESKTOP_SDL)
+    ifeq ($(PLATFORM_OS),WINDOWS)
+        # NOTE: The resource .rc file contains windows executable icon and properties
+        LDFLAGS += $(RAYLIB_PATH)/src/raylib.rc.data
+        # -Wl,--subsystem,windows hides the console window
+        ifeq ($(BUILD_MODE), RELEASE)
+            LDFLAGS += -Wl,--subsystem,windows
+        endif
+    endif
+    LDFLAGS += -L$(SDL_LIBRARY_PATH)
 endif
 ifeq ($(PLATFORM),PLATFORM_WEB)
     # -Os                        # size optimization
@@ -374,6 +415,34 @@ ifeq ($(PLATFORM),PLATFORM_DESKTOP)
         LDLIBS += -lglfw
     endif
 endif
+ifeq ($(PLATFORM),PLATFORM_DESKTOP_SDL)
+    ifeq ($(PLATFORM_OS),WINDOWS)
+        # Libraries for Windows desktop compilation
+        LDLIBS = -lraylib -lSDL2 -lSDL2main -lopengl32 -lgdi32
+    endif
+    ifeq ($(PLATFORM_OS),LINUX)
+        # Libraries for Debian GNU/Linux desktop compiling
+        # NOTE: Required packages: libegl1-mesa-dev
+        LDLIBS = -lraylib -lSDL2 -lSDL2main -lGL -lm -lpthread -ldl -lrt
+
+        # On X11 requires also below libraries
+        LDLIBS += -lX11
+        # NOTE: It seems additional libraries are not required any more, latest GLFW just dlopen them
+        #LDLIBS += -lXrandr -lXinerama -lXi -lXxf86vm -lXcursor
+
+        # On Wayland windowing system, additional libraries requires
+        ifeq ($(USE_WAYLAND_DISPLAY),TRUE)
+            LDLIBS += -lwayland-client -lwayland-cursor -lwayland-egl -lxkbcommon
+        endif
+        # Explicit link to libc
+        ifeq ($(RAYLIB_LIBTYPE),SHARED)
+            LDLIBS += -lc
+        endif
+
+        # NOTE: On ARM 32bit arch, miniaudio requires atomics library
+        LDLIBS += -latomic
+    endif
+endif
 ifeq ($(PLATFORM),PLATFORM_DRM)
     # Libraries for DRM compiling
     # NOTE: Required packages: libasound2-dev (ALSA)
@@ -390,96 +459,99 @@ endif
 # Define source code object files required
 #------------------------------------------------------------------------------------------------
 CORE = \
-    core/core_basic_window \
+    core/core_2d_camera \
+    core/core_2d_camera_mouse_zoom \
+    core/core_2d_camera_platformer \
+    core/core_2d_camera_split_screen \
+    core/core_3d_camera_first_person \
+    core/core_3d_camera_free \
+    core/core_3d_camera_mode \
+    core/core_3d_camera_split_screen \
+    core/core_3d_picking \
+    core/core_automation_events \
     core/core_basic_screen_manager \
+    core/core_basic_window \
+    core/core_custom_frame_control \
+    core/core_custom_logging \
+    core/core_drop_files \
+    core/core_input_gamepad \
+    core/core_input_gamepad_info \
+    core/core_input_gestures \
+    core/core_input_gestures_web \
     core/core_input_keys \
     core/core_input_mouse \
     core/core_input_mouse_wheel \
-    core/core_input_gamepad \
     core/core_input_multitouch \
-    core/core_input_gestures \
-    core/core_input_gestures_web \
-    core/core_2d_camera \
-    core/core_2d_camera_platformer \
-    core/core_2d_camera_mouse_zoom \
-    core/core_2d_camera_split_screen \
-    core/core_3d_camera_mode \
-    core/core_3d_camera_free \
-    core/core_3d_camera_first_person \
-    core/core_3d_camera_split_screen \
-    core/core_3d_picking \
-    core/core_world_screen \
-    core/core_custom_logging \
-    core/core_drop_files \
+    core/core_loading_thread \
     core/core_random_values \
     core/core_scissor_test \
+    core/core_smooth_pixelperfect \
     core/core_storage_values \
     core/core_vr_simulator \
-    core/core_loading_thread \
     core/core_window_flags \
     core/core_window_letterbox \
     core/core_window_should_close \
-    core/core_smooth_pixelperfect \
-    core/core_custom_frame_control
+    core/core_world_screen
 
 SHAPES = \
     shapes/shapes_basic_shapes \
     shapes/shapes_bouncing_ball \
-    shapes/shapes_colors_palette \
-    shapes/shapes_logo_raylib \
-    shapes/shapes_logo_raylib_anim \
-    shapes/shapes_rectangle_scaling \
-    shapes/shapes_lines_bezier \
     shapes/shapes_collision_area \
-    shapes/shapes_following_eyes \
+    shapes/shapes_colors_palette \
+    shapes/shapes_draw_circle_sector \
+    shapes/shapes_draw_rectangle_rounded \
+    shapes/shapes_draw_ring \
     shapes/shapes_easings_ball_anim \
     shapes/shapes_easings_box_anim \
     shapes/shapes_easings_rectangle_array \
-    shapes/shapes_draw_ring \
-    shapes/shapes_draw_circle_sector \
-    shapes/shapes_draw_rectangle_rounded \
+    shapes/shapes_following_eyes \
+    shapes/shapes_lines_bezier \
+    shapes/shapes_logo_raylib \
+    shapes/shapes_logo_raylib_anim \
+    shapes/shapes_rectangle_scaling \
+    shapes/shapes_splines_drawing \
     shapes/shapes_top_down_lights
 
 TEXTURES = \
-    textures/textures_logo_raylib \
-    textures/textures_mouse_painting \
-    textures/textures_srcrec_dstrec \
+    textures/textures_background_scrolling \
+    textures/textures_blend_modes \
+    textures/textures_bunnymark \
+    textures/textures_draw_tiled \
+    textures/textures_fog_of_war \
+    textures/textures_gif_player \
     textures/textures_image_drawing \
     textures/textures_image_generation \
     textures/textures_image_loading \
     textures/textures_image_processing \
     textures/textures_image_rotate \
     textures/textures_image_text \
-    textures/textures_to_image \
-    textures/textures_raw_data \
-    textures/textures_particles_blending \
+    textures/textures_logo_raylib \
+    textures/textures_mouse_painting \
     textures/textures_npatch_drawing \
-    textures/textures_background_scrolling \
+    textures/textures_particles_blending \
+    textures/textures_polygon \
+    textures/textures_raw_data \
     textures/textures_sprite_anim \
     textures/textures_sprite_button \
     textures/textures_sprite_explosion \
+    textures/textures_srcrec_dstrec \
+    textures/textures_svg_loading \
     textures/textures_textured_curve \
-    textures/textures_bunnymark \
-    textures/textures_blend_modes \
-    textures/textures_draw_tiled \
-    textures/textures_polygon \
-    textures/textures_gif_player \
-    textures/textures_fog_of_war \
-    textures/textures_svg_loading
+    textures/textures_to_image
 
 TEXT = \
-    text/text_raylib_fonts \
-    text/text_font_spritefont \
-    text/text_font_loading \
+    text/text_codepoints_loading \
+    text/text_draw_3d \
     text/text_font_filters \
+    text/text_font_loading \
     text/text_font_sdf \
+    text/text_font_spritefont \
     text/text_format_text \
     text/text_input_box \
-    text/text_writing_anim \
+    text/text_raylib_fonts \
     text/text_rectangle_bounds \
     text/text_unicode \
-    text/text_draw_3d \
-    text/text_codepoints_loading
+    text/text_writing_anim
 
 MODELS = \
     models/models_animation \
@@ -489,50 +561,52 @@ MODELS = \
     models/models_draw_cube_texture \
     models/models_first_person_maze \
     models/models_geometric_shapes \
-    models/models_mesh_generation \
-    models/models_mesh_picking \
+    models/models_heightmap \
     models/models_loading \
-    models/models_loading_vox \
     models/models_loading_gltf \
     models/models_loading_m3d \
+    models/models_loading_vox \
+    models/models_mesh_generation \
+    models/models_mesh_picking \
     models/models_orthographic_projection \
     models/models_rlgl_solar_system \
     models/models_skybox \
-    models/models_yaw_pitch_roll \
-    models/models_heightmap \
-    models/models_waving_cubes
+    models/models_waving_cubes \
+    models/models_yaw_pitch_roll
 
 SHADERS = \
-    shaders/shaders_model_shader \
-    shaders/shaders_shapes_textures \
-    shaders/shaders_custom_uniform \
-    shaders/shaders_postprocessing \
-    shaders/shaders_palette_switch \
-    shaders/shaders_raymarching \
-    shaders/shaders_texture_drawing \
-    shaders/shaders_texture_waves \
-    shaders/shaders_texture_outline \
-    shaders/shaders_julia_set \
-    shaders/shaders_eratosthenes \
     shaders/shaders_basic_lighting \
+    shaders/shaders_custom_uniform \
+    shaders/shaders_deferred_render \
+    shaders/shaders_eratosthenes \
     shaders/shaders_fog \
-    shaders/shaders_simple_mask \
-    shaders/shaders_spotlight \
     shaders/shaders_hot_reloading \
+    shaders/shaders_hybrid_render \
+    shaders/shaders_julia_set \
     shaders/shaders_lightmap \
     shaders/shaders_mesh_instancing \
+    shaders/shaders_model_shader \
     shaders/shaders_multi_sample2d \
-    shaders/shaders_write_depth \
-    shaders/shaders_hybrid_render
+    shaders/shaders_palette_switch \
+    shaders/shaders_postprocessing \
+    shaders/shaders_raymarching \
+    shaders/shaders_shapes_textures \
+    shaders/shaders_simple_mask \
+    shaders/shaders_spotlight \
+    shaders/shaders_texture_drawing \
+    shaders/shaders_texture_outline \
+    shaders/shaders_texture_tiling \
+    shaders/shaders_texture_waves \
+    shaders/shaders_write_depth
 
 AUDIO = \
+    audio/audio_mixed_processor \
     audio/audio_module_playing \
     audio/audio_music_stream \
     audio/audio_raw_stream \
     audio/audio_sound_loading \
     audio/audio_sound_multi \
-    audio/audio_stream_effects \
-    audio/audio_mixed_processor
+    audio/audio_stream_effects
 
 ifneq ($(PLATFORM),PLATFORM_NX)
 OTHERS = \
@@ -565,6 +639,8 @@ others: $(OTHERS)
 %: %.c
 ifeq ($(PLATFORM),PLATFORM_ANDROID)
 	$(MAKE) -f Makefile.Android PROJECT_NAME=$@ PROJECT_SOURCE_FILES=$<
+else ifeq ($(PLATFORM),PLATFORM_WEB)
+	$(MAKE) -f Makefile.Web $@
 else ifeq ($(PLATFORM),PLATFORM_NX)
 	$(CC) -MMD -MP -MF $@.d -o $@.o -c $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM)
 	$(CXX) $@.o $(LDFLAGS) $(LDLIBS) -o $@.elf -D$(PLATFORM)

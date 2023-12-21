@@ -45,6 +45,8 @@
 #define SUPPORT_CAMERA_SYSTEM           1
 // Gestures module is included (rgestures.h) to support gestures detection: tap, hold, swipe, drag
 #define SUPPORT_GESTURES_SYSTEM         1
+// Include pseudo-random numbers generator (rprand.h), based on Xoshiro128** and SplitMix64
+#define SUPPORT_RPRAND_GENERATOR        1
 // Mouse gestures are directly mapped like touches and processed by gestures system
 #define SUPPORT_MOUSE_GESTURES          1
 // Reconfigure standard input to receive key inputs, works with SSH connection.
@@ -55,9 +57,7 @@
 // Use busy wait loop for timing sync, if not defined, a high-resolution timer is set up and used
 //#define SUPPORT_BUSY_WAIT_LOOP          1
 // Use a partial-busy wait loop, in this case frame sleeps for most of the time, but then runs a busy loop at the end for accuracy
-#define SUPPORT_PARTIALBUSY_WAIT_LOOP
-// Wait for events passively (sleeping while no events) instead of polling them actively every frame
-//#define SUPPORT_EVENTS_WAITING          1
+#define SUPPORT_PARTIALBUSY_WAIT_LOOP    1
 // Allow automatic screen capture of current screen pressing F12, defined in KeyCallback()
 #define SUPPORT_SCREEN_CAPTURE          1
 // Allow automatic gif recording of current screen pressing CTRL+F12, defined in KeyCallback()
@@ -65,15 +65,11 @@
 // Support CompressData() and DecompressData() functions
 #define SUPPORT_COMPRESSION_API         1
 // Support automatic generated events, loading and recording of those events when required
-//#define SUPPORT_EVENTS_AUTOMATION       1
+#define SUPPORT_AUTOMATION_EVENTS       1
 // Support custom frame control, only for advance users
 // By default EndDrawing() does this job: draws everything + SwapScreenBuffer() + manage frame timing + PollInputEvents()
 // Enabling this flag allows manual control of the frame processes, use at your own risk
 //#define SUPPORT_CUSTOM_FRAME_CONTROL    1
-// Enabling this flag allows gamepad to set keyboard and mouse states
-#define NX_SUPPORT_GAMEPAD_EMULATION       1
-// Enabling this flag allows debugging by USB, the application will wait for an USB connection to start
-//#define NX_USB_DEBUGGER                  1
 
 // rcore: Configuration values
 //------------------------------------------------------------------------------------
@@ -91,6 +87,7 @@
 
 #define MAX_DECOMPRESSION_SIZE         64       // Max size allocated for decompression in MB
 
+#define MAX_AUTOMATION_EVENTS       16384       // Maximum number of automation events to record
 
 //------------------------------------------------------------------------------------
 // Module: rlgl - Configuration values
@@ -140,6 +137,10 @@
 // Use QUADS instead of TRIANGLES for drawing when possible
 // Some lines-based shapes could still use lines
 #define SUPPORT_QUADS_DRAW_MODE         1
+
+// rshapes: Configuration values
+//------------------------------------------------------------------------------------
+#define SPLINE_SEGMENT_DIVISIONS       24       // Spline segments subdivisions
 
 
 //------------------------------------------------------------------------------------

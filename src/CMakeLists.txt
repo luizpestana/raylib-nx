@@ -42,6 +42,10 @@ if (NOT ${PLATFORM} MATCHES "Web")
     include(GlfwImport)
 endif ()
 
+if(${PLATFORM} MATCHES "NX")
+    include_directories(BEFORE SYSTEM switch-nx)
+endif()
+
 # Sets additional platform options and link libraries for each platform
 # also selects the proper graphics API and version for that platform
 # Produces a variable LIBS_PRIVATE that will be used later
