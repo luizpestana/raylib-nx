@@ -213,7 +213,7 @@
 #define STBIR_MALLOC(size,c) ((void)(c), RL_MALLOC(size))
 #define STBIR_FREE(ptr,c) ((void)(c), RL_FREE(ptr))
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
-#include "external/stb_image_resize.h"  // Required for: stbir_resize_uint8() [ImageResize()]
+#include "external/stb_image_resize2.h"  // Required for: stbir_resize_uint8_linear() [ImageResize()]
 
 #if defined(SUPPORT_FILEFORMAT_SVG)
 	#define NANOSVG_IMPLEMENTATION	// Expands implementation
@@ -325,7 +325,7 @@ Image LoadImageSvg(const char *fileNameOrString, int width, int height)
 
 #if defined(SUPPORT_FILEFORMAT_SVG)
     bool isSvgStringValid = false;
-    
+
     // Validate fileName or string
     if (fileNameOrString != NULL)
     {
@@ -347,7 +347,7 @@ Image LoadImageSvg(const char *fileNameOrString, int width, int height)
                 (fileNameOrString[2] == 'v') &&
                 (fileNameOrString[3] == 'g'))
             {
-                fileData = fileNameOrString;
+                fileData = (unsigned char *)fileNameOrString;
                 isSvgStringValid = true;
             }
         }
@@ -355,7 +355,7 @@ Image LoadImageSvg(const char *fileNameOrString, int width, int height)
         if (isSvgStringValid)
         {
             struct NSVGimage *svgImage = nsvgParse(fileData, "px", 96.0f);
-            
+
             unsigned char *img = RL_MALLOC(width*height*4);
 
             // Calculate scales for both the width and the height
@@ -384,6 +384,7 @@ Image LoadImageSvg(const char *fileNameOrString, int width, int height)
 
             // Free used memory
             nsvgDelete(svgImage);
+            nsvgDeleteRasterizer(rast);
         }
 
         if (isSvgStringValid && (fileData != fileNameOrString)) UnloadFileData(fileData);
@@ -555,6 +556,7 @@ Image LoadImageFromMemory(const char *fileType, const unsigned char *fileData, i
             image.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
 
             nsvgDelete(svgImage);
+            nsvgDeleteRasterizer(rast);
         }
     }
 #endif
@@ -662,9 +664,9 @@ void UnloadImage(Image image)
 // NOTE: File format depends on fileName extension
 bool ExportImage(Image image, const char *fileName)
 {
-    int success = 0;
+    int result = 0;
 
-    if ((image.width == 0) || (image.height == 0) || (image.data == NULL)) return success;
+    if ((image.width == 0) || (image.height == 0) || (image.data == NULL)) return result;
 
 #if defined(SUPPORT_IMAGE_EXPORT)
     int channels = 4;
@@ -687,21 +689,21 @@ bool ExportImage(Image image, const char *fileName)
     {
         int dataSize = 0;
         unsigned char *fileData = stbi_write_png_to_mem((const unsigned char *)imgData, image.width*channels, image.width, image.height, channels, &dataSize);
-        success = SaveFileData(fileName, fileData, dataSize);
+        result = SaveFileData(fileName, fileData, dataSize);
         RL_FREE(fileData);
     }
 #else
     if (false) { }
 #endif
 #if defined(SUPPORT_FILEFORMAT_BMP)
-    else if (IsFileExtension(fileName, ".bmp")) success = stbi_write_bmp(fileName, image.width, image.height, channels, imgData);
+    else if (IsFileExtension(fileName, ".bmp")) result = stbi_write_bmp(fileName, image.width, image.height, channels, imgData);
 #endif
 #if defined(SUPPORT_FILEFORMAT_TGA)
-    else if (IsFileExtension(fileName, ".tga")) success = stbi_write_tga(fileName, image.width, image.height, channels, imgData);
+    else if (IsFileExtension(fileName, ".tga")) result = stbi_write_tga(fileName, image.width, image.height, channels, imgData);
 #endif
 #if defined(SUPPORT_FILEFORMAT_JPG)
     else if (IsFileExtension(fileName, ".jpg") ||
-             IsFileExtension(fileName, ".jpeg")) success = stbi_write_jpg(fileName, image.width, image.height, channels, imgData, 90);  // JPG quality: between 1 and 100
+             IsFileExtension(fileName, ".jpeg")) result = stbi_write_jpg(fileName, image.width, image.height, channels, imgData, 90);  // JPG quality: between 1 and 100
 #endif
 #if defined(SUPPORT_FILEFORMAT_QOI)
     else if (IsFileExtension(fileName, ".qoi"))
@@ -719,30 +721,30 @@ bool ExportImage(Image image, const char *fileName)
             desc.channels = channels;
             desc.colorspace = QOI_SRGB;
 
-            success = qoi_write(fileName, imgData, &desc);
+            result = qoi_write(fileName, imgData, &desc);
         }
     }
 #endif
 #if defined(SUPPORT_FILEFORMAT_KTX)
     else if (IsFileExtension(fileName, ".ktx"))
     {
-        success = rl_save_ktx(fileName, image.data, image.width, image.height, image.format, image.mipmaps);
+        result = rl_save_ktx(fileName, image.data, image.width, image.height, image.format, image.mipmaps);
     }
 #endif
     else if (IsFileExtension(fileName, ".raw"))
     {
         // Export raw pixel data (without header)
         // NOTE: It's up to the user to track image parameters
-        success = SaveFileData(fileName, image.data, GetPixelDataSize(image.width, image.height, image.format));
+        result = SaveFileData(fileName, image.data, GetPixelDataSize(image.width, image.height, image.format));
     }
 
     if (allocatedData) RL_FREE(imgData);
 #endif      // SUPPORT_IMAGE_EXPORT
 
-    if (success != 0) TRACELOG(LOG_INFO, "FILEIO: [%s] Image exported successfully", fileName);
+    if (result != 0) TRACELOG(LOG_INFO, "FILEIO: [%s] Image exported successfully", fileName);
     else TRACELOG(LOG_WARNING, "FILEIO: [%s] Failed to export image", fileName);
 
-    return success;
+    return result;
 }
 
 // Export image to memory buffer
@@ -1286,8 +1288,6 @@ void ImageFormat(Image *image, int newFormat)
             image->data = NULL;
             image->format = newFormat;
 
-            int k = 0;
-
             switch (image->format)
             {
                 case PIXELFORMAT_UNCOMPRESSED_GRAYSCALE:
@@ -1304,7 +1304,7 @@ void ImageFormat(Image *image, int newFormat)
                 {
                     image->data = (unsigned char *)RL_MALLOC(image->width*image->height*2*sizeof(unsigned char));
 
-                    for (int i = 0; i < image->width*image->height*2; i += 2, k++)
+                    for (int i = 0, k = 0; i < image->width*image->height*2; i += 2, k++)
                     {
                         ((unsigned char *)image->data)[i] = (unsigned char)((pixels[k].x*0.299f + (float)pixels[k].y*0.587f + (float)pixels[k].z*0.114f)*255.0f);
                         ((unsigned char *)image->data)[i + 1] = (unsigned char)(pixels[k].w*255.0f);
@@ -1622,10 +1622,10 @@ void ImageResize(Image *image, int newWidth, int newHeight)
 
         switch (image->format)
         {
-            case PIXELFORMAT_UNCOMPRESSED_GRAYSCALE: stbir_resize_uint8((unsigned char *)image->data, image->width, image->height, 0, output, newWidth, newHeight, 0, 1); break;
-            case PIXELFORMAT_UNCOMPRESSED_GRAY_ALPHA: stbir_resize_uint8((unsigned char *)image->data, image->width, image->height, 0, output, newWidth, newHeight, 0, 2); break;
-            case PIXELFORMAT_UNCOMPRESSED_R8G8B8: stbir_resize_uint8((unsigned char *)image->data, image->width, image->height, 0, output, newWidth, newHeight, 0, 3); break;
-            case PIXELFORMAT_UNCOMPRESSED_R8G8B8A8: stbir_resize_uint8((unsigned char *)image->data, image->width, image->height, 0, output, newWidth, newHeight, 0, 4); break;
+            case PIXELFORMAT_UNCOMPRESSED_GRAYSCALE: stbir_resize_uint8_linear((unsigned char *)image->data, image->width, image->height, 0, output, newWidth, newHeight, 0, (stbir_pixel_layout)1); break;
+            case PIXELFORMAT_UNCOMPRESSED_GRAY_ALPHA: stbir_resize_uint8_linear((unsigned char *)image->data, image->width, image->height, 0, output, newWidth, newHeight, 0, (stbir_pixel_layout)2); break;
+            case PIXELFORMAT_UNCOMPRESSED_R8G8B8: stbir_resize_uint8_linear((unsigned char *)image->data, image->width, image->height, 0, output, newWidth, newHeight, 0, (stbir_pixel_layout)3); break;
+            case PIXELFORMAT_UNCOMPRESSED_R8G8B8A8: stbir_resize_uint8_linear((unsigned char *)image->data, image->width, image->height, 0, output, newWidth, newHeight, 0, (stbir_pixel_layout)4); break;
             default: break;
         }
 
@@ -1641,7 +1641,7 @@ void ImageResize(Image *image, int newWidth, int newHeight)
         Color *output = (Color *)RL_MALLOC(newWidth*newHeight*sizeof(Color));
 
         // NOTE: Color data is cast to (unsigned char *), there shouldn't been any problem...
-        stbir_resize_uint8((unsigned char *)pixels, image->width, image->height, 0, (unsigned char *)output, newWidth, newHeight, 0, 4);
+        stbir_resize_uint8_linear((unsigned char *)pixels, image->width, image->height, 0, (unsigned char *)output, newWidth, newHeight, 0, (stbir_pixel_layout)4);
 
         int format = image->format;
 
@@ -3793,8 +3793,11 @@ void UnloadRenderTexture(RenderTexture2D target)
 {
     if (target.id > 0)
     {
-        // Color texture attached to FBO is deleted
-        rlUnloadTexture(target.texture.id);
+        if (target.texture.id > 0)
+        {
+            // Color texture attached to FBO is deleted
+            rlUnloadTexture(target.texture.id);
+        }
 
         // NOTE: Depth texture/renderbuffer is automatically
         // queried and deleted before deleting framebuffer

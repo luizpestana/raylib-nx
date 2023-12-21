@@ -179,12 +179,12 @@ typedef struct tagBITMAPINFOHEADER {
 
 #define MINIAUDIO_IMPLEMENTATION
 #if defined(PLATFORM_NX)
-    #include <miniaudio_switch.h>       // Miniaudio fixes for switch
+    #include "external/miniaudio_switch.h" // Miniaudio fixes for switch
 #endif
 //#define MA_DEBUG_OUTPUT
 #include "external/miniaudio.h"         // Audio device initialization and management
 #if defined(PLATFORM_NX)
-    #include <miniaudio_audren.h>       // Custom audio device for switch
+    #include "external/miniaudio_audren.h" // Custom audio device for switch
 #endif
 #undef PlaySound                        // Win32 API: windows.h > mmsystem.h defines PlaySound macro
 
@@ -494,22 +494,22 @@ void InitAudioDevice(void)
         return;
     }
 
+    // Mixing happens on a separate thread which means we need to synchronize. I'm using a mutex here to make things simple, but may
+    // want to look at something a bit smarter later on to keep everything real-time, if that's necessary.
+    if (ma_mutex_init(&AUDIO.System.lock) != MA_SUCCESS)
+    {
+        TRACELOG(LOG_WARNING, "AUDIO: Failed to create mutex for mixing");
+        ma_device_uninit(&AUDIO.System.device);
+        ma_context_uninit(&AUDIO.System.context);
+        return;
+    }
+
     // Keep the device running the whole time. May want to consider doing something a bit smarter and only have the device running
     // while there's at least one sound being played.
     result = ma_device_start(&AUDIO.System.device);
     if (result != MA_SUCCESS)
     {
         TRACELOG(LOG_WARNING, "AUDIO: Failed to start playback device");
-        ma_device_uninit(&AUDIO.System.device);
-        ma_context_uninit(&AUDIO.System.context);
-        return;
-    }
-
-    // Mixing happens on a separate thread which means we need to synchronize. I'm using a mutex here to make things simple, but may
-    // want to look at something a bit smarter later on to keep everything real-time, if that's necessary.
-    if (ma_mutex_init(&AUDIO.System.lock) != MA_SUCCESS)
-    {
-        TRACELOG(LOG_WARNING, "AUDIO: Failed to create mutex for mixing");
         ma_device_uninit(&AUDIO.System.device);
         ma_context_uninit(&AUDIO.System.context);
         return;
@@ -554,6 +554,14 @@ bool IsAudioDeviceReady(void)
 void SetMasterVolume(float volume)
 {
     ma_device_set_master_volume(&AUDIO.System.device, volume);
+}
+
+// Get master volume (listener)
+float GetMasterVolume(void)
+{
+    float volume = 0.0f;
+    ma_device_get_master_volume(&AUDIO.System.device, &volume);
+    return volume;
 }
 
 //----------------------------------------------------------------------------------
@@ -940,7 +948,6 @@ Sound LoadSoundFromWave(Wave wave)
 }
 
 // Clone sound from existing sound data, clone does not own wave data
-// Wave data must
 // NOTE: Wave data must be unallocated manually and will be shared across all clones
 Sound LoadSoundAlias(Sound source)
 {
@@ -948,13 +955,16 @@ Sound LoadSoundAlias(Sound source)
 
     if (source.stream.buffer->data != NULL)
     {
-        AudioBuffer* audioBuffer = LoadAudioBuffer(AUDIO_DEVICE_FORMAT, AUDIO_DEVICE_CHANNELS, AUDIO.System.device.sampleRate, source.frameCount, AUDIO_BUFFER_USAGE_STATIC);
+        AudioBuffer* audioBuffer = LoadAudioBuffer(AUDIO_DEVICE_FORMAT, AUDIO_DEVICE_CHANNELS, AUDIO.System.device.sampleRate, 0, AUDIO_BUFFER_USAGE_STATIC);
         if (audioBuffer == NULL)
         {
             TRACELOG(LOG_WARNING, "SOUND: Failed to create buffer");
             return sound; // early return to avoid dereferencing the audioBuffer null pointer
         }
+        audioBuffer->sizeInFrames = source.stream.buffer->sizeInFrames;
+        audioBuffer->volume = source.stream.buffer->volume;
         audioBuffer->data = source.stream.buffer->data;
+
         sound.frameCount = source.frameCount;
         sound.stream.sampleRate = AUDIO.System.device.sampleRate;
         sound.stream.sampleSize = 32;
@@ -964,6 +974,7 @@ Sound LoadSoundAlias(Sound source)
 
     return sound;
 }
+
 
 // Checks if a sound is ready
 bool IsSoundReady(Sound sound)
@@ -1001,14 +1012,14 @@ void UnloadSoundAlias(Sound alias)
 }
 
 // Update sound buffer with new data
-void UpdateSound(Sound sound, const void *data, int sampleCount)
+void UpdateSound(Sound sound, const void *data, int frameCount)
 {
     if (sound.stream.buffer != NULL)
     {
         StopAudioBuffer(sound.stream.buffer);
 
         // TODO: May want to lock/unlock this since this data buffer is read at mixing time
-        memcpy(sound.stream.buffer->data, data, sampleCount*ma_get_bytes_per_frame(sound.stream.buffer->converter.formatIn, sound.stream.buffer->converter.channelsIn));
+        memcpy(sound.stream.buffer->data, data, frameCount*ma_get_bytes_per_frame(sound.stream.buffer->converter.formatIn, sound.stream.buffer->converter.channelsIn));
     }
 }
 
@@ -1806,7 +1817,14 @@ void SeekMusicStream(Music music, float position)
         case MUSIC_AUDIO_MP3: drmp3_seek_to_pcm_frame((drmp3 *)music.ctxData, positionInFrames); break;
 #endif
 #if defined(SUPPORT_FILEFORMAT_QOA)
-        case MUSIC_AUDIO_QOA: qoaplay_seek_frame((qoaplay_desc *)music.ctxData, positionInFrames); break;
+        case MUSIC_AUDIO_QOA:
+        {
+            int qoaFrame = positionInFrames/QOA_FRAME_LEN;
+            qoaplay_seek_frame((qoaplay_desc *)music.ctxData, qoaFrame); // Seeks to QOA frame, not PCM frame
+
+            // We need to compute QOA frame number and update positionInFrames
+            positionInFrames = ((qoaplay_desc *)music.ctxData)->sample_position;
+        } break;
 #endif
 #if defined(SUPPORT_FILEFORMAT_FLAC)
         case MUSIC_AUDIO_FLAC: drflac_seek_to_pcm_frame((drflac *)music.ctxData, positionInFrames); break;
@@ -1926,7 +1944,7 @@ void UpdateMusicStream(Music music)
             {
                 while (true)
                 {
-                    int frameCountRead = drflac_read_pcm_frames_s16((drflac *)music.ctxData, frameCountStillNeeded, (short *)((char *)AUDIO.System.pcmBuffer + frameCountReadTotal*frameSize));
+                    int frameCountRead = (int)drflac_read_pcm_frames_s16((drflac *)music.ctxData, frameCountStillNeeded, (short *)((char *)AUDIO.System.pcmBuffer + frameCountReadTotal*frameSize));
                     frameCountReadTotal += frameCountRead;
                     frameCountStillNeeded -= frameCountRead;
                     if (frameCountStillNeeded == 0) break;

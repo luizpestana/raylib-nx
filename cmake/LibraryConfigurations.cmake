@@ -91,6 +91,22 @@ elseif ("${PLATFORM}" MATCHES "DRM")
     endif ()
     set(LIBS_PRIVATE ${GLESV2} ${EGL} ${DRM} ${GBM} atomic pthread m dl)
 
+elseif ("${PLATFORM}" MATCHES "NX")
+    set(THREADS_PREFER_PTHREAD_FLAG ON)
+    set(PLATFORM_CPP "PLATFORM_NX")
+    set(GRAPHICS "GRAPHICS_API_OPENGL_ES2")
+
+    add_definitions(-DPLATFORM_NX)
+
+    find_library(EGL EGL)
+    find_library(DRM drm_nouveau)
+    find_library(GLAPI glapi)
+    find_library(GLESV2 GLESv2)
+    include_directories(${DEVKITPRO}/portlibs/switch/include/)
+
+    set(LIBS_PRIVATE ${GLESV2} ${GLAPI} ${EGL} ${Threads} ${DRM} pthread)
+    link_libraries("${LIBS_PRIVATE}")
+
 endif ()
 
 if (NOT ${OPENGL_VERSION} MATCHES "OFF")
@@ -105,6 +121,8 @@ if (NOT ${OPENGL_VERSION} MATCHES "OFF")
         set(GRAPHICS "GRAPHICS_API_OPENGL_11")
     elseif (${OPENGL_VERSION} MATCHES "ES 2.0")
         set(GRAPHICS "GRAPHICS_API_OPENGL_ES2")
+    elseif (${OPENGL_VERSION} MATCHES "ES 3.0")
+        set(GRAPHICS "GRAPHICS_API_OPENGL_ES3")
     endif ()
     if ("${SUGGESTED_GRAPHICS}" AND NOT "${SUGGESTED_GRAPHICS}" STREQUAL "${GRAPHICS}")
         message(WARNING "You are overriding the suggested GRAPHICS=${SUGGESTED_GRAPHICS} with ${GRAPHICS}! This may fail")

@@ -2,9 +2,9 @@
 include(CMakeDependentOption)
 include(EnumOption)
 
-enum_option(PLATFORM "Desktop;Web;Android;Raspberry Pi;DRM" "Platform to build for.")
+enum_option(PLATFORM "Desktop;Web;Android;Raspberry Pi;DRM;NX" "Platform to build for.")
 
-enum_option(OPENGL_VERSION "OFF;4.3;3.3;2.1;1.1;ES 2.0" "Force a specific OpenGL Version?")
+enum_option(OPENGL_VERSION "OFF;4.3;3.3;2.1;1.1;ES 2.0;ES 3.0" "Force a specific OpenGL Version?")
 
 # Configuration options
 option(BUILD_EXAMPLES "Build the examples." ${RAYLIB_IS_MAIN})
@@ -37,6 +37,7 @@ cmake_dependent_option(SUPPORT_MODULE_RAUDIO "Include module: raudio" ON CUSTOMI
 # rcore.c
 cmake_dependent_option(SUPPORT_CAMERA_SYSTEM "Provide camera module (rcamera.h) with multiple predefined cameras: free, 1st/3rd person, orbital" ON CUSTOMIZE_BUILD ON)
 cmake_dependent_option(SUPPORT_GESTURES_SYSTEM "Gestures module is included (rgestures.h) to support gestures detection: tap, hold, swipe, drag" ON CUSTOMIZE_BUILD ON)
+cmake_dependent_option(SUPPORT_RPRAND_GENERATOR "Include pseudo-random numbers generator (rprand.h), based on Xoshiro128** and SplitMix64" ON CUSTOMIZE_BUILD ON)
 cmake_dependent_option(SUPPORT_MOUSE_GESTURES "Mouse gestures are directly mapped like touches and processed by gestures system" ON CUSTOMIZE_BUILD ON)
 cmake_dependent_option(SUPPORT_SSH_KEYBOARD_RPI "Reconfigure standard input to receive key inputs, works with SSH connection" ON CUSTOMIZE_BUILD ON)
 cmake_dependent_option(SUPPORT_DEFAULT_FONT "Default font is loaded on window initialization to be available for the user to render simple text. If enabled, uses external module functions to load default raylib font (module: text)" ON CUSTOMIZE_BUILD ON)
