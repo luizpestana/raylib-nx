@@ -521,6 +521,7 @@ TEXTURES = \
     textures/textures_gif_player \
     textures/textures_image_drawing \
     textures/textures_image_generation \
+    textures/textures_image_kernel \
     textures/textures_image_loading \
     textures/textures_image_processing \
     textures/textures_image_rotate \
@@ -590,6 +591,7 @@ SHADERS = \
     shaders/shaders_palette_switch \
     shaders/shaders_postprocessing \
     shaders/shaders_raymarching \
+    shaders/shaders_shadowmap \
     shaders/shaders_shapes_textures \
     shaders/shaders_simple_mask \
     shaders/shaders_spotlight \
