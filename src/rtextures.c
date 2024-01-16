@@ -42,7 +42,7 @@
 *
 *   LICENSE: zlib/libpng
 *
-*   Copyright (c) 2013-2023 Ramon Santamaria (@raysan5)
+*   Copyright (c) 2013-2024 Ramon Santamaria (@raysan5)
 *
 *   This software is provided "as-is", without any express or implied warranty. In no event
 *   will the authors be held liable for any damages arising from the use of this software.
@@ -212,8 +212,18 @@
 
 #define STBIR_MALLOC(size,c) ((void)(c), RL_MALLOC(size))
 #define STBIR_FREE(ptr,c) ((void)(c), RL_FREE(ptr))
+
+#if defined(__GNUC__) // GCC and Clang
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wunused-function"
+#endif
+
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include "external/stb_image_resize2.h"     // Required for: stbir_resize_uint8_linear() [ImageResize()]
+
+#if defined(__GNUC__) // GCC and Clang
+    #pragma GCC diagnostic pop
+#endif
 
 #if defined(SUPPORT_FILEFORMAT_SVG)
     #define NANOSVG_IMPLEMENTATION          // Expands implementation
@@ -460,7 +470,6 @@ Image LoadImageAnimFromMemory(const char *fileType, const unsigned char *fileDat
             image.mipmaps = 1;
             image.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
 
-            RL_FREE(fileData);
             RL_FREE(delays);        // NOTE: Frames delays are discarded
         }
     }
@@ -469,7 +478,7 @@ Image LoadImageAnimFromMemory(const char *fileType, const unsigned char *fileDat
 #endif
     else
     {
-        image = LoadImageFromMemory(fileType,fileData,dataSize);
+        image = LoadImageFromMemory(fileType, fileData, dataSize);
         frameCount = 1;
     }
 
@@ -839,7 +848,7 @@ bool ExportImageAsCode(Image image, const char *fileName)
     byteCount += sprintf(txtData + byteCount, "// more info and bugs-report:  github.com/raysan5/raylib                              //\n");
     byteCount += sprintf(txtData + byteCount, "// feedback and support:       ray[at]raylib.com                                      //\n");
     byteCount += sprintf(txtData + byteCount, "//                                                                                    //\n");
-    byteCount += sprintf(txtData + byteCount, "// Copyright (c) 2018-2023 Ramon Santamaria (@raysan5)                                //\n");
+    byteCount += sprintf(txtData + byteCount, "// Copyright (c) 2018-2024 Ramon Santamaria (@raysan5)                                //\n");
     byteCount += sprintf(txtData + byteCount, "//                                                                                    //\n");
     byteCount += sprintf(txtData + byteCount, "////////////////////////////////////////////////////////////////////////////////////////\n\n");
 
@@ -1732,8 +1741,22 @@ void ImageResizeCanvas(Image *image, int newWidth, int newHeight, int offsetX, i
         int bytesPerPixel = GetPixelDataSize(1, 1, image->format);
         unsigned char *resizedData = (unsigned char *)RL_CALLOC(newWidth*newHeight*bytesPerPixel, 1);
 
-        // TODO: Fill resized canvas with fill color (must be formatted to image->format)
+        // Fill resized canvas with fill color
+        // Set first pixel with image->format
+        SetPixelColor(resizedData, fill, image->format);
 
+        // Fill remaining bytes of first row
+        for (int x = 1; x < newWidth; x++)
+        {
+            memcpy(resizedData + x*bytesPerPixel, resizedData, bytesPerPixel);
+        }
+        // Copy the first row into the other rows
+        for (int y = 1; y < newHeight; y++)
+        {
+            memcpy(resizedData + y*newWidth*bytesPerPixel, resizedData, newWidth*bytesPerPixel);
+        }
+
+        // Copy old image to resized canvas
         int dstOffsetSize = ((int)dstPos.y*newWidth + (int)dstPos.x)*bytesPerPixel;
 
         for (int y = 0; y < (int)srcRec.height; y++)
@@ -2112,11 +2135,12 @@ void ImageBlurGaussian(Image *image, int blurSize) {
 }
 
 // The kernel matrix is assumed to be square. Only supply the width of the kernel.
-void ImageKernelConvolution(Image *image, float* kernel, int kernelSize){
-
+void ImageKernelConvolution(Image *image, float* kernel, int kernelSize)
+{
     if ((image->data == NULL) || (image->width == 0) || (image->height == 0) || kernel == NULL) return;
 
     int kernelWidth = (int)sqrtf((float)kernelSize);
+    
     if (kernelWidth*kernelWidth != kernelSize)
     {
         TRACELOG(LOG_WARNING, "IMAGE: Convolution kernel must be square to be applied");
@@ -2129,7 +2153,8 @@ void ImageKernelConvolution(Image *image, float* kernel, int kernelSize){
     Vector4 *temp = RL_MALLOC(kernelSize*sizeof(Vector4));
 
 
-    for(int i = 0; i < kernelSize; i++){
+    for (int i = 0; i < kernelSize; i++)
+    {
         temp[i].x = 0.0f;
         temp[i].y = 0.0f;
         temp[i].z = 0.0f;
@@ -2141,44 +2166,49 @@ void ImageKernelConvolution(Image *image, float* kernel, int kernelSize){
     float bRes = 0.0f;
     float aRes = 0.0f;
 
-
-    int startRange, endRange;
-    if(kernelWidth % 2 == 0)
+    int startRange = 0, endRange = 0;
+    
+    if (kernelWidth%2 == 0)
     {
         startRange = -kernelWidth/2;
         endRange = kernelWidth/2;
-    } else
+    }
+    else
     {
         startRange = -kernelWidth/2;
-        endRange = kernelWidth/2+1;
+        endRange = kernelWidth/2 + 1;
     }
+    
     for(int x = 0; x < image->height; x++)
     {
-        for(int y = 0; y < image->width; y++)
+        for (int y = 0; y < image->width; y++)
         {
-
-            for(int xk = startRange; xk < endRange; xk++)
+            for (int xk = startRange; xk < endRange; xk++)
             {
-                for(int yk = startRange; yk < endRange; yk++)
+                for (int yk = startRange; yk < endRange; yk++)
                 {
                     int xkabs = xk + kernelWidth/2;
                     int ykabs = yk + kernelWidth/2;
-                    size_t imgindex = image->width * (x+xk) + (y+yk);
-                    if(imgindex < 0 || imgindex >= image->width * image->height){
+                    unsigned int imgindex = image->width*(x + xk) + (y + yk);
+                    
+                    if (imgindex >= image->width*image->height)
+                    {
                         temp[kernelWidth * xkabs + ykabs].x = 0.0f;
                         temp[kernelWidth * xkabs + ykabs].y = 0.0f;
                         temp[kernelWidth * xkabs + ykabs].z = 0.0f;
                         temp[kernelWidth * xkabs + ykabs].w = 0.0f;
-                    } else {
-                        temp[kernelWidth * xkabs + ykabs].x = ((float)pixels[imgindex].r)/255.0f * kernel[kernelWidth * xkabs + ykabs];
-                        temp[kernelWidth * xkabs + ykabs].y = ((float)pixels[imgindex].g)/255.0f * kernel[kernelWidth * xkabs + ykabs];
-                        temp[kernelWidth * xkabs + ykabs].z = ((float)pixels[imgindex].b)/255.0f * kernel[kernelWidth * xkabs + ykabs];
-                        temp[kernelWidth * xkabs + ykabs].w = ((float)pixels[imgindex].a)/255.0f * kernel[kernelWidth * xkabs + ykabs];
+                    } 
+                    else
+                    {
+                        temp[kernelWidth * xkabs + ykabs].x = ((float)pixels[imgindex].r)/255.0f*kernel[kernelWidth*xkabs + ykabs];
+                        temp[kernelWidth * xkabs + ykabs].y = ((float)pixels[imgindex].g)/255.0f*kernel[kernelWidth*xkabs + ykabs];
+                        temp[kernelWidth * xkabs + ykabs].z = ((float)pixels[imgindex].b)/255.0f*kernel[kernelWidth*xkabs + ykabs];
+                        temp[kernelWidth * xkabs + ykabs].w = ((float)pixels[imgindex].a)/255.0f*kernel[kernelWidth*xkabs + ykabs];
                     }
                 }
             }
 
-            for(int i = 0; i < kernelSize; i++)
+            for (int i = 0; i < kernelSize; i++)
             {
                 rRes += temp[i].x;
                 gRes += temp[i].y;
@@ -2186,43 +2216,25 @@ void ImageKernelConvolution(Image *image, float* kernel, int kernelSize){
                 aRes += temp[i].w;
             }
 
-            if(rRes < 0.0f)
-            {
-                rRes = 0.0f;
-            }
-            if(gRes < 0.0f)
-            {
-                gRes = 0.0f;
-            }
-            if(bRes < 0.0f)
-            {
-                bRes = 0.0f;
-            }
+            if (rRes < 0.0f) rRes = 0.0f;
+            if (gRes < 0.0f) gRes = 0.0f;
+            if (bRes < 0.0f) bRes = 0.0f;
 
-            if(rRes > 1.0f)
-            {
-                rRes = 1.0f;
-            }
-            if(gRes > 1.0f)
-            {
-                gRes = 1.0f;
-            }
-             if(bRes > 1.0f)
-            {
-                bRes = 1.0f;
-            }
+            if (rRes > 1.0f) rRes = 1.0f;
+            if (gRes > 1.0f) gRes = 1.0f;
+            if (bRes > 1.0f) bRes = 1.0f;
 
-            imageCopy2[image->width * (x) + (y)].x = rRes;
-            imageCopy2[image->width * (x) + (y)].y = gRes;
-            imageCopy2[image->width * (x) + (y)].z = bRes;
-            imageCopy2[image->width * (x) + (y)].w = aRes;
+            imageCopy2[image->width*x + y].x = rRes;
+            imageCopy2[image->width*x + y].y = gRes;
+            imageCopy2[image->width*x + y].z = bRes;
+            imageCopy2[image->width*x + y].w = aRes;
 
             rRes = 0.0f;
             gRes = 0.0f;
             bRes = 0.0f;
             aRes = 0.0f;
 
-            for(int i = 0; i < kernelSize; i++)
+            for (int i = 0; i < kernelSize; i++)
             {
                 temp[i].x = 0.0f;
                 temp[i].y = 0.0f;
@@ -2232,16 +2244,15 @@ void ImageKernelConvolution(Image *image, float* kernel, int kernelSize){
         }
     }
 
-    for (int i = 0; i < (image->width) * (image->height); i++)
+    for (int i = 0; i < (image->width*image->height); i++)
     {
         float alpha = (float)imageCopy2[i].w;
+        
         pixels[i].r = (unsigned char)((imageCopy2[i].x)*255.0f);
         pixels[i].g = (unsigned char)((imageCopy2[i].y)*255.0f);
         pixels[i].b = (unsigned char)((imageCopy2[i].z)*255.0f);
         pixels[i].a = (unsigned char)((alpha)*255.0f);
-        // printf("pixels[%d] = %d", i, pixels[i].r);
     }
-
 
     int format = image->format;
     RL_FREE(image->data);
@@ -2640,21 +2651,17 @@ void ImageColorTint(Image *image, Color color)
     float cB = (float)color.b/255;
     float cA = (float)color.a/255;
 
-    for (int y = 0; y < image->height; y++)
+    for (int i = 0; i < image->width * image->height; i++)
     {
-        for (int x = 0; x < image->width; x++)
-        {
-            int index = y*image->width + x;
-            unsigned char r = (unsigned char)(((float)pixels[index].r/255*cR)*255.0f);
-            unsigned char g = (unsigned char)(((float)pixels[index].g/255*cG)*255.0f);
-            unsigned char b = (unsigned char)(((float)pixels[index].b/255*cB)*255.0f);
-            unsigned char a = (unsigned char)(((float)pixels[index].a/255*cA)*255.0f);
+        unsigned char r = (unsigned char)(((float)pixels[i].r/255*cR)*255.0f);
+        unsigned char g = (unsigned char)(((float)pixels[i].g/255*cG)*255.0f);
+        unsigned char b = (unsigned char)(((float)pixels[i].b/255*cB)*255.0f);
+        unsigned char a = (unsigned char)(((float)pixels[i].a/255*cA)*255.0f);
 
-            pixels[index].r = r;
-            pixels[index].g = g;
-            pixels[index].b = b;
-            pixels[index].a = a;
-        }
+        pixels[i].r = r;
+        pixels[i].g = g;
+        pixels[i].b = b;
+        pixels[i].a = a;
     }
 
     int format = image->format;
@@ -2674,14 +2681,11 @@ void ImageColorInvert(Image *image)
 
     Color *pixels = LoadImageColors(*image);
 
-    for (int y = 0; y < image->height; y++)
+    for (int i = 0; i < image->width * image->height; i++)
     {
-        for (int x = 0; x < image->width; x++)
-        {
-            pixels[y*image->width + x].r = 255 - pixels[y*image->width + x].r;
-            pixels[y*image->width + x].g = 255 - pixels[y*image->width + x].g;
-            pixels[y*image->width + x].b = 255 - pixels[y*image->width + x].b;
-        }
+        pixels[i].r = 255 - pixels[i].r;
+        pixels[i].g = 255 - pixels[i].g;
+        pixels[i].b = 255 - pixels[i].b;
     }
 
     int format = image->format;
@@ -2714,38 +2718,35 @@ void ImageColorContrast(Image *image, float contrast)
 
     Color *pixels = LoadImageColors(*image);
 
-    for (int y = 0; y < image->height; y++)
+    for (int i = 0; i < image->width * image->height; i++)
     {
-        for (int x = 0; x < image->width; x++)
-        {
-            float pR = (float)pixels[y*image->width + x].r/255.0f;
-            pR -= 0.5f;
-            pR *= contrast;
-            pR += 0.5f;
-            pR *= 255;
-            if (pR < 0) pR = 0;
-            if (pR > 255) pR = 255;
+        float pR = (float)pixels[i].r/255.0f;
+        pR -= 0.5f;
+        pR *= contrast;
+        pR += 0.5f;
+        pR *= 255;
+        if (pR < 0) pR = 0;
+        if (pR > 255) pR = 255;
 
-            float pG = (float)pixels[y*image->width + x].g/255.0f;
-            pG -= 0.5f;
-            pG *= contrast;
-            pG += 0.5f;
-            pG *= 255;
-            if (pG < 0) pG = 0;
-            if (pG > 255) pG = 255;
+        float pG = (float)pixels[i].g/255.0f;
+        pG -= 0.5f;
+        pG *= contrast;
+        pG += 0.5f;
+        pG *= 255;
+        if (pG < 0) pG = 0;
+        if (pG > 255) pG = 255;
 
-            float pB = (float)pixels[y*image->width + x].b/255.0f;
-            pB -= 0.5f;
-            pB *= contrast;
-            pB += 0.5f;
-            pB *= 255;
-            if (pB < 0) pB = 0;
-            if (pB > 255) pB = 255;
+        float pB = (float)pixels[i].b/255.0f;
+        pB -= 0.5f;
+        pB *= contrast;
+        pB += 0.5f;
+        pB *= 255;
+        if (pB < 0) pB = 0;
+        if (pB > 255) pB = 255;
 
-            pixels[y*image->width + x].r = (unsigned char)pR;
-            pixels[y*image->width + x].g = (unsigned char)pG;
-            pixels[y*image->width + x].b = (unsigned char)pB;
-        }
+        pixels[i].r = (unsigned char)pR;
+        pixels[i].g = (unsigned char)pG;
+        pixels[i].b = (unsigned char)pB;
     }
 
     int format = image->format;
@@ -2769,27 +2770,24 @@ void ImageColorBrightness(Image *image, int brightness)
 
     Color *pixels = LoadImageColors(*image);
 
-    for (int y = 0; y < image->height; y++)
+    for (int i = 0; i < image->width * image->height; i++)
     {
-        for (int x = 0; x < image->width; x++)
-        {
-            int cR = pixels[y*image->width + x].r + brightness;
-            int cG = pixels[y*image->width + x].g + brightness;
-            int cB = pixels[y*image->width + x].b + brightness;
+        int cR = pixels[i].r + brightness;
+        int cG = pixels[i].g + brightness;
+        int cB = pixels[i].b + brightness;
 
-            if (cR < 0) cR = 1;
-            if (cR > 255) cR = 255;
+        if (cR < 0) cR = 1;
+        if (cR > 255) cR = 255;
 
-            if (cG < 0) cG = 1;
-            if (cG > 255) cG = 255;
+        if (cG < 0) cG = 1;
+        if (cG > 255) cG = 255;
 
-            if (cB < 0) cB = 1;
-            if (cB > 255) cB = 255;
+        if (cB < 0) cB = 1;
+        if (cB > 255) cB = 255;
 
-            pixels[y*image->width + x].r = (unsigned char)cR;
-            pixels[y*image->width + x].g = (unsigned char)cG;
-            pixels[y*image->width + x].b = (unsigned char)cB;
-        }
+        pixels[i].r = (unsigned char)cR;
+        pixels[i].g = (unsigned char)cG;
+        pixels[i].b = (unsigned char)cB;
     }
 
     int format = image->format;
@@ -2809,20 +2807,17 @@ void ImageColorReplace(Image *image, Color color, Color replace)
 
     Color *pixels = LoadImageColors(*image);
 
-    for (int y = 0; y < image->height; y++)
+    for (int i = 0; i < image->width * image->height; i++)
     {
-        for (int x = 0; x < image->width; x++)
+        if ((pixels[i].r == color.r) &&
+            (pixels[i].g == color.g) &&
+            (pixels[i].b == color.b) &&
+            (pixels[i].a == color.a))
         {
-            if ((pixels[y*image->width + x].r == color.r) &&
-                (pixels[y*image->width + x].g == color.g) &&
-                (pixels[y*image->width + x].b == color.b) &&
-                (pixels[y*image->width + x].a == color.a))
-            {
-                pixels[y*image->width + x].r = replace.r;
-                pixels[y*image->width + x].g = replace.g;
-                pixels[y*image->width + x].b = replace.b;
-                pixels[y*image->width + x].a = replace.a;
-            }
+            pixels[i].r = replace.r;
+            pixels[i].g = replace.g;
+            pixels[i].b = replace.b;
+            pixels[i].a = replace.a;
         }
     }
 
@@ -3569,8 +3564,8 @@ void ImageDrawRectangleRec(Image *dst, Rectangle rec, Color color)
     if ((dst->data == NULL) || (dst->width == 0) || (dst->height == 0)) return;
 
     // Security check to avoid drawing out of bounds in case of bad user data
-    if (rec.x < 0) { rec.width -= rec.x; rec.x = 0; }
-    if (rec.y < 0) { rec.height -= rec.y; rec.y = 0; }
+    if (rec.x < 0) { rec.width += rec.x; rec.x = 0; }
+    if (rec.y < 0) { rec.height += rec.y; rec.y = 0; }
     if (rec.width < 0) rec.width = 0;
     if (rec.height < 0) rec.height = 0;
 
@@ -3579,8 +3574,8 @@ void ImageDrawRectangleRec(Image *dst, Rectangle rec, Color color)
     if ((rec.y + rec.height) >= dst->height) rec.height = dst->height - rec.y;
 
     // Check if the rect is even inside the image
-    if ((rec.x > dst->width) || (rec.y > dst->height)) return;
-    if (((rec.x + rec.width) < 0) || (rec.y + rec.height < 0)) return;
+    if ((rec.x >= dst->width) || (rec.y >= dst->height)) return;
+    if (((rec.x + rec.width) <= 0) || (rec.y + rec.height <= 0)) return;
 
     int sy = (int)rec.y;
     int sx = (int)rec.x;
