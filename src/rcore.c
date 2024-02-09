@@ -82,6 +82,19 @@
 *
 **********************************************************************************************/
 
+//----------------------------------------------------------------------------------
+// Feature Test Macros required for this module
+//----------------------------------------------------------------------------------
+#if (defined(__linux__) || defined(PLATFORM_WEB)) && (_XOPEN_SOURCE < 500)
+    #undef _XOPEN_SOURCE
+    #define _XOPEN_SOURCE 500 // Required for: readlink if compiled with c99 without gnu ext.
+#endif
+
+#if (defined(__linux__) || defined(PLATFORM_WEB)) && (_POSIX_C_SOURCE < 199309L)
+    #undef _POSIX_C_SOURCE
+    #define _POSIX_C_SOURCE 199309L // Required for: CLOCK_MONOTONIC if compiled with c99 without gnu ext.
+#endif
+
 #include "raylib.h"                 // Declares module functions
 
 // Check if config flags have been externally provided on compilation line
@@ -234,11 +247,6 @@ __declspec(dllimport) int __stdcall WideCharToMultiByte(unsigned int cp, unsigne
 #define FLAG_CLEAR(n, f) ((n) &= ~(f))
 #define FLAG_TOGGLE(n, f) ((n) ^= (f))
 #define FLAG_CHECK(n, f) ((n) & (f))
-
-#if (defined(__linux__) || defined(PLATFORM_WEB)) && (_POSIX_C_SOURCE < 199309L)
-    #undef _POSIX_C_SOURCE
-    #define _POSIX_C_SOURCE 199309L // Required for: CLOCK_MONOTONIC if compiled with c99 without gnu ext.
-#endif
 
 //----------------------------------------------------------------------------------
 // Types and Structures Definition
@@ -946,9 +954,6 @@ void BeginMode2D(Camera2D camera)
 
     // Apply 2d camera transformation to modelview
     rlMultMatrixf(MatrixToFloat(GetCameraMatrix2D(camera)));
-
-    // Apply screen scaling if required
-    rlMultMatrixf(MatrixToFloat(CORE.Window.screenScale));
 }
 
 // Ends 2D mode with custom camera
@@ -957,7 +962,8 @@ void EndMode2D(void)
     rlDrawRenderBatchActive();      // Update and draw internal render batch
 
     rlLoadIdentity();               // Reset current matrix (modelview)
-    rlMultMatrixf(MatrixToFloat(CORE.Window.screenScale)); // Apply screen scaling if required
+
+    if (rlGetActiveFramebuffer() == 0) rlMultMatrixf(MatrixToFloat(CORE.Window.screenScale)); // Apply screen scaling if required
 }
 
 // Initializes 3D mode with custom camera (3D)
@@ -1010,7 +1016,7 @@ void EndMode3D(void)
     rlMatrixMode(RL_MODELVIEW);     // Switch back to modelview matrix
     rlLoadIdentity();               // Reset current matrix (modelview)
 
-    rlMultMatrixf(MatrixToFloat(CORE.Window.screenScale)); // Apply screen scaling if required
+    if (rlGetActiveFramebuffer() == 0) rlMultMatrixf(MatrixToFloat(CORE.Window.screenScale)); // Apply screen scaling if required
 
     rlDisableDepthTest();           // Disable DEPTH_TEST for 2D
 }
@@ -1055,6 +1061,11 @@ void EndTextureMode(void)
 
     // Set viewport to default framebuffer size
     SetupViewport(CORE.Window.render.width, CORE.Window.render.height);
+
+    // Go back to the modelview state from BeginDrawing since we are back to the default FBO
+    rlMatrixMode(RL_MODELVIEW);     // Switch back to modelview matrix
+    rlLoadIdentity();               // Reset current matrix (modelview)
+    rlMultMatrixf(MatrixToFloat(CORE.Window.screenScale)); // Apply screen scaling if required
 
     // Reset current fbo to screen size
     CORE.Window.currentFbo.width = CORE.Window.render.width;
@@ -1395,14 +1406,20 @@ void SetShaderValueTexture(Shader shader, int locIndex, Texture2D texture)
 //----------------------------------------------------------------------------------
 
 // Get a ray trace from mouse position
-Ray GetMouseRay(Vector2 mouse, Camera camera)
+Ray GetMouseRay(Vector2 mousePosition, Camera camera)
+{
+    return GetViewRay(mousePosition, camera, GetScreenWidth(), GetScreenHeight());
+}
+
+// Get a ray trace from the mouse position within a specific section of the screen
+Ray GetViewRay(Vector2 mousePosition, Camera camera, float width, float height)
 {
     Ray ray = { 0 };
 
     // Calculate normalized device coordinates
     // NOTE: y value is negative
-    float x = (2.0f*mouse.x)/(float)GetScreenWidth() - 1.0f;
-    float y = 1.0f - (2.0f*mouse.y)/(float)GetScreenHeight();
+    float x = (2.0f*mousePosition.x)/width - 1.0f;
+    float y = 1.0f - (2.0f*mousePosition.y)/height;
     float z = 1.0f;
 
     // Store values in a vector
@@ -1416,11 +1433,11 @@ Ray GetMouseRay(Vector2 mouse, Camera camera)
     if (camera.projection == CAMERA_PERSPECTIVE)
     {
         // Calculate projection matrix from perspective
-        matProj = MatrixPerspective(camera.fovy*DEG2RAD, ((double)GetScreenWidth()/(double)GetScreenHeight()), RL_CULL_DISTANCE_NEAR, RL_CULL_DISTANCE_FAR);
+        matProj = MatrixPerspective(camera.fovy*DEG2RAD, ((double)width/(double)height), RL_CULL_DISTANCE_NEAR, RL_CULL_DISTANCE_FAR);
     }
     else if (camera.projection == CAMERA_ORTHOGRAPHIC)
     {
-        double aspect = (double)CORE.Window.screen.width/(double)CORE.Window.screen.height;
+        double aspect = (double)width/(double)height;
         double top = camera.fovy/2.0;
         double right = top*aspect;
 
@@ -1831,7 +1848,7 @@ bool FileExists(const char *fileName)
 // NOTE: Extensions checking is not case-sensitive
 bool IsFileExtension(const char *fileName, const char *ext)
 {
-    #define MAX_FILE_EXTENSION_SIZE  16
+    #define MAX_FILE_EXTENSION_LENGTH  16
 
     bool result = false;
     const char *fileExt = GetFileExtension(fileName);
@@ -1842,8 +1859,8 @@ bool IsFileExtension(const char *fileName, const char *ext)
         int extCount = 0;
         const char **checkExts = TextSplit(ext, ';', &extCount); // WARNING: Module required: rtext
 
-        char fileExtLower[MAX_FILE_EXTENSION_SIZE + 1] = { 0 };
-        strncpy(fileExtLower, TextToLower(fileExt), MAX_FILE_EXTENSION_SIZE); // WARNING: Module required: rtext
+        char fileExtLower[MAX_FILE_EXTENSION_LENGTH + 1] = { 0 };
+        strncpy(fileExtLower, TextToLower(fileExt), MAX_FILE_EXTENSION_LENGTH); // WARNING: Module required: rtext
 
         for (int i = 0; i < extCount; i++)
         {
@@ -1937,25 +1954,27 @@ const char *GetFileName(const char *filePath)
 // Get filename string without extension (uses static string)
 const char *GetFileNameWithoutExt(const char *filePath)
 {
-    #define MAX_FILENAMEWITHOUTEXT_LENGTH   256
+    #define MAX_FILENAME_LENGTH     256
+    
+    static char fileName[MAX_FILENAME_LENGTH] = { 0 };
+    memset(fileName, 0, MAX_FILENAME_LENGTH);
 
-    static char fileName[MAX_FILENAMEWITHOUTEXT_LENGTH] = { 0 };
-    memset(fileName, 0, MAX_FILENAMEWITHOUTEXT_LENGTH);
-
-    if (filePath != NULL) strcpy(fileName, GetFileName(filePath));   // Get filename with extension
-
-    int size = (int)strlen(fileName);   // Get size in bytes
-
-    for (int i = 0; (i < size) && (i < MAX_FILENAMEWITHOUTEXT_LENGTH); i++)
+    if (filePath != NULL)
     {
-        if (fileName[i] == '.')
+        strcpy(fileName, GetFileName(filePath)); // Get filename.ext without path
+        int size = (int)strlen(fileName); // Get size in bytes
+        
+        for (int i = size; i > 0; i--) // Reverse search '.'
         {
-            // NOTE: We break on first '.' found
-            fileName[i] = '\0';
-            break;
+            if (fileName[i] == '.')
+            {
+                // NOTE: We break on first '.' found
+                fileName[i] = '\0';
+                break;
+            }
         }
     }
-
+    
     return fileName;
 }
 

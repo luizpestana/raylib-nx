@@ -135,7 +135,6 @@ void DrawPixelV(Vector2 position, Color color)
 {
 #if defined(SUPPORT_QUADS_DRAW_MODE)
     rlSetTexture(GetShapesTexture().id);
-
     Rectangle shapeRect = GetShapesTextureRectangle();
 
     rlBegin(RL_QUADS);
@@ -143,16 +142,16 @@ void DrawPixelV(Vector2 position, Color color)
         rlNormal3f(0.0f, 0.0f, 1.0f);
         rlColor4ub(color.r, color.g, color.b, color.a);
 
-        rlTexCoord2f(shapeRect.x/ shapeRect.width, shapeRect.y/ shapeRect.height);
+        rlTexCoord2f(shapeRect.x/texShapes.width, shapeRect.y/texShapes.height);
         rlVertex2f(position.x, position.y);
 
-        rlTexCoord2f(shapeRect.x/ shapeRect.width, (shapeRect.y + shapeRect.height)/ shapeRect.height);
+        rlTexCoord2f(shapeRect.x/texShapes.width, (shapeRect.y + shapeRect.height)/texShapes.height);
         rlVertex2f(position.x, position.y + 1);
 
-        rlTexCoord2f((shapeRect.x + shapeRect.width)/ shapeRect.width, (shapeRect.y + shapeRect.height)/ shapeRect.height);
+        rlTexCoord2f((shapeRect.x + shapeRect.width)/texShapes.width, (shapeRect.y + shapeRect.height)/texShapes.height);
         rlVertex2f(position.x + 1, position.y + 1);
 
-        rlTexCoord2f((shapeRect.x + shapeRect.width)/ shapeRect.width, shapeRect.y/ shapeRect.height);
+        rlTexCoord2f((shapeRect.x + shapeRect.width)/texShapes.width, shapeRect.y/texShapes.height);
         rlVertex2f(position.x + 1, position.y);
 
     rlEnd();
@@ -2196,21 +2195,21 @@ bool CheckCollisionPointTriangle(Vector2 point, Vector2 p1, Vector2 p2, Vector2 
 // NOTE: Based on http://jeffreythompson.org/collision-detection/poly-point.php
 bool CheckCollisionPointPoly(Vector2 point, Vector2 *points, int pointCount)
 {
-    bool collision = false;
+    bool inside = false;
 
     if (pointCount > 2)
     {
-        for (int i = 0; i < pointCount - 1; i++)
+        for (int i = 0, j = pointCount - 1; i < pointCount; j = i++)
         {
-            Vector2 vc = points[i];
-            Vector2 vn = points[i + 1];
-
-            if ((((vc.y >= point.y) && (vn.y < point.y)) || ((vc.y < point.y) && (vn.y >= point.y))) &&
-                 (point.x < ((vn.x - vc.x)*(point.y - vc.y)/(vn.y - vc.y) + vc.x))) collision = !collision;
+            if ((points[i].y > point.y) != (points[j].y > point.y) &&
+                (point.x < (points[j].x - points[i].x) * (point.y - points[i].y) / (points[j].y - points[i].y) + points[i].x))
+            {
+                inside = !inside;
+            }
         }
     }
 
-    return collision;
+    return inside;
 }
 
 // Check collision between two rectangles
