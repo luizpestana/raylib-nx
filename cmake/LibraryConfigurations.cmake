@@ -102,7 +102,7 @@ elseif ("${PLATFORM}" MATCHES "NX")
     find_library(DRM drm_nouveau)
     find_library(GLAPI glapi)
     find_library(GLESV2 GLESv2)
-    include_directories(${DEVKITPRO}/portlibs/switch/include/)
+    include_directories(${DEVKITPRO}/libnx/include/ ${DEVKITPRO}/portlibs/switch/include/)
 
     set(LIBS_PRIVATE ${GLESV2} ${GLAPI} ${EGL} ${Threads} ${DRM} pthread)
     link_libraries("${LIBS_PRIVATE}")
