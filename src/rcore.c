@@ -362,7 +362,7 @@ static int screenshotCounter = 0;    // Screenshots counter
 #endif
 
 #if defined(SUPPORT_GIF_RECORDING)
-int gifFrameCounter = 0;             // GIF frames counter
+unsigned int gifFrameCounter = 0;    // GIF frames counter
 bool gifRecording = false;           // GIF recording state
 MsfGifState gifState = { 0 };        // MSGIF context state
 #endif
@@ -1408,7 +1408,7 @@ void SetShaderValueTexture(Shader shader, int locIndex, Texture2D texture)
 // Get a ray trace from mouse position
 Ray GetMouseRay(Vector2 mousePosition, Camera camera)
 {
-    return GetViewRay(mousePosition, camera, GetScreenWidth(), GetScreenHeight());
+    return GetViewRay(mousePosition, camera, (float)GetScreenWidth(), (float)GetScreenHeight());
 }
 
 // Get a ray trace from the mouse position within a specific section of the screen
