@@ -96,15 +96,18 @@ elseif ("${PLATFORM}" MATCHES "NX")
     set(PLATFORM_CPP "PLATFORM_NX")
     set(GRAPHICS "GRAPHICS_API_OPENGL_ES2")
 
+    add_definitions(-DEGL_NO_X11)
     add_definitions(-DPLATFORM_NX)
 
+    find_library(GLESV2 GLESv2)
     find_library(EGL EGL)
     find_library(DRM drm_nouveau)
     find_library(GLAPI glapi)
-    find_library(GLESV2 GLESv2)
+    find_library(LIBNX nx)
+
     include_directories(${DEVKITPRO}/libnx/include/ ${DEVKITPRO}/portlibs/switch/include/)
 
-    set(LIBS_PRIVATE ${GLESV2} ${GLAPI} ${EGL} ${Threads} ${DRM} pthread)
+    set(LIBS_PRIVATE ${EGL} ${GLESV2} ${GLAPI} ${DRM} ${LIBNX} pthread m stdc++)
     link_libraries("${LIBS_PRIVATE}")
 
 endif ()
