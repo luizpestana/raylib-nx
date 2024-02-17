@@ -675,6 +675,8 @@ int InitPlatform(void)
 #if defined(NX_USB_DEBUGGER)
     NxUsbDebuggerInit();
 #endif
+    romfsInit();
+
     CORE.Window.screen.width = 1280;
     CORE.Window.screen.height = 720;
     CORE.Window.display.width = CORE.Window.screen.width;
@@ -831,6 +833,7 @@ void ClosePlatform(void)
         eglTerminate(platform.device);
         platform.device = EGL_NO_DISPLAY;
     }
+    romfsExit();
 #if defined(NX_USB_DEBUGGER)
     NxUsbDebuggerEnd();
 #endif

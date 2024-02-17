@@ -16,9 +16,6 @@
 
 int main(void)
 {
-    // Init romfs if needed
-    romfsInit();
-
     // Initialization
     //--------------------------------------------------------------------------------------
     const int screenWidth = 1280;
@@ -62,8 +59,6 @@ int main(void)
     UnloadTexture(texture);       // Texture unloading
 
     CloseWindow();                // Close window and OpenGL context
-
-    romfsExit(); // Close romfs
     //--------------------------------------------------------------------------------------
 
     return 0;
