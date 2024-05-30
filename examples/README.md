@@ -55,6 +55,7 @@ Examples using raylib core platform functionality like window creation, inputs, 
 | 29 | [core_custom_frame_control](core/core_custom_frame_control.c) | <img src="core/core_custom_frame_control.png" alt="core_custom_frame_control" width="80"> | ⭐️⭐️⭐️⭐️ | **4.0** | **4.0** | [Ray](https://github.com/raysan5) |
 | 30 | [core_smooth_pixelperfect](core/core_smooth_pixelperfect.c) | <img src="core/core_smooth_pixelperfect.png" alt="core_smooth_pixelperfect" width="80"> | ⭐️⭐️⭐️☆ | 3.7 | **4.0** | [Giancamillo Alessandroni](https://github.com/NotManyIdeasDev) |
 | 31 | [core_window_should_close](core/core_window_should_close.c) | <img src="core/core_window_should_close.png" alt="core_window_should_close" width="80"> | ⭐️⭐️☆☆ | **4.2** | **4.2** | [Ray](https://github.com/raysan5) |
+| 32 | [core_random_sequence](core/core_random_sequence.c) | <img src="core/core_random_sequence.png" alt="core_random_sequence" width="80"> | ⭐️☆☆☆ | **5.0** | **5.0** | [REDl3east](https://github.com/REDl3east) |
 
 ### category: shapes
 
@@ -201,5 +202,5 @@ Examples showing raylib misc functionality that does not fit in other categories
 | 125 | [raylib_opengl_interop](others/raylib_opengl_interop.c) | <img src="others/raylib_opengl_interop.png" alt="raylib_opengl_interop" width="80"> | ⭐️⭐️⭐️⭐️ | **4.0** | **4.0** | [Stephan Soller](https://github.com/arkanis) |
 | 126 | [embedded_files_loading](others/embedded_files_loading.c) | <img src="others/embedded_files_loading.png" alt="embedded_files_loading" width="80"> | ⭐️⭐️☆☆ | 3.5 | 3.5 | [Kristian Holmgren](https://github.com/defutura) |
 
-As always contributions are welcome, feel free to send new examples! Here it is an [examples template](examples_template.c) to start with!
+As always contributions are welcome, feel free to send new examples! Here is an [examples template](examples_template.c) to start with!
 

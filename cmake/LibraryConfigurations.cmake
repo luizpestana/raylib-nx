@@ -43,7 +43,7 @@ if (${PLATFORM} MATCHES "Desktop")
         if ("${OPENGL_LIBRARIES}" STREQUAL "")
             set(OPENGL_LIBRARIES "GL")
         endif ()
-        
+
         set(LIBS_PRIVATE m atomic pthread ${OPENGL_LIBRARIES} ${OSS_LIBRARY})
 
         if ("${CMAKE_SYSTEM_NAME}" MATCHES "(Net|Open)BSD")
@@ -86,10 +86,15 @@ elseif ("${PLATFORM}" MATCHES "DRM")
     find_library(DRM drm)
     find_library(GBM gbm)
 
-    if (NOT CMAKE_CROSSCOMPILING)
+    if (NOT CMAKE_CROSSCOMPILING OR NOT CMAKE_SYSROOT)
         include_directories(/usr/include/libdrm)
     endif ()
     set(LIBS_PRIVATE ${GLESV2} ${EGL} ${DRM} ${GBM} atomic pthread m dl)
+
+elseif ("${PLATFORM}" MATCHES "SDL")
+    find_package(SDL2 REQUIRED)
+    set(PLATFORM_CPP "PLATFORM_DESKTOP_SDL")
+    set(LIBS_PRIVATE SDL2::SDL2)
 
 elseif ("${PLATFORM}" MATCHES "NX")
     set(THREADS_PREFER_PTHREAD_FLAG ON)

@@ -13,6 +13,11 @@
 #         - Windows (Win32, Win64)
 #         - Linux (X11/Wayland desktop mode)
 #         - Others (not tested)
+#     > PLATFORM_DESKTOP_RGFW (RGFW backend):
+#         - Windows (Win32, Win64)
+#         - Linux (X11 desktop mode)
+#         - macOS/OSX (x64, arm64 (not tested))
+#         - Others (not tested)
 #     > PLATFORM_WEB:
 #         - HTML5 (WebAssembly)
 #     > PLATFORM_DRM:
@@ -71,8 +76,8 @@ USE_EXTERNAL_GLFW     ?= FALSE
 
 # PLATFORM_DESKTOP_SDL: It requires SDL library to be provided externally
 # WARNING: Library is not included in raylib, it MUST be configured by users
-SDL_INCLUDE_PATH      ?= $(RAYLIB_SRC_PATH)/external/SDL2-2.28.4/include
-SDL_LIBRARY_PATH      ?= $(RAYLIB_SRC_PATH)/external/SDL2-2.28.4/lib/x64
+SDL_INCLUDE_PATH      ?= $(RAYLIB_SRC_PATH)/external/SDL2/include
+SDL_LIBRARY_PATH      ?= $(RAYLIB_SRC_PATH)/external/SDL2/lib
 
 # Use Wayland display server protocol on Linux desktop (by default it uses X11 windowing system)
 # NOTE: This variable is only used for PLATFORM_OS: LINUX
@@ -86,7 +91,7 @@ BUILD_WEB_RESOURCES   ?= TRUE
 BUILD_WEB_RESOURCES_PATH  ?= $(dir $<)resources@resources
 
 # Determine PLATFORM_OS when required
-ifeq ($(PLATFORM),$(filter $(PLATFORM),PLATFORM_DESKTOP PLATFORM_DESKTOP_SDL PLATFORM_WEB))
+ifeq ($(PLATFORM),$(filter $(PLATFORM),PLATFORM_DESKTOP PLATFORM_DESKTOP_SDL PLATFORM_WEB PLATFORM_DESKTOP_RGFW))
     # No uname.exe on MinGW!, but OS=Windows_NT on Windows!
     # ifeq ($(UNAME),Msys) -> Windows
     ifeq ($(OS),Windows_NT)
@@ -444,6 +449,31 @@ ifeq ($(PLATFORM),PLATFORM_DESKTOP_SDL)
         LDLIBS += -latomic
     endif
 endif
+ifeq ($(PLATFORM),PLATFORM_DESKTOP_RGFW)
+    ifeq ($(PLATFORM_OS),WINDOWS)
+        # Libraries for Windows desktop compilation
+        LDLIBS = ..\src\libraylib.a -lgdi32 -lwinmm -lopengl32
+    endif
+    ifeq ($(PLATFORM_OS),LINUX)
+        # Libraries for Debian GNU/Linux desktop compipling
+        # NOTE: Required packages: libegl1-mesa-dev
+        LDLIBS = ../src/libraylib.a -lGL -lX11 -lXrandr -lXinerama -lXi -lXxf86vm -lXcursor -lm -lpthread -ldl -lrt
+
+        # Explicit link to libc
+        ifeq ($(RAYLIB_LIBTYPE),SHARED)
+            LDLIBS += -lc
+        endif
+
+        # NOTE: On ARM 32bit arch, miniaudio requires atomics library
+        LDLIBS += -latomic
+    endif
+    ifeq ($(PLATFORM_OS),OSX)
+        # Libraries for Debian GNU/Linux desktop compiling
+        # NOTE: Required packages: libegl1-mesa-dev
+        LDLIBS = ../src/libraylib.a -lm 
+        LDLIBS += -framework Foundation -framework AppKit -framework OpenGL -framework CoreVideo
+    endif
+endif
 ifeq ($(PLATFORM),PLATFORM_DRM)
     # Libraries for DRM compiling
     # NOTE: Required packages: libasound2-dev (ALSA)
@@ -484,6 +514,7 @@ CORE = \
     core/core_input_mouse_wheel \
     core/core_input_multitouch \
     core/core_loading_thread \
+    core/core_random_sequence \
     core/core_random_values \
     core/core_scissor_test \
     core/core_smooth_pixelperfect \

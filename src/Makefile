@@ -13,6 +13,11 @@
 #         - Windows (Win32, Win64)
 #         - Linux (X11/Wayland desktop mode)
 #         - Others (not tested)
+#     > PLATFORM_DESKTOP_RGFW (RGFW backend):
+#         - Windows (Win32, Win64)
+#         - Linux (X11 desktop mode)
+#         - macOS/OSX (x64, arm64 (not tested))
+#         - Others (not tested)
 #     > PLATFORM_WEB:
 #         - HTML5 (WebAssembly)
 #     > PLATFORM_DRM:
@@ -98,14 +103,14 @@ RAYLIB_MODULE_RAYGUI_PATH ?= $(RAYLIB_SRC_PATH)/../../raygui/src
 # Use external GLFW library instead of rglfw module
 USE_EXTERNAL_GLFW     ?= FALSE
 
+# Enable support for both Wayland and X11 by default on Linux when using GLFW
+GLFW_LINUX_ENABLE_WAYLAND  ?= TRUE
+GLFW_LINUX_ENABLE_X11      ?= TRUE
+
 # PLATFORM_DESKTOP_SDL: It requires SDL library to be provided externally
 # WARNING: Library is not included in raylib, it MUST be configured by users
 SDL_INCLUDE_PATH      ?= $(RAYLIB_SRC_PATH)/external/SDL2/include
 SDL_LIBRARY_PATH      ?= $(RAYLIB_SRC_PATH)/external/SDL2/lib
-
-# Use Wayland display server protocol on Linux desktop (by default it uses X11 windowing system)
-# NOTE: This variable is only used for PLATFORM_OS: LINUX
-USE_WAYLAND_DISPLAY   ?= FALSE
 
 # Determine if the file has root access (only required to install raylib)
 # "whoami" prints the name of the user that calls him (so, if it is the root user, "whoami" prints "root")
@@ -116,7 +121,7 @@ HOST_PLATFORM_OS ?= WINDOWS
 PLATFORM_OS ?= WINDOWS
 
 # Determine PLATFORM_OS when required
-ifeq ($(PLATFORM),$(filter $(PLATFORM),PLATFORM_DESKTOP PLATFORM_DESKTOP_SDL PLATFORM_WEB PLATFORM_ANDROID))
+ifeq ($(PLATFORM),$(filter $(PLATFORM),PLATFORM_DESKTOP PLATFORM_DESKTOP_SDL PLATFORM_WEB PLATFORM_ANDROID PLATFORM_DESKTOP_RGFW))
     # No uname.exe on MinGW!, but OS=Windows_NT on Windows!
     # ifeq ($(UNAME),Msys) -> Windows
     ifeq ($(OS),Windows_NT)
@@ -226,6 +231,14 @@ endif
 
 # Define raylib graphics api depending on selected platform
 ifeq ($(PLATFORM),PLATFORM_DESKTOP)
+    # By default use OpenGL 3.3 on desktop platforms
+    GRAPHICS ?= GRAPHICS_API_OPENGL_33
+    #GRAPHICS = GRAPHICS_API_OPENGL_11      # Uncomment to use OpenGL 1.1
+    #GRAPHICS = GRAPHICS_API_OPENGL_21      # Uncomment to use OpenGL 2.1
+    #GRAPHICS = GRAPHICS_API_OPENGL_43      # Uncomment to use OpenGL 4.3
+    #GRAPHICS = GRAPHICS_API_OPENGL_ES2     # Uncomment to use OpenGL ES 2.0 (ANGLE)
+endif
+ifeq ($(PLATFORM),PLATFORM_DESKTOP_RGFW)
     # By default use OpenGL 3.3 on desktop platforms
     GRAPHICS ?= GRAPHICS_API_OPENGL_33
     #GRAPHICS = GRAPHICS_API_OPENGL_11      # Uncomment to use OpenGL 1.1
@@ -428,12 +441,15 @@ endif
 # Use Wayland display on Linux desktop
 ifeq ($(PLATFORM),PLATFORM_DESKTOP)
     ifeq ($(PLATFORM_OS), LINUX)
-        ifeq ($(USE_WAYLAND_DISPLAY),TRUE)
+        ifeq ($(GLFW_LINUX_ENABLE_X11),TRUE)
+            CFLAGS += -D_GLFW_X11
+        endif
+
+        ifeq ($(GLFW_LINUX_ENABLE_WAYLAND),TRUE)
             CFLAGS += -D_GLFW_WAYLAND
             LDFLAGS += $(shell pkg-config wayland-client wayland-cursor wayland-egl xkbcommon --libs)
 
-            WL_PROTOCOLS_DIR := $(shell pkg-config wayland-protocols --variable=pkgdatadir)
-            WL_CLIENT_DIR := $(shell pkg-config wayland-client --variable=pkgdatadir)
+            WL_PROTOCOLS_DIR := external/glfw/deps/wayland
 
             wl_generate = \
                 $(eval protocol=$(1)) \
@@ -441,13 +457,15 @@ ifeq ($(PLATFORM),PLATFORM_DESKTOP)
                 $(shell wayland-scanner client-header $(protocol) $(RAYLIB_SRC_PATH)/$(basename).h) \
                 $(shell wayland-scanner private-code $(protocol) $(RAYLIB_SRC_PATH)/$(basename)-code.h)
 
-            $(call wl_generate, $(WL_CLIENT_DIR)/wayland.xml, wayland-client-protocol)
-            $(call wl_generate, $(WL_PROTOCOLS_DIR)/stable/xdg-shell/xdg-shell.xml, wayland-xdg-shell-client-protocol)
-            $(call wl_generate, $(WL_PROTOCOLS_DIR)/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml, wayland-xdg-decoration-client-protocol)
-            $(call wl_generate, $(WL_PROTOCOLS_DIR)/stable/viewporter/viewporter.xml, wayland-viewporter-client-protocol)
-            $(call wl_generate, $(WL_PROTOCOLS_DIR)/unstable/relative-pointer/relative-pointer-unstable-v1.xml, wayland-relative-pointer-unstable-v1-client-protocol)
-            $(call wl_generate, $(WL_PROTOCOLS_DIR)/unstable/pointer-constraints/pointer-constraints-unstable-v1.xml, wayland-pointer-constraints-unstable-v1-client-protocol)
-            $(call wl_generate, $(WL_PROTOCOLS_DIR)/unstable/idle-inhibit/idle-inhibit-unstable-v1.xml, wayland-idle-inhibit-unstable-v1-client-protocol)
+            $(call wl_generate, $(WL_PROTOCOLS_DIR)/wayland.xml, wayland-client-protocol)
+            $(call wl_generate, $(WL_PROTOCOLS_DIR)/xdg-shell.xml, xdg-shell-client-protocol)
+            $(call wl_generate, $(WL_PROTOCOLS_DIR)/xdg-decoration-unstable-v1.xml, xdg-decoration-unstable-v1-client-protocol)
+            $(call wl_generate, $(WL_PROTOCOLS_DIR)/viewporter.xml, viewporter-client-protocol)
+            $(call wl_generate, $(WL_PROTOCOLS_DIR)/relative-pointer-unstable-v1.xml, relative-pointer-unstable-v1-client-protocol)
+            $(call wl_generate, $(WL_PROTOCOLS_DIR)/pointer-constraints-unstable-v1.xml, pointer-constraints-unstable-v1-client-protocol)
+            $(call wl_generate, $(WL_PROTOCOLS_DIR)/fractional-scale-v1.xml, fractional-scale-v1-client-protocol)
+            $(call wl_generate, $(WL_PROTOCOLS_DIR)/xdg-activation-v1.xml, xdg-activation-v1-client-protocol)
+            $(call wl_generate, $(WL_PROTOCOLS_DIR)/idle-inhibit-unstable-v1.xml, idle-inhibit-unstable-v1-client-protocol)
         endif
     endif
 endif
@@ -464,7 +482,7 @@ ifeq ($(PLATFORM),PLATFORM_NX)
     CFLAGS	+=	-ffunction-sections -fdata-sections $(ARCH) $(foreach dir,$(LIBDIRS),-I$(dir)/include) -D__SWITCH__
 endif
 ifeq ($(PLATFORM),PLATFORM_DESKTOP)
-    INCLUDE_PATHS += -Iexternal/glfw/include -Iexternal/glfw/deps/mingw
+    INCLUDE_PATHS += -Iexternal/glfw/include
     ifeq ($(PLATFORM_OS),BSD)
         INCLUDE_PATHS += -I/usr/local/include
     endif
@@ -473,7 +491,7 @@ ifeq ($(PLATFORM),PLATFORM_DESKTOP_SDL)
     INCLUDE_PATHS += -I$(SDL_INCLUDE_PATH)
 endif
 ifeq ($(PLATFORM),PLATFORM_WEB)
-    INCLUDE_PATHS += -Iexternal/glfw/include -Iexternal/glfw/deps/mingw
+    INCLUDE_PATHS += -Iexternal/glfw/include
 endif
 ifeq ($(PLATFORM),PLATFORM_DRM)
     INCLUDE_PATHS += -I/usr/include/libdrm
@@ -558,7 +576,7 @@ ifeq ($(PLATFORM),PLATFORM_DESKTOP)
     endif
     ifeq ($(PLATFORM_OS),LINUX)
         LDLIBS = -lGL -lc -lm -lpthread -ldl -lrt
-        ifeq ($(USE_WAYLAND_DISPLAY),FALSE)
+        ifeq ($(GLFW_LINUX_ENABLE_X11),TRUE)
             LDLIBS += -lX11
         endif
         # TODO: On ARM 32bit arch, miniaudio requires atomics library
@@ -597,6 +615,30 @@ endif
 ifeq ($(PLATFORM),PLATFORM_ANDROID)
     LDLIBS = -llog -landroid -lEGL -lGLESv2 -lOpenSLES -lc -lm
 endif
+ifeq ($(PLATFORM),PLATFORM_DESKTOP_RGFW)
+    ifeq ($(PLATFORM_OS),WINDOWS)
+        # Libraries for Windows desktop compilation
+        LDLIBS = -lgdi32 -lwinmm -lopengl32
+    endif
+    ifeq ($(PLATFORM_OS),LINUX)
+        # Libraries for Debian GNU/Linux desktop compipling
+        # NOTE: Required packages: libegl1-mesa-dev
+        LDLIBS = -lGL -lX11 -lXrandr -lXinerama -lXi -lXcursor -lm -lpthread -ldl -lrt
+
+        # Explicit link to libc
+        ifeq ($(RAYLIB_LIBTYPE),SHARED)
+            LDLIBS += -lc
+        endif
+
+        # NOTE: On ARM 32bit arch, miniaudio requires atomics library
+        LDLIBS += -latomic
+    endif
+    ifeq ($(PLATFORM_OS),OSX)
+        # Libraries for Debian MacOS desktop compiling
+        # NOTE: Required packages: libegl1-mesa-dev
+        LDLIBS += -lm -framework Foundation -framework AppKit -framework OpenGL -framework CoreVideo
+    endif
+endif
 
 # Define source code object files required
 #------------------------------------------------------------------------------------------------
@@ -604,7 +646,8 @@ OBJS = rcore.o \
        rshapes.o \
        rtextures.o \
        rtext.o \
-       utils.o
+       utils.o 
+
 
 ifeq ($(PLATFORM),PLATFORM_DESKTOP)
     ifeq ($(USE_EXTERNAL_GLFW),FALSE)
@@ -643,7 +686,7 @@ ifeq ($(PLATFORM),PLATFORM_WEB)
 	@echo "raylib library generated (lib$(RAYLIB_LIB_NAME).a)!"
 else
     ifeq ($(RAYLIB_LIBTYPE),SHARED)
-        ifeq ($(PLATFORM),$(filter $(PLATFORM),PLATFORM_DESKTOP PLATFORM_DESKTOP_SDL))
+        ifeq ($(PLATFORM),$(filter $(PLATFORM),PLATFORM_DESKTOP PLATFORM_DESKTOP_SDL PLATFORM_DESKTOP_RGFW))
             ifeq ($(PLATFORM_OS),WINDOWS)
                 # NOTE: Linking with provided resource file
 				$(CC) -shared -o $(RAYLIB_RELEASE_PATH)/$(RAYLIB_LIB_NAME).dll $(OBJS) $(RAYLIB_RES_FILE) $(LDFLAGS) $(LDLIBS)
@@ -842,7 +885,7 @@ clean:	clean_shell_$(PLATFORM_SHELL)
 	@echo "removed all generated files!"
 
 clean_shell_sh:
-	rm -fv *.o $(RAYLIB_RELEASE_PATH)/lib$(RAYLIB_LIB_NAME).a $(RAYLIB_RELEASE_PATH)/lib$(RAYLIB_LIB_NAME).bc $(RAYLIB_RELEASE_PATH)/lib$(RAYLIB_LIB_NAME).so* raygui.c
+	rm -fv *.o $(RAYLIB_RELEASE_PATH)/lib$(RAYLIB_LIB_NAME).a $(RAYLIB_RELEASE_PATH)/lib$(RAYLIB_LIB_NAME).bc $(RAYLIB_RELEASE_PATH)/lib$(RAYLIB_LIB_NAME).so* raygui.c $(RAYLIB_RELEASE_PATH)/*-protocol.h $(RAYLIB_RELEASE_PATH)/*-protocol-code.h
 ifeq ($(PLATFORM),PLATFORM_ANDROID)
 	rm -fv $(NATIVE_APP_GLUE)/android_native_app_glue.o
 endif
