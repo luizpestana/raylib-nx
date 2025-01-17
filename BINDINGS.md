@@ -10,7 +10,7 @@ Some people ported raylib to other languages in the form of bindings or wrappers
 | [raylib-beef](https://github.com/Starpelly/raylib-beef)                                  | **5.5**          | [Beef](https://www.beeflang.org)                                     | MIT                  |
 | [raybit](https://github.com/Alex-Velez/raybit)                                           | **5.0**          | [Brainfuck](https://en.wikipedia.org/wiki/Brainfuck)                 | MIT                  |
 | [raylib-c3](https://github.com/c3lang/vendor/tree/main/libraries/raylib55.c3l)           | **5.5**          | [C3](https://c3-lang.org)                                            | MIT                  |
-| [Raylib-cs](https://github.com/ChrisDill/Raylib-cs)                                      | **5.0**          | [C#](https://en.wikipedia.org/wiki/C_Sharp_(programming_language))   | Zlib                 |
+| [Raylib-cs](https://github.com/ChrisDill/Raylib-cs)                                      | **5.5**          | [C#](https://en.wikipedia.org/wiki/C_Sharp_(programming_language))   | Zlib                 |
 | [Raylib-CsLo](https://github.com/NotNotTech/Raylib-CsLo)                                 | 4.2              | [C#](https://en.wikipedia.org/wiki/C_Sharp_(programming_language))   | MPL-2.0              |
 | [Raylib-CSharp-Vinculum](https://github.com/ZeroElectric/Raylib-CSharp-Vinculum)         | **5.0**          | [C#](https://en.wikipedia.org/wiki/C_Sharp_(programming_language))   | MPL-2.0              |
 | [Raylib-CSharp](https://github.com/MrScautHD/Raylib-CSharp)                              | **5.1-dev**      | [C#](https://en.wikipedia.org/wiki/C_Sharp_(programming_language))   | MIT                  |
@@ -44,10 +44,13 @@ Some people ported raylib to other languages in the form of bindings or wrappers
 | [raylib-lua](https://github.com/TSnake41/raylib-lua)                                     | 5.0              | [Lua](http://www.lua.org)                                            | ISC                  |
 | [raylib-lua-bindings (WIP)](https://github.com/legendaryredfox/raylib-lua-bindings)      | 5.5              | [Lua](http://www.lua.org)                                            | ISC                  |
 | [ReiLua](https://github.com/nullstare/ReiLua)                                            | 5.5              | [Lua](http://www.lua.org)                                            | MIT                  |
+| [raylib-lua-sol](https://github.com/RobLoach/raylib-lua-sol)                             | 5.5              | [Lua](http://www.lua.org)                                            | Zlib                 |
+| [raylib-luajit](https://github.com/homma/raylib-luajit)                                  | 5.5              | [Lua](http://www.lua.org)                                            | MIT                  |
+| [raylib-luajit-generated](https://github.com/james2doyle/raylib-luajit-generated)        | 5.5              | [Lua](http://www.lua.org)                                            | MIT                  |
 | [raylib-matte](https://github.com/jcorks/raylib-matte)                                   | 4.6-dev          | [Matte](https://github.com/jcorks/matte)                             |  **???**             |
 | [Raylib.nelua](https://github.com/AuzFox/Raylib.nelua)                                   | **5.0**          | [nelua](https://nelua.io)                                            | Zlib                 |
 | [raylib-bindings](https://github.com/vaiorabbit/raylib-bindings)                         | 5.6-dev              | [Ruby](https://www.ruby-lang.org/en)                                 | Zlib                 |
-| [naylib](https://github.com/planetis-m/naylib)                                           | **5.1-dev**      | [Nim](https://nim-lang.org)                                          | MIT                  |
+| [naylib](https://github.com/planetis-m/naylib)                                           | **5.6-dev**      | [Nim](https://nim-lang.org)                                          | MIT                  |
 | [node-raylib](https://github.com/RobLoach/node-raylib)                                   | 4.5              | [Node.js](https://nodejs.org/en)                                     | Zlib                 |
 | [raylib-odin](https://github.com/odin-lang/Odin/tree/master/vendor/raylib)               | **5.5**          | [Odin](https://odin-lang.org)                                        | BSD-3Clause          |
 | [raylib_odin_bindings](https://github.com/Deathbat2190/raylib_odin_bindings)             | 4.0-dev          | [Odin](https://odin-lang.org)                                        | MIT                  |
@@ -66,12 +69,14 @@ Some people ported raylib to other languages in the form of bindings or wrappers
 | [raylibr](https://github.com/jeroenjanssens/raylibr)                                     | 4.0              | [R](https://www.r-project.org)                                       | MIT                  |
 | [raylib-ffi](https://github.com/ewpratten/raylib-ffi)                                    | 5.5              | [Rust](https://www.rust-lang.org)                                    | GPLv3                |
 | [raylib-rs](https://github.com/raylib-rs/raylib-rs)                                      | **5.5**          | [Rust](https://www.rust-lang.org)                                    | Zlib                 |
+| [raylib-ruby](https://github.com/wilsonsilva/raylib-ruby)                                | 4.5              | [Ruby](https://www.ruby-lang.org)                                    | Zlib                 |
 | [Relib](https://github.com/RedCubeDev-ByteSpace/Relib)                                   | 3.5              | [ReCT](https://github.com/RedCubeDev-ByteSpace/ReCT)                 | **???**              |
 | [racket-raylib](https://github.com/eutro/racket-raylib)                                  | 4.0              | [Racket](https://racket-lang.org)                                    | MIT/Apache-2.0       |
 | [raylib-swift](https://github.com/STREGAsGate/Raylib)                                    | 4.0              | [Swift](https://swift.org)                                           | MIT                  |
 | [raylib-scopes](https://github.com/salotz/raylib-scopes)                                 | auto             | [Scopes](http://scopes.rocks)                                        | MIT                  |
 | [raylib-SmallBASIC](https://github.com/smallbasic/smallbasic.plugins/tree/master/raylib) | **5.5**          | [SmallBASIC](https://github.com/smallbasic/SmallBASIC)               | GPLv3                |
 | [raylib-umka](https://github.com/robloach/raylib-umka)                                   | 4.5              | [Umka](https://github.com/vtereshkov/umka-lang)                      | Zlib                 |
+| [raylib-v](https://github.com/vlang/raylib)                                              | 5.5              | [V](https://vlang.io)                                                | MIT/Unlicense        |
 | [raylib.v](https://github.com/irishgreencitrus/raylib.v)                                 | 4.2              | [V](https://vlang.io)                                                | Zlib                 |
 | [raylib-vapi](https://github.com/lxmcf/raylib-vapi)                                      | **5.0**          | [Vala](https://vala.dev)                                             | Zlib                 |
 | [raylib-wren](https://github.com/TSnake41/raylib-wren)                                   | 4.5              | [Wren](http://wren.io)                                               | ISC                  |
