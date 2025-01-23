@@ -2,6 +2,8 @@
 *
 *   raylib example - point rendering
 *
+*   Example complexity rating: [★★★☆] 3/4
+*
 *   Example originally created with raylib 5.0, last time updated with raylib 5.0
 *
 *   Example contributed by Reese Gallagher (@satchelfrost) and reviewed by Ramon Santamaria (@raysan5)
@@ -9,7 +11,7 @@
 *   Example licensed under an unmodified zlib/libpng license, which is an OSI-certified,
 *   BSD-like license that allows static linking with closed source software
 *
-*   Copyright (c) 2024 Reese Gallagher (@satchelfrost)
+*   Copyright (c) 2024-2025 Reese Gallagher (@satchelfrost)
 *
 ********************************************************************************************/
 
