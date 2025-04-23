@@ -115,10 +115,9 @@ int main(void)
 // without crossing perimeter, points must be in anticlockwise order
 void DrawTexturePoly(Texture2D texture, Vector2 center, Vector2 *points, Vector2 *texcoords, int pointCount, Color tint)
 {
+    rlBegin(RL_TRIANGLES);
+    
     rlSetTexture(texture.id);
-
-    // Texturing is only supported on RL_QUADS
-    rlBegin(RL_QUADS);
 
         rlColor4ub(tint.r, tint.g, tint.b, tint.a);
 
@@ -129,9 +128,6 @@ void DrawTexturePoly(Texture2D texture, Vector2 center, Vector2 *points, Vector2
 
             rlTexCoord2f(texcoords[i].x, texcoords[i].y);
             rlVertex2f(points[i].x + center.x, points[i].y + center.y);
-
-            rlTexCoord2f(texcoords[i + 1].x, texcoords[i + 1].y);
-            rlVertex2f(points[i + 1].x + center.x, points[i + 1].y + center.y);
 
             rlTexCoord2f(texcoords[i + 1].x, texcoords[i + 1].y);
             rlVertex2f(points[i + 1].x + center.x, points[i + 1].y + center.y);

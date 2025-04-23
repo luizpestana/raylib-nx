@@ -645,7 +645,7 @@ ifeq ($(TARGET_PLATFORM),PLATFORM_DESKTOP_RGFW)
     ifeq ($(PLATFORM_OS),OSX)
         # Libraries for Debian MacOS desktop compiling
         # NOTE: Required packages: libegl1-mesa-dev
-        LDLIBS += -lm -framework Foundation -framework AppKit -framework OpenGL -framework CoreVideo
+        LDLIBS += -lm -framework Foundation -framework AppKit -framework IOKit  -framework OpenGL -framework CoreVideo
     endif
 endif
 ifeq ($(TARGET_PLATFORM),PLATFORM_DRM)
@@ -664,7 +664,7 @@ OBJS = rcore.o \
        rshapes.o \
        rtextures.o \
        rtext.o \
-       utils.o 
+       utils.o
 
 ifeq ($(TARGET_PLATFORM),PLATFORM_DESKTOP_GLFW)
     ifeq ($(USE_EXTERNAL_GLFW),FALSE)
@@ -771,7 +771,7 @@ rcore.o : rcore.c raylib.h rlgl.h utils.h raymath.h rcamera.h rgestures.h
 
 # Compile rglfw module
 rglfw.o : rglfw.c
-	$(CC) $(GLFW_OSX) -c $< $(CFLAGS) $(INCLUDE_PATHS)
+	$(CC) $(GLFW_OSX) -c $< $(CFLAGS) $(INCLUDE_PATHS) -U_GNU_SOURCE
 
 # Compile shapes module
 rshapes.o : rshapes.c raylib.h rlgl.h

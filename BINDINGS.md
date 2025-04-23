@@ -10,7 +10,7 @@ Some people ported raylib to other languages in the form of bindings or wrappers
 | [raylib-beef](https://github.com/Starpelly/raylib-beef)                                  | **5.5**          | [Beef](https://www.beeflang.org)                                     | MIT                  |
 | [raybit](https://github.com/Alex-Velez/raybit)                                           | **5.0**          | [Brainfuck](https://en.wikipedia.org/wiki/Brainfuck)                 | MIT                  |
 | [raylib-c3](https://github.com/c3lang/vendor/tree/main/libraries/raylib55.c3l)           | **5.5**          | [C3](https://c3-lang.org)                                            | MIT                  |
-| [Raylib-cs](https://github.com/ChrisDill/Raylib-cs)                                      | **5.5**          | [C#](https://en.wikipedia.org/wiki/C_Sharp_(programming_language))   | Zlib                 |
+| [raylib-cs](https://github.com/raylib-cs/raylib-cs)                                      | **5.5**          | [C#](https://en.wikipedia.org/wiki/C_Sharp_(programming_language))   | Zlib                 |
 | [Raylib-CsLo](https://github.com/NotNotTech/Raylib-CsLo)                                 | 4.2              | [C#](https://en.wikipedia.org/wiki/C_Sharp_(programming_language))   | MPL-2.0              |
 | [Raylib-CSharp-Vinculum](https://github.com/ZeroElectric/Raylib-CSharp-Vinculum)         | **5.0**          | [C#](https://en.wikipedia.org/wiki/C_Sharp_(programming_language))   | MPL-2.0              |
 | [Raylib-CSharp](https://github.com/MrScautHD/Raylib-CSharp)                              | **5.1-dev**      | [C#](https://en.wikipedia.org/wiki/C_Sharp_(programming_language))   | MIT                  |
@@ -71,7 +71,7 @@ Some people ported raylib to other languages in the form of bindings or wrappers
 | [raylib-rs](https://github.com/raylib-rs/raylib-rs)                                      | **5.5**          | [Rust](https://www.rust-lang.org)                                    | Zlib                 |
 | [raylib-ruby](https://github.com/wilsonsilva/raylib-ruby)                                | 4.5              | [Ruby](https://www.ruby-lang.org)                                    | Zlib                 |
 | [Relib](https://github.com/RedCubeDev-ByteSpace/Relib)                                   | 3.5              | [ReCT](https://github.com/RedCubeDev-ByteSpace/ReCT)                 | **???**              |
-| [racket-raylib](https://github.com/eutro/racket-raylib)                                  | 4.0              | [Racket](https://racket-lang.org)                                    | MIT/Apache-2.0       |
+| [racket-raylib](https://github.com/eutro/racket-raylib)                                  | **5.5**          | [Racket](https://racket-lang.org)                                    | MIT/Apache-2.0       |
 | [raylib-swift](https://github.com/STREGAsGate/Raylib)                                    | 4.0              | [Swift](https://swift.org)                                           | MIT                  |
 | [raylib-scopes](https://github.com/salotz/raylib-scopes)                                 | auto             | [Scopes](http://scopes.rocks)                                        | MIT                  |
 | [raylib-SmallBASIC](https://github.com/smallbasic/smallbasic.plugins/tree/master/raylib) | **5.5**          | [SmallBASIC](https://github.com/smallbasic/SmallBASIC)               | GPLv3                |

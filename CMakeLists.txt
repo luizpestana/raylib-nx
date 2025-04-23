@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.25)
+#this change avoid the warning that appear when we include raylib using Cmake fatch content 
 project(raylib)
 
 # Avoid excessive expansion of variables in conditionals. In particular, if
@@ -36,7 +37,7 @@ include(CompilerFlags)
 # Registers build options that are exposed to cmake
 include(CMakeOptions.txt)
 
-if (UNIX AND NOT APPLE)
+if (UNIX AND NOT APPLE AND NOT "${PLATFORM}" MATCHES "DRM")
   if (NOT GLFW_BUILD_WAYLAND AND NOT GLFW_BUILD_X11)
     MESSAGE(FATAL_ERROR "Cannot disable both Wayland and X11")
   endif()

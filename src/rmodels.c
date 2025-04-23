@@ -1307,7 +1307,7 @@ void UploadMesh(Mesh *mesh, bool dynamic)
     {
         // Default vertex attribute: normal
         // WARNING: Default value provided to shader if location available
-        float value[3] = { 1.0f, 1.0f, 1.0f };
+        float value[3] = { 0.0f, 0.0f, 1.0f };
         rlSetVertexAttributeDefault(RL_DEFAULT_SHADER_ATTRIB_LOCATION_NORMAL, value, SHADER_ATTRIB_VEC3, 3);
         rlDisableVertexAttribute(RL_DEFAULT_SHADER_ATTRIB_LOCATION_NORMAL);
     }
@@ -1339,7 +1339,7 @@ void UploadMesh(Mesh *mesh, bool dynamic)
     {
         // Default vertex attribute: tangent
         // WARNING: Default value provided to shader if location available
-        float value[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+        float value[4] = { 1.0f, 0.0f, 0.0f, 1.0f };
         rlSetVertexAttributeDefault(RL_DEFAULT_SHADER_ATTRIB_LOCATION_TANGENT, value, SHADER_ATTRIB_VEC4, 4);
         rlDisableVertexAttribute(RL_DEFAULT_SHADER_ATTRIB_LOCATION_TANGENT);
     }
@@ -2286,38 +2286,28 @@ void UpdateModelAnimationBones(Model model, ModelAnimation anim, int frame)
             }
         }
 
-        // Update all bones and boneMatrices of first mesh with bones.
-        for (int boneId = 0; boneId < anim.boneCount; boneId++)
-        {
-            Vector3 inTranslation = model.bindPose[boneId].translation;
-            Quaternion inRotation = model.bindPose[boneId].rotation;
-            Vector3 inScale = model.bindPose[boneId].scale;
-
-            Vector3 outTranslation = anim.framePoses[frame][boneId].translation;
-            Quaternion outRotation = anim.framePoses[frame][boneId].rotation;
-            Vector3 outScale = anim.framePoses[frame][boneId].scale;
-
-            Quaternion invRotation = QuaternionInvert(inRotation);
-            Vector3 invTranslation = Vector3RotateByQuaternion(Vector3Negate(inTranslation), invRotation);
-            Vector3 invScale = Vector3Divide((Vector3){ 1.0f, 1.0f, 1.0f }, inScale);
-
-            Vector3 boneTranslation = Vector3Add(Vector3RotateByQuaternion(
-                Vector3Multiply(outScale, invTranslation), outRotation), outTranslation);
-            Quaternion boneRotation = QuaternionMultiply(outRotation, invRotation);
-            Vector3 boneScale = Vector3Multiply(outScale, invScale);
-
-            Matrix boneMatrix = MatrixMultiply(MatrixMultiply(
-                QuaternionToMatrix(boneRotation),
-                MatrixTranslate(boneTranslation.x, boneTranslation.y, boneTranslation.z)),
-                MatrixScale(boneScale.x, boneScale.y, boneScale.z));
-
-            model.meshes[firstMeshWithBones].boneMatrices[boneId] = boneMatrix;
-        }
-
-        // Update remaining meshes with bones
-        // NOTE: Using deep copy because shallow copy results in double free with 'UnloadModel()'
         if (firstMeshWithBones != -1)
         {
+            // Update all bones and boneMatrices of first mesh with bones.
+            for (int boneId = 0; boneId < anim.boneCount; boneId++)
+            {
+                Transform *bindTransform = &model.bindPose[boneId];
+                Matrix bindMatrix = MatrixMultiply(MatrixMultiply(
+                    MatrixScale(bindTransform->scale.x, bindTransform->scale.y, bindTransform->scale.z),
+                    QuaternionToMatrix(bindTransform->rotation)),
+                    MatrixTranslate(bindTransform->translation.x, bindTransform->translation.y, bindTransform->translation.z));
+
+                Transform *targetTransform = &anim.framePoses[frame][boneId];
+                Matrix targetMatrix = MatrixMultiply(MatrixMultiply(
+                    MatrixScale(targetTransform->scale.x, targetTransform->scale.y, targetTransform->scale.z),
+                    QuaternionToMatrix(targetTransform->rotation)),
+                    MatrixTranslate(targetTransform->translation.x, targetTransform->translation.y, targetTransform->translation.z));
+
+                model.meshes[firstMeshWithBones].boneMatrices[boneId] = MatrixMultiply(MatrixInvert(bindMatrix), targetMatrix);
+            }
+
+            // Update remaining meshes with bones
+            // NOTE: Using deep copy because shallow copy results in double free with 'UnloadModel()'
             for (int i = firstMeshWithBones + 1; i < model.meshCount; i++)
             {
                 if (model.meshes[i].boneMatrices)
@@ -3879,10 +3869,10 @@ void DrawBillboardPro(Camera camera, Texture2D texture, Rectangle source, Vector
     }
 
     Vector2 texcoords[4];
-    texcoords[0] = (Vector2) { (float)source.x/texture.width, (float)(source.y + source.height)/texture.height };
-    texcoords[1] = (Vector2) { (float)(source.x + source.width)/texture.width, (float)(source.y + source.height)/texture.height };
-    texcoords[2] = (Vector2) { (float)(source.x + source.width)/texture.width, (float)source.y/texture.height };
-    texcoords[3] = (Vector2) { (float)source.x/texture.width, (float)source.y/texture.height };
+    texcoords[0] = (Vector2){ (float)source.x/texture.width, (float)(source.y + source.height)/texture.height };
+    texcoords[1] = (Vector2){ (float)(source.x + source.width)/texture.width, (float)(source.y + source.height)/texture.height };
+    texcoords[2] = (Vector2){ (float)(source.x + source.width)/texture.width, (float)source.y/texture.height };
+    texcoords[3] = (Vector2){ (float)source.x/texture.width, (float)source.y/texture.height };
 
     rlSetTexture(texture.id);
     rlBegin(RL_QUADS);
@@ -5141,7 +5131,7 @@ static Image LoadImageFromCgltfImage(cgltf_image *cgltfImage, const char *texPat
             image = LoadImage(TextFormat("%s/%s", texPath, cgltfImage->uri));
         }
     }
-    else if (cgltfImage->buffer_view != NULL && cgltfImage->buffer_view->buffer->data != NULL)    // Check if image is provided as data buffer
+    else if ((cgltfImage->buffer_view != NULL) && (cgltfImage->buffer_view->buffer->data != NULL))    // Check if image is provided as data buffer
     {
         unsigned char *data = RL_MALLOC(cgltfImage->buffer_view->size);
         int offset = (int)cgltfImage->buffer_view->offset;
@@ -5156,10 +5146,14 @@ static Image LoadImageFromCgltfImage(cgltf_image *cgltfImage, const char *texPat
 
         // Check mime_type for image: (cgltfImage->mime_type == "image/png")
         // NOTE: Detected that some models define mime_type as "image\\/png"
-        if ((strcmp(cgltfImage->mime_type, "image\\/png") == 0) ||
-            (strcmp(cgltfImage->mime_type, "image/png") == 0)) image = LoadImageFromMemory(".png", data, (int)cgltfImage->buffer_view->size);
-        else if ((strcmp(cgltfImage->mime_type, "image\\/jpeg") == 0) ||
-                 (strcmp(cgltfImage->mime_type, "image/jpeg") == 0)) image = LoadImageFromMemory(".jpg", data, (int)cgltfImage->buffer_view->size);
+        if ((strcmp(cgltfImage->mime_type, "image\\/png") == 0) || (strcmp(cgltfImage->mime_type, "image/png") == 0))
+        {
+            image = LoadImageFromMemory(".png", data, (int)cgltfImage->buffer_view->size);
+        }
+        else if ((strcmp(cgltfImage->mime_type, "image\\/jpeg") == 0) || (strcmp(cgltfImage->mime_type, "image/jpeg") == 0))
+        {
+            image = LoadImageFromMemory(".jpg", data, (int)cgltfImage->buffer_view->size);
+        }
         else TRACELOG(LOG_WARNING, "MODEL: glTF image data MIME type not recognized", TextFormat("%s/%s", texPath, cgltfImage->uri));
 
         RL_FREE(data);
@@ -5285,19 +5279,18 @@ static Model LoadGLTF(const char *fileName)
         if (result != cgltf_result_success) TRACELOG(LOG_INFO, "MODEL: [%s] Failed to load mesh/material buffers", fileName);
 
         int primitivesCount = 0;
+
         // NOTE: We will load every primitive in the glTF as a separate raylib Mesh.
         // Determine total number of meshes needed from the node hierarchy.
         for (unsigned int i = 0; i < data->nodes_count; i++)
         {
             cgltf_node *node = &(data->nodes[i]);
             cgltf_mesh *mesh = node->mesh;
-            if (!mesh)
-                continue;
+            if (!mesh) continue;
 
             for (unsigned int p = 0; p < mesh->primitives_count; p++)
             {
-                if (mesh->primitives[p].type == cgltf_primitive_type_triangles)
-                    primitivesCount++;
+                if (mesh->primitives[p].type == cgltf_primitive_type_triangles) primitivesCount++;
             }
         }
         TRACELOG(LOG_DEBUG, "    > Primitives (triangles only) count based on hierarchy : %i", primitivesCount);
@@ -5347,7 +5340,34 @@ static Model LoadGLTF(const char *fileName)
                     Image imMetallicRoughness = LoadImageFromCgltfImage(data->materials[i].pbr_metallic_roughness.metallic_roughness_texture.texture->image, texPath);
                     if (imMetallicRoughness.data != NULL)
                     {
-                        model.materials[j].maps[MATERIAL_MAP_ROUGHNESS].texture = LoadTextureFromImage(imMetallicRoughness);
+                        Image imMetallic = { 0 };
+                        Image imRoughness = { 0 };
+
+                        imMetallic.data = RL_MALLOC(imMetallicRoughness.width*imMetallicRoughness.height);
+                        imRoughness.data = RL_MALLOC(imMetallicRoughness.width*imMetallicRoughness.height);
+
+                        imMetallic.width = imRoughness.width = imMetallicRoughness.width;
+                        imMetallic.height = imRoughness.height = imMetallicRoughness.height;
+
+                        imMetallic.format = imRoughness.format = PIXELFORMAT_UNCOMPRESSED_GRAYSCALE;
+                        imMetallic.mipmaps = imRoughness.mipmaps = 1;
+
+                        for (int x = 0; x < imRoughness.width; x++)
+                        {
+                            for (int y = 0; y < imRoughness.height; y++)
+                            {
+                                Color color = GetImageColor(imMetallicRoughness, x, y);
+
+                                ((unsigned char *)imRoughness.data)[y*imRoughness.width + x] = color.g; // Roughness color channel
+                                ((unsigned char *)imMetallic.data)[y*imMetallic.width + x] = color.b; // Metallic color channel
+                            }
+                        }
+
+                        model.materials[j].maps[MATERIAL_MAP_ROUGHNESS].texture = LoadTextureFromImage(imRoughness);
+                        model.materials[j].maps[MATERIAL_MAP_METALNESS].texture = LoadTextureFromImage(imMetallic);
+
+                        UnloadImage(imRoughness);
+                        UnloadImage(imMetallic);
                         UnloadImage(imMetallicRoughness);
                     }
 

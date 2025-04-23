@@ -96,7 +96,6 @@ SDL_INCLUDE_PATH      ?= $(RAYLIB_SRC_PATH)/external/SDL2/include
 SDL_LIBRARY_PATH      ?= $(RAYLIB_SRC_PATH)/external/SDL2/lib
 SDL_LIBRARIES         ?= -lSDL2 -lSDL2main
 
-
 # Use Wayland display server protocol on Linux desktop (by default it uses X11 windowing system)
 # NOTE: This variable is only used for PLATFORM_OS: LINUX
 USE_WAYLAND_DISPLAY   ?= FALSE
@@ -252,7 +251,7 @@ CFLAGS = -Wall -std=c99 -D_DEFAULT_SOURCE -Wno-missing-braces -Wunused-result
 
 ifeq ($(BUILD_MODE),DEBUG)
     CFLAGS += -g -D_DEBUG
-else  
+else
    ifeq ($(TARGET_PLATFORM),$(filter $(TARGET_PLATFORM),PLATFORM_WEB PLATFORM_WEB_RGFW))
         ifeq ($(BUILD_WEB_ASYNCIFY),TRUE)
             CFLAGS += -O3
@@ -367,12 +366,12 @@ ifeq ($(TARGET_PLATFORM),$(filter $(TARGET_PLATFORM),PLATFORM_WEB PLATFORM_WEB_R
     # --source-map-base          # allow debugging in browser with source map
     # --shell-file shell.html    # define a custom shell .html and output extension
     LDFLAGS += -sTOTAL_MEMORY=$(BUILD_WEB_HEAP_SIZE) -sFORCE_FILESYSTEM=1 -sMINIFY_HTML=0
-    
+
     # Using GLFW3 library (instead of RGFW)
     ifeq ($(TARGET_PLATFORM),PLATFORM_WEB)
         LDFLAGS += -sUSE_GLFW=3
     endif
-  	 
+
 	# Build using asyncify
     ifeq ($(BUILD_WEB_ASYNCIFY),TRUE)
         LDFLAGS += -sASYNCIFY
@@ -506,7 +505,7 @@ ifeq ($(TARGET_PLATFORM),PLATFORM_DESKTOP_RGFW)
         # NOTE: Required packages: libegl1-mesa-dev
         LDFLAGS += -L../src
         LDLIBS = -lraylib -lm
-        LDLIBS += -framework Foundation -framework AppKit -framework OpenGL -framework CoreVideo
+        LDLIBS += -framework Foundation -framework AppKit -framework IOKit -framework OpenGL -framework CoreVideo
     endif
 endif
 ifeq ($(TARGET_PLATFORM),PLATFORM_DRM)
@@ -541,6 +540,7 @@ CORE = \
     core/core_custom_frame_control \
     core/core_custom_logging \
     core/core_drop_files \
+    core/core_high_dpi \
     core/core_input_gamepad \
     core/core_input_gestures \
     core/core_input_gestures_web \
@@ -580,7 +580,6 @@ SHAPES = \
     shapes/shapes_rectangle_scaling \
     shapes/shapes_splines_drawing \
     shapes/shapes_top_down_lights
-
 
 TEXTURES = \
     textures/textures_background_scrolling \
@@ -675,6 +674,7 @@ SHADERS = \
     shaders/shaders_texture_outline \
     shaders/shaders_texture_tiling \
     shaders/shaders_texture_waves \
+    shaders/shaders_view_depth \
     shaders/shaders_write_depth \
     shaders/shaders_vertex_displacement
 
@@ -685,6 +685,7 @@ AUDIO = \
     audio/audio_raw_stream \
     audio/audio_sound_loading \
     audio/audio_sound_multi \
+    audio/audio_sound_positioning \
     audio/audio_stream_effects
 
 ifneq ($(TARGET_PLATFORM),PLATFORM_NX)
@@ -699,7 +700,6 @@ endif
 ifeq ($(TARGET_PLATFORM), PLATFORM_DESKTOP_GFLW)
     OTHERS += others/rlgl_standalone
 endif
-
 
 CURRENT_MAKEFILE = $(lastword $(MAKEFILE_LIST))
 

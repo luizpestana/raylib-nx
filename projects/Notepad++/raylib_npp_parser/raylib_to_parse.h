@@ -20,7 +20,7 @@ RLAPI void ToggleFullscreen(void);                                // Toggle wind
 RLAPI void ToggleBorderlessWindowed(void);                        // Toggle window state: borderless windowed, resizes window to match monitor resolution
 RLAPI void MaximizeWindow(void);                                  // Set window state: maximized, if resizable
 RLAPI void MinimizeWindow(void);                                  // Set window state: minimized, if resizable
-RLAPI void RestoreWindow(void);                                   // Set window state: not minimized/maximized
+RLAPI void RestoreWindow(void);                                   // Restore window from being minimized/maximized
 RLAPI void SetWindowIcon(Image image);                            // Set icon for window (single image, RGBA 32bit)
 RLAPI void SetWindowIcons(Image *images, int count);              // Set icon for window (multiple images, RGBA 32bit)
 RLAPI void SetWindowTitle(const char *title);                     // Set title for window
@@ -734,9 +734,9 @@ RLAPI void SetAudioStreamPan(AudioStream stream, float pan);          // Set pan
 RLAPI void SetAudioStreamBufferSizeDefault(int size);                 // Default size for new audio streams
 RLAPI void SetAudioStreamCallback(AudioStream stream, AudioCallback callback); // Audio thread callback to request new data
 
-RLAPI void AttachAudioStreamProcessor(AudioStream stream, AudioCallback processor); // Attach audio stream processor to stream, receives the samples as 'float'
+RLAPI void AttachAudioStreamProcessor(AudioStream stream, AudioCallback processor); // Attach audio stream processor to stream, receives frames x 2 samples as 'float' (stereo)
 RLAPI void DetachAudioStreamProcessor(AudioStream stream, AudioCallback processor); // Detach audio stream processor from stream
 
-RLAPI void AttachAudioMixedProcessor(AudioCallback processor); // Attach audio stream processor to the entire audio pipeline, receives the samples as 'float'
+RLAPI void AttachAudioMixedProcessor(AudioCallback processor); // Attach audio stream processor to the entire audio pipeline, receives frames x 2 samples as 'float' (stereo)
 RLAPI void DetachAudioMixedProcessor(AudioCallback processor); // Detach audio stream processor from the entire audio pipeline
 

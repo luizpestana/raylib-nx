@@ -134,6 +134,7 @@ static EM_BOOL EmscriptenFullscreenChangeCallback(int eventType, const Emscripte
 // static EM_BOOL EmscriptenWindowResizedCallback(int eventType, const EmscriptenUiEvent *event, void *userData);
 static EM_BOOL EmscriptenResizeCallback(int eventType, const EmscriptenUiEvent *event, void *userData);
 static EM_BOOL EmscriptenFocusCallback(int eventType, const EmscriptenFocusEvent *focusEvent, void *userData);
+static EM_BOOL EmscriptenVisibilityChangeCallback(int eventType, const EmscriptenVisibilityChangeEvent *visibilityChangeEvent, void *userData);
 
 // Emscripten input callback events
 static EM_BOOL EmscriptenMouseMoveCallback(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData);
@@ -167,7 +168,7 @@ bool WindowShouldClose(void)
 
     // Optionally we can manage the time we give-control-back-to-browser if required,
     // but it seems below line could generate stuttering on some browsers
-    //emscripten_sleep(16);
+    emscripten_sleep(12);
     
     return false;
 }
@@ -185,8 +186,8 @@ void ToggleFullscreen(void)
         else if (CORE.Window.flags & FLAG_BORDERLESS_WINDOWED_MODE) enterFullscreen = true;
         else
         {
-            const int canvasWidth = EM_ASM_INT( { return document.getElementById('canvas').width; }, 0);
-            const int canvasStyleWidth = EM_ASM_INT( { return parseInt(document.getElementById('canvas').style.width); }, 0);
+            const int canvasWidth = EM_ASM_INT( { return Module.canvas.width; }, 0);
+            const int canvasStyleWidth = EM_ASM_INT( { return parseInt(Module.canvas.style.width); }, 0);
             if (canvasStyleWidth > canvasWidth) enterFullscreen = false;
             else enterFullscreen = true;
         }
@@ -293,7 +294,7 @@ void ToggleBorderlessWindowed(void)
         else if (CORE.Window.flags & FLAG_FULLSCREEN_MODE) enterBorderless = true;
         else
         {
-            const int canvasWidth = EM_ASM_INT( { return document.getElementById('canvas').width; }, 0);
+            const int canvasWidth = EM_ASM_INT( { return Module.canvas.width; }, 0);
             const int screenWidth = EM_ASM_INT( { return screen.width; }, 0);
             if (screenWidth == canvasWidth) enterBorderless = false;
             else enterBorderless = true;
@@ -349,7 +350,7 @@ void MinimizeWindow(void)
     TRACELOG(LOG_WARNING, "MinimizeWindow() not available on target platform");
 }
 
-// Set window state: not minimized/maximized
+// Restore window from being minimized/maximized
 void RestoreWindow(void)
 {
     if ((glfwGetWindowAttrib(platform.handle, GLFW_RESIZABLE) == GLFW_TRUE) && (CORE.Window.flags & FLAG_WINDOW_MAXIMIZED))
@@ -363,6 +364,8 @@ void RestoreWindow(void)
 // Set window configuration state using flags
 void SetWindowState(unsigned int flags)
 {
+    if (!CORE.Window.ready) TRACELOG(LOG_WARNING, "WINDOW: SetWindowState does nothing before window initialization, Use \"SetConfigFlags\" instead");
+
     // Check previous state and requested state to apply required changes
     // NOTE: In most cases the functions already change the flags internally
 
@@ -379,8 +382,8 @@ void SetWindowState(unsigned int flags)
         const bool wasFullscreen = EM_ASM_INT( { if (document.fullscreenElement) return 1; }, 0);
         if (wasFullscreen)
         {
-            const int canvasWidth = EM_ASM_INT( { return document.getElementById('canvas').width; }, 0);
-            const int canvasStyleWidth = EM_ASM_INT( { return parseInt(document.getElementById('canvas').style.width); }, 0);
+            const int canvasWidth = EM_ASM_INT( { return Module.canvas.width; }, 0);
+            const int canvasStyleWidth = EM_ASM_INT( { return parseInt(Module.canvas.style.width); }, 0);
             if ((CORE.Window.flags & FLAG_FULLSCREEN_MODE) || canvasStyleWidth > canvasWidth) ToggleBorderlessWindowed();
         }
         else ToggleBorderlessWindowed();
@@ -393,7 +396,7 @@ void SetWindowState(unsigned int flags)
         const bool wasFullscreen = EM_ASM_INT( { if (document.fullscreenElement) return 1; }, 0);
         if (wasFullscreen)
         {
-            const int canvasWidth = EM_ASM_INT( { return document.getElementById('canvas').width; }, 0);
+            const int canvasWidth = EM_ASM_INT( { return Module.canvas.width; }, 0);
             const int screenWidth = EM_ASM_INT( { return screen.width; }, 0);
             if ((CORE.Window.flags & FLAG_BORDERLESS_WINDOWED_MODE) || screenWidth == canvasWidth ) ToggleFullscreen();
         }
@@ -512,7 +515,7 @@ void ClearWindowState(unsigned int flags)
         const bool wasFullscreen = EM_ASM_INT( { if (document.fullscreenElement) return 1; }, 0);
         if (wasFullscreen)
         {
-            const int canvasWidth = EM_ASM_INT( { return document.getElementById('canvas').width; }, 0);
+            const int canvasWidth = EM_ASM_INT( { return Module.canvas.width; }, 0);
             const int screenWidth = EM_ASM_INT( { return screen.width; }, 0);
             if ((CORE.Window.flags & FLAG_BORDERLESS_WINDOWED_MODE) || (screenWidth == canvasWidth)) EM_ASM(document.exitFullscreen(););
         }
@@ -526,8 +529,8 @@ void ClearWindowState(unsigned int flags)
         const bool wasFullscreen = EM_ASM_INT( { if (document.fullscreenElement) return 1; }, 0);
         if (wasFullscreen)
         {
-            const int canvasWidth = EM_ASM_INT( { return document.getElementById('canvas').width; }, 0);
-            const int canvasStyleWidth = EM_ASM_INT( { return parseInt(document.getElementById('canvas').style.width); }, 0);
+            const int canvasWidth = EM_ASM_INT( { return Module.canvas.width; }, 0);
+            const int canvasStyleWidth = EM_ASM_INT( { return parseInt(Module.canvas.style.width); }, 0);
             if ((CORE.Window.flags & FLAG_FULLSCREEN_MODE) || (canvasStyleWidth > canvasWidth)) EM_ASM(document.exitFullscreen(););
         }
 
@@ -685,7 +688,7 @@ void SetWindowOpacity(float opacity)
 {
     if (opacity >= 1.0f) opacity = 1.0f;
     else if (opacity <= 0.0f) opacity = 0.0f;
-    EM_ASM({ document.getElementById('canvas').style.opacity = $0; }, opacity);
+    EM_ASM({ Module.canvas.style.opacity = $0; }, opacity);
 }
 
 // Set window focused
@@ -708,7 +711,7 @@ int GetMonitorCount(void)
     return 1;
 }
 
-// Get number of monitors
+// Get current monitor where window is placed
 int GetCurrentMonitor(void)
 {
     TRACELOG(LOG_WARNING, "GetCurrentMonitor() not implemented on target platform");
@@ -962,7 +965,7 @@ void SetMouseCursor(int cursor)
 {
     if (CORE.Input.Mouse.cursor != cursor)
     {
-        if (!CORE.Input.Mouse.cursorHidden) EM_ASM( { document.getElementById('canvas').style.cursor = UTF8ToString($0); }, cursorLUT[cursor]);
+        if (!CORE.Input.Mouse.cursorHidden) EM_ASM( { Module.canvas.style.cursor = UTF8ToString($0); }, cursorLUT[cursor]);
 
         CORE.Input.Mouse.cursor = cursor;
     }
@@ -1383,6 +1386,10 @@ int InitPlatform(void)
     // Support focus events
     emscripten_set_blur_callback(GetCanvasId(), platform.handle, 1, EmscriptenFocusCallback);
     emscripten_set_focus_callback(GetCanvasId(), platform.handle, 1, EmscriptenFocusCallback);
+
+    // Support visibility events
+    emscripten_set_visibilitychange_callback(NULL, 1, EmscriptenVisibilityChangeCallback);
+
     //----------------------------------------------------------------------------
 
     // Initialize timing system
@@ -1756,6 +1763,13 @@ static EM_BOOL EmscriptenFocusCallback(int eventType, const EmscriptenFocusEvent
         default: consumed = 0; break;
     }
     return consumed;
+}
+
+static EM_BOOL EmscriptenVisibilityChangeCallback(int eventType, const EmscriptenVisibilityChangeEvent *visibilityChangeEvent, void *userData)
+{
+    if (visibilityChangeEvent->hidden) CORE.Window.flags |= FLAG_WINDOW_HIDDEN; // The window was hidden
+    else CORE.Window.flags &= ~FLAG_WINDOW_HIDDEN; // The window was restored
+    return 1; // The event was consumed by the callback handler
 }
 
 // Register touch input events
