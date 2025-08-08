@@ -7,5 +7,6 @@ Required file to make miniaudio.h compile to Switch
 int pthread_attr_setschedpolicy(void *attr, int policy) { return 0; }
 int sched_get_priority_max(int policy) { return 0; }
 int sched_get_priority_min(int policy) { return 0; }
+int pthread_attr_setinheritsched(void *attr, int inheritsched) { return 0; }
 
 #endif
