@@ -1,6 +1,6 @@
 /*******************************************************************************************
 *
-*   raylib [audio] example - raw audio streaming
+*   raylib [audio] example - raw stream
 *
 *   Example complexity rating: [★★★☆] 3/4
 *
@@ -62,7 +62,7 @@ int main(void)
     const int screenWidth = 800;
     const int screenHeight = 450;
 
-    InitWindow(screenWidth, screenHeight, "raylib [audio] example - raw audio streaming");
+    InitWindow(screenWidth, screenHeight, "raylib [audio] example - raw stream");
 
     InitAudioDevice();              // Initialize audio device
 
@@ -115,7 +115,7 @@ int main(void)
             float fp = (float)(mousePosition.y);
             frequency = 40.0f + (float)(fp);
 
-            float pan = (float)(mousePosition.x) / (float)screenWidth;
+            float pan = (float)(mousePosition.x)/(float)screenWidth;
             SetAudioStreamPan(stream, pan);
         }
 
@@ -141,7 +141,7 @@ int main(void)
             }
 
             // Scale read cursor's position to minimize transition artifacts
-            //readCursor = (int)(readCursor * ((float)waveLength / (float)oldWavelength));
+            //readCursor = (int)(readCursor*((float)waveLength/(float)oldWavelength));
             oldFrequency = frequency;
         }
 

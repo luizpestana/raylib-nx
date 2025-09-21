@@ -53,6 +53,7 @@
 #include <termios.h>        // POSIX terminal control definitions - tcgetattr(), tcsetattr()
 #include <pthread.h>        // POSIX threads management (inputs reading)
 #include <dirent.h>         // POSIX directory browsing
+#include <limits.h>         // INT_MAX
 
 #include <sys/ioctl.h>      // Required for: ioctl() - UNIX System call for device-specific input/output operations
 #include <linux/kd.h>       // Linux: KDSKBMODE, K_MEDIUMRAM constants definition
@@ -155,7 +156,7 @@ extern CoreData CORE;                   // Global CORE state context
 static PlatformData platform = { 0 };   // Platform specific data
 
 //----------------------------------------------------------------------------------
-// Local Variables Definition
+// Global Variables Definition
 //----------------------------------------------------------------------------------
 
 // NOTE: The complete evdev EV_KEY list can be found at /usr/include/linux/input-event-codes.h
@@ -244,6 +245,7 @@ static void RestoreKeyboard(void);              // Restore keyboard system
 static void ProcessKeyboard(void);              // Process keyboard events
 #endif
 
+// Input management functions
 static void InitEvdevInput(void);               // Initialize evdev inputs
 static void ConfigureEvdevDevice(char *device); // Identifies a input device and configures it for use if appropriate
 static void PollKeyboardEvents(void);           // Process evdev keyboard events
@@ -702,7 +704,7 @@ void SwapScreenBuffer()
     if (!crtcSet || !platform.gbmSurface) return;
 
     static int loopCnt = 0;
-    static int errCnt[5] = {0};
+    static int errCnt[5] = { 0 };
     loopCnt++;
 
     // Call this only, if pendingFlip is not set
@@ -2150,6 +2152,8 @@ static int FindNearestConnectorMode(const drmModeConnector *connector, uint widt
     if (NULL == connector) return -1;
 
     int nearestIndex = -1;
+    int minUnusedPixels = INT_MAX;
+    int minFpsDiff = INT_MAX;
     for (int i = 0; i < platform.connector->count_modes; i++)
     {
         const drmModeModeInfo *const mode = &platform.connector->modes[i];
@@ -2169,21 +2173,17 @@ static int FindNearestConnectorMode(const drmModeConnector *connector, uint widt
             continue;
         }
 
-        if (nearestIndex < 0)
+        const int unusedPixels = (mode->hdisplay - width) * (mode->vdisplay - height);
+        const int fpsDiff = mode->vrefresh - fps;
+
+        if ((unusedPixels < minUnusedPixels) ||
+            ((unusedPixels == minUnusedPixels) && (abs(fpsDiff) < abs(minFpsDiff))) ||
+            ((unusedPixels == minUnusedPixels) && (abs(fpsDiff) == abs(minFpsDiff)) && (fpsDiff > 0)))
         {
             nearestIndex = i;
-            continue;
+            minUnusedPixels = unusedPixels;
+            minFpsDiff = fpsDiff;
         }
-
-        const int widthDiff = abs(mode->hdisplay - width);
-        const int heightDiff = abs(mode->vdisplay - height);
-        const int fpsDiff = abs(mode->vrefresh - fps);
-
-        const int nearestWidthDiff = abs(platform.connector->modes[nearestIndex].hdisplay - width);
-        const int nearestHeightDiff = abs(platform.connector->modes[nearestIndex].vdisplay - height);
-        const int nearestFpsDiff = abs(platform.connector->modes[nearestIndex].vrefresh - fps);
-
-        if ((widthDiff < nearestWidthDiff) || (heightDiff < nearestHeightDiff) || (fpsDiff < nearestFpsDiff)) nearestIndex = i;
     }
 
     return nearestIndex;

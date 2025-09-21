@@ -1,12 +1,12 @@
 /*******************************************************************************************
 *
-*   raylib [textures] example - extract channel from image
+*   raylib [textures] example - image channel
 *
 *   NOTE: Images are loaded in CPU memory (RAM); textures are loaded in GPU memory (VRAM)
 *
 *   Example complexity rating: [★★☆☆] 2/4
 *
-*   Example originally created with raylib 5.1-dev, last time updated with raylib 5.1-dev
+*   Example originally created with raylib 5.5, last time updated with raylib 5.5
 *
 *   Example contributed by Bruno Cabral (@brccabral) and reviewed by Ramon Santamaria (@raysan5)
 *
@@ -29,7 +29,7 @@ int main(void)
     const int screenWidth = 800;
     const int screenHeight = 450;
 
-    InitWindow(screenWidth, screenHeight, "raylib [textures] example - extract channel from image");
+    InitWindow(screenWidth, screenHeight, "raylib [textures] example - image channel");
 
     Image fudesumiImage = LoadImage("resources/fudesumi.png");
 
@@ -64,10 +64,10 @@ int main(void)
     Rectangle fudesumiRec = {0, 0, fudesumiImage.width, fudesumiImage.height};
 
     Rectangle fudesumiPos = {50, 10, fudesumiImage.width*0.8f, fudesumiImage.height*0.8f};
-    Rectangle redPos = { 410, 10, fudesumiPos.width / 2, fudesumiPos.height / 2 };
-    Rectangle greenPos = { 600, 10, fudesumiPos.width / 2, fudesumiPos.height / 2 };
-    Rectangle bluePos = { 410, 230, fudesumiPos.width / 2, fudesumiPos.height / 2 };
-    Rectangle alphaPos = { 600, 230, fudesumiPos.width / 2, fudesumiPos.height / 2 };
+    Rectangle redPos = { 410, 10, fudesumiPos.width/2, fudesumiPos.height/2 };
+    Rectangle greenPos = { 600, 10, fudesumiPos.width/2, fudesumiPos.height/2 };
+    Rectangle bluePos = { 410, 230, fudesumiPos.width/2, fudesumiPos.height/2 };
+    Rectangle alphaPos = { 600, 230, fudesumiPos.width/2, fudesumiPos.height/2 };
 
     SetTargetFPS(60);               // Set our game to run at 60 frames-per-second
     //--------------------------------------------------------------------------------------

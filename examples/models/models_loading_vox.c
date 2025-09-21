@@ -1,6 +1,6 @@
 /*******************************************************************************************
 *
-*   raylib [models] example - magicavoxel loading
+*   raylib [models] example - loading vox
 *
 *   Example complexity rating: [★☆☆☆] 1/4
 *
@@ -47,7 +47,7 @@ int main(void)
 		"resources/models/vox/fez.vox"
 	};
 
-	InitWindow(screenWidth, screenHeight, "raylib [models] example - magicavoxel loading");
+	InitWindow(screenWidth, screenHeight, "raylib [models] example - loading vox");
 
 	// Define the camera to look into our 3d world
 	Camera camera = { 0 };
@@ -127,8 +127,8 @@ int main(void)
 		if (IsMouseButtonDown(MOUSE_BUTTON_MIDDLE))
 		{
 			const Vector2 mouseDelta = GetMouseDelta();
-			camerarot.x = mouseDelta.x * 0.05f;
-			camerarot.y = mouseDelta.y * 0.05f;
+			camerarot.x = mouseDelta.x*0.05f;
+			camerarot.y = mouseDelta.y*0.05f;
 		}
 		else
 		{
@@ -138,14 +138,14 @@ int main(void)
 
 		UpdateCameraPro(&camera,
 			(Vector3) {
-			(IsKeyDown(KEY_W) || IsKeyDown(KEY_UP)) * 0.1f -      // Move forward-backward
-				(IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN)) * 0.1f,
-				(IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) * 0.1f -   // Move right-left
-				(IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) * 0.1f,
+			(IsKeyDown(KEY_W) || IsKeyDown(KEY_UP))*0.1f -      // Move forward-backward
+				(IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN))*0.1f,
+				(IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT))*0.1f -   // Move right-left
+				(IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT))*0.1f,
 				0.0f                                                // Move up-down
 		},
 			camerarot,
-			GetMouseWheelMove() * -2.0f);                              // Move to target (zoom)
+			GetMouseWheelMove()*-2.0f);                              // Move to target (zoom)
 
 		// Cycle between models on mouse click
 		if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) currentModel = (currentModel + 1) % MAX_VOX_FILES;
