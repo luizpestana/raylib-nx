@@ -60,7 +60,7 @@ int main(void)
         //----------------------------------------------------------------------------------
         UpdateCamera(&camera, CAMERA_FREE);
 
-        float th = GetTime();
+        float th = (float)GetTime();
 
         Vector3 spherePos = {
             .x = 5.0f*cosf(th),
@@ -69,6 +69,7 @@ int main(void)
         };
 
         SetSoundPosition(camera, sound, spherePos, 20.0f);
+
         if (!IsSoundPlaying(sound)) PlaySound(sound);
         //----------------------------------------------------------------------------------
 
@@ -94,6 +95,8 @@ int main(void)
 
     CloseWindow();          // Close window and OpenGL context
     //--------------------------------------------------------------------------------------
+
+    return 0;
 }
 
 //------------------------------------------------------------------------------------

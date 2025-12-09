@@ -147,7 +147,7 @@ static int textLineSpacing = 2;                 // Text vertical line spacing in
 static Font LoadBMFont(const char *fileName);   // Load a BMFont file (AngelCode font file)
 #endif
 #if defined(SUPPORT_FILEFORMAT_BDF)
-static GlyphInfo *LoadFontDataBDF(const unsigned char *fileData, int dataSize, int *codepoints, int codepointCount, int *outFontSize);
+static GlyphInfo *LoadFontDataBDF(const unsigned char *fileData, int dataSize, const int *codepoints, int codepointCount, int *outFontSize);
 #endif
 
 #if defined(SUPPORT_DEFAULT_FONT)
@@ -647,7 +647,7 @@ GlyphInfo *LoadFontData(const unsigned char *fileData, int dataSize, int fontSiz
     {
         bool genFontChars = false;
         stbtt_fontinfo fontInfo = { 0 };
-        int *requiredCodepoints = (int *)codepoints;
+        int *requiredCodepoints = (int *)codepoints; // TODO: Should we create a shallow copy to avoid "dealing" with a const user array?
 
         if (stbtt_InitFont(&fontInfo, (unsigned char *)fileData, 0))     // Initialize font for data reading
         {
@@ -724,7 +724,8 @@ GlyphInfo *LoadFontData(const unsigned char *fileData, int dataSize, int fontSiz
                         stbtt_GetCodepointHMetrics(&fontInfo, cp, &glyphs[k].advanceX, NULL);
                         glyphs[k].advanceX = (int)((float)glyphs[k].advanceX*scaleFactor);
 
-                        if (cpHeight > fontSize) TRACELOG(LOG_WARNING, "FONT: [0x%04x] Glyph height is bigger than requested font size: %i > %i", cp, cpHeight, (int)fontSize);
+                        // WARNING: If requested SDF font, sdf-glyph height is definitely bigger than fontSize due to FONT_SDF_CHAR_PADDING
+                        if ((type != FONT_SDF) && (cpHeight > fontSize)) TRACELOG(LOG_WARNING, "FONT: [0x%04x] Glyph height is bigger than requested font size: %i > %i", cp, cpHeight, (int)fontSize);
 
                         // Load glyph image
                         glyphs[k].image.width = cpWidth;
@@ -1451,16 +1452,20 @@ Rectangle GetGlyphAtlasRec(Font font, int codepoint)
 // NOTE: Returned lines end with null terminator '\0'
 char **LoadTextLines(const char *text, int *count)
 {
-    int lineCount = 1;
-    int textSize = strlen(text);
+    char **lines = NULL;
 
-    // Text pass to get required line count
+    if (text == NULL) { *count = 0; return lines; }
+
+    int lineCount = 1;
+    int textSize = (int)strlen(text);
+
+    // First text scan pass to get required line count
     for (int i = 0; i < textSize; i++)
     {
         if (text[i] == '\n') lineCount++;
     }
 
-    char **lines = (char **)RL_CALLOC(lineCount, sizeof(char *));
+    lines = (char **)RL_CALLOC(lineCount, sizeof(char *));
     for (int i = 0, l = 0, lineLen = 0; i <= textSize; i++)
     {
         if ((text[i] == '\n') || (text[i] == '\0'))
@@ -1519,12 +1524,12 @@ const char *TextFormat(const char *text, ...)
     int requiredByteCount = vsnprintf(currentBuffer, MAX_TEXT_BUFFER_LENGTH, text, args);
     va_end(args);
 
-    // If requiredByteCount is larger than the MAX_TEXT_BUFFER_LENGTH, then overflow occured
+    // If requiredByteCount is larger than the MAX_TEXT_BUFFER_LENGTH, then overflow occurred
     if (requiredByteCount >= MAX_TEXT_BUFFER_LENGTH)
     {
         // Inserting "..." at the end of the string to mark as truncated
         char *truncBuffer = buffers[index] + MAX_TEXT_BUFFER_LENGTH - 4; // Adding 4 bytes = "...\0"
-        sprintf(truncBuffer, "...");
+        snprintf(truncBuffer, 4, "...");
     }
 
     index += 1;     // Move to next buffer for next function call
@@ -1679,7 +1684,7 @@ char *GetTextBetween(const char *text, const char *begin, const char *end)
 
     if (beginIndex > -1)
     {
-        int beginLen = strlen(begin);
+        int beginLen = (int)strlen(begin);
         int endIndex = TextFindIndex(text + beginIndex + beginLen, end);
 
         if (endIndex > -1)
@@ -1696,14 +1701,14 @@ char *GetTextBetween(const char *text, const char *begin, const char *end)
 
 // Replace text string
 // REQUIRES: strstr(), strncpy(), strcpy()
-// TODO: If (replacement == NULL) remove "search" text
+// TODO: If (replacement == "") remove "search" text
 // WARNING: Allocated memory must be manually freed
 char *TextReplace(const char *text, const char *search, const char *replacement)
 {
     char *result = NULL;
-    
+
     if (!text || !search) return NULL; // Sanity check
-    
+
     char *insertPoint = NULL;   // Next insert point
     char *temp = NULL;          // Temp pointer
     int searchLen = 0;          // Search string length of (the string to remove)
@@ -1731,7 +1736,7 @@ char *TextReplace(const char *text, const char *search, const char *replacement)
     //  - 'text' points to the remainder of text after "end of replace"
     while (count--)
     {
-        insertPoint = strstr(text, search);
+        insertPoint = (char *)strstr(text, search);
         lastReplacePos = (int)(insertPoint - text);
         temp = strncpy(temp, text, lastReplacePos) + lastReplacePos;
         temp = strcpy(temp, replacement) + replaceLen;
@@ -1753,20 +1758,20 @@ char *TextReplaceBetween(const char *text, const char *begin, const char *end, c
     char *result = NULL;
 
     if (!text || !begin || !end) return NULL; // Sanity check
-    
+
     int beginIndex = TextFindIndex(text, begin);
 
     if (beginIndex > -1)
     {
-        int beginLen = strlen(begin);
+        int beginLen = (int)strlen(begin);
         int endIndex = TextFindIndex(text + beginIndex + beginLen, end);
 
         if (endIndex > -1)
         {
             endIndex += (beginIndex + beginLen);
 
-            int textLen = strlen(text);
-            int replaceLen = (replacement == NULL)? 0 : strlen(replacement);
+            int textLen = (int)strlen(text);
+            int replaceLen = (replacement == NULL)? 0 : (int)strlen(replacement);
             int toreplaceLen = endIndex - beginIndex - beginLen;
             result = (char *)RL_CALLOC(textLen + replaceLen - toreplaceLen + 1, sizeof(char));
 
@@ -1886,8 +1891,9 @@ void TextAppend(char *text, const char *append, int *position)
 int TextFindIndex(const char *text, const char *search)
 {
     int position = -1;
+    if (text == NULL) return position;
 
-    char *ptr = strstr(text, search);
+    char *ptr = (char *)strstr(text, search);
 
     if (ptr != NULL) position = (int)(ptr - text);
 
@@ -1954,6 +1960,7 @@ char *TextToPascal(const char *text)
             {
                 j++;
                 if ((text[j] >= 'a') && (text[j] <= 'z')) buffer[i] = text[j] - 32;
+                else if ((text[j] >= '0') && (text[j] <= '9')) buffer[i] = text[j];
             }
         }
     }
@@ -2516,7 +2523,7 @@ static GlyphInfo *LoadFontDataBDF(const unsigned char *fileData, int dataSize, c
     char buffer[MAX_BUFFER_SIZE] = { 0 };
 
     GlyphInfo *glyphs = NULL;
-    bool genFontChars = false;
+    bool internalCodepoints = false;
 
     int totalReadBytes = 0;         // Data bytes read (total)
     int readBytes = 0;              // Data bytes read (line)
@@ -2544,21 +2551,23 @@ static GlyphInfo *LoadFontDataBDF(const unsigned char *fileData, int dataSize, c
     int charDWidthX = 0;            // Character advance X
     int charDWidthY = 0;            // Character advance Y (unused)
 
-    GlyphInfo *glyphs = NULL;       // Pointer to output glyph info (NULL if not set)
-    int *requiredCodepoints = codepoints;
+    int *requiredCodepoints = (int *)RL_MALLOC(codepointCount*sizeof(int));
 
     if (fileData == NULL) return glyphs;
 
     // In case no chars count provided, default to 95
     codepointCount = (codepointCount > 0)? codepointCount : 95;
 
-    // Fill fontChars in case not provided externally
-    // NOTE: By default we fill glyphCount consecutively, starting at 32 (Space)
-    if (requiredCodepoints == NULL)
+    if (codepoints == NULL)
     {
-        requiredCodepoints = (int *)RL_MALLOC(codepointCount*sizeof(int));
+        // Fill internal codepoints array in case not provided externally
+        // NOTE: By default we fill glyphCount consecutively, starting at 32 (Space)
         for (int i = 0; i < codepointCount; i++) requiredCodepoints[i] = i + 32;
-        genFontChars = true;
+        internalCodepoints = true;
+    }
+    else
+    {
+        for (int i = 0; i < codepointCount; i++) requiredCodepoints[i] = codepoints[i];
     }
 
     glyphs = (GlyphInfo *)RL_CALLOC(codepointCount, sizeof(GlyphInfo));
@@ -2633,11 +2642,11 @@ static GlyphInfo *LoadFontDataBDF(const unsigned char *fileData, int dataSize, c
                 // Search for glyph index in codepoints
                 glyphs = NULL;
 
-                for (int codepointIndex = 0; codepointIndex < codepointCount; codepointIndex++)
+                for (int index = 0; index < codepointCount; index++)
                 {
-                    if (codepoints[codepointIndex] == charEncoding)
+                    if (requiredCodepoints[index] == charEncoding)
                     {
-                        glyphs = &glyphs[codepointIndex];
+                        glyphs = &glyphs[index];
                         break;
                     }
                 }
@@ -2737,7 +2746,7 @@ static GlyphInfo *LoadFontDataBDF(const unsigned char *fileData, int dataSize, c
         }
     }
 
-    if (genFontChars) RL_FREE(codepoints);
+    RL_FREE(requiredCodepoints);
 
     if (fontMalformed)
     {

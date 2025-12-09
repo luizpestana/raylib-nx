@@ -40,14 +40,8 @@ int main(void)
         //----------------------------------------------------------------------------------
         if (IsKeyPressed(KEY_H))
         {
-            if (IsCursorHidden())
-            {
-                ShowCursor();
-            }
-            else
-            {
-                HideCursor();
-            }
+            if (IsCursorHidden()) ShowCursor();
+            else HideCursor();
         }
 
         ballPosition = GetMousePosition();
@@ -72,7 +66,7 @@ int main(void)
             DrawText("move ball with mouse and click mouse button to change color", 10, 10, 20, DARKGRAY);
             DrawText("Press 'H' to toggle cursor visibility", 10, 30, 20, DARKGRAY);
 
-            if (!IsCursorHidden()) DrawText("CURSOR HIDDEN", 20, 60, 20, RED);
+            if (IsCursorHidden()) DrawText("CURSOR HIDDEN", 20, 60, 20, RED);
             else DrawText("CURSOR VISIBLE", 20, 60, 20, LIME);
 
         EndDrawing();

@@ -1293,10 +1293,19 @@ void UploadMesh(Mesh *mesh, bool dynamic)
     rlEnableVertexAttribute(RL_DEFAULT_SHADER_ATTRIB_LOCATION_POSITION);
 
     // Enable vertex attributes: texcoords (shader-location = 1)
-    mesh->vboId[RL_DEFAULT_SHADER_ATTRIB_LOCATION_TEXCOORD] = rlLoadVertexBuffer(mesh->texcoords, mesh->vertexCount*2*sizeof(float), dynamic);
-    rlSetVertexAttribute(RL_DEFAULT_SHADER_ATTRIB_LOCATION_TEXCOORD, 2, RL_FLOAT, 0, 0, 0);
-    rlEnableVertexAttribute(RL_DEFAULT_SHADER_ATTRIB_LOCATION_TEXCOORD);
 
+    if (mesh->texcoords != NULL)
+    {
+        mesh->vboId[RL_DEFAULT_SHADER_ATTRIB_LOCATION_TEXCOORD] = rlLoadVertexBuffer(mesh->texcoords, mesh->vertexCount*2*sizeof(float), dynamic);
+        rlSetVertexAttribute(RL_DEFAULT_SHADER_ATTRIB_LOCATION_TEXCOORD, 2, RL_FLOAT, 0, 0, 0);
+        rlEnableVertexAttribute(RL_DEFAULT_SHADER_ATTRIB_LOCATION_TEXCOORD);
+    }
+    else
+    {
+        float value[2] = { 0.0f, 0.0f };
+        rlSetVertexAttributeDefault(RL_DEFAULT_SHADER_ATTRIB_LOCATION_TEXCOORD, value, SHADER_ATTRIB_VEC2, 2);
+        rlDisableVertexAttribute(RL_DEFAULT_SHADER_ATTRIB_LOCATION_TEXCOORD);
+    }
     // WARNING: When setting default vertex attribute values, the values for each generic vertex attribute
     // is part of current state, and it is maintained even if a different program object is used
 
@@ -1420,23 +1429,23 @@ void UpdateMeshBuffer(Mesh mesh, int index, const void *data, int dataSize, int 
 // Draw a 3d mesh with material and transform
 void DrawMesh(Mesh mesh, Material material, Matrix transform)
 {
-#if defined(GRAPHICS_API_OPENGL_11)
+#if defined(GRAPHICS_API_OPENGL_11) || defined(GRAPHICS_API_OPENGL_11_SOFTWARE)
     #define GL_VERTEX_ARRAY         0x8074
     #define GL_NORMAL_ARRAY         0x8075
     #define GL_COLOR_ARRAY          0x8076
     #define GL_TEXTURE_COORD_ARRAY  0x8078
 
-    rlEnableTexture(material.maps[MATERIAL_MAP_DIFFUSE].texture.id);
+    if (mesh.texcoords && material.maps[MATERIAL_MAP_DIFFUSE].texture.id > 0) rlEnableTexture(material.maps[MATERIAL_MAP_DIFFUSE].texture.id);
 
     if (mesh.animVertices) rlEnableStatePointer(GL_VERTEX_ARRAY, mesh.animVertices);
     else rlEnableStatePointer(GL_VERTEX_ARRAY, mesh.vertices);
 
-    rlEnableStatePointer(GL_TEXTURE_COORD_ARRAY, mesh.texcoords);
+    if (mesh.texcoords) rlEnableStatePointer(GL_TEXTURE_COORD_ARRAY, mesh.texcoords);
 
     if (mesh.animNormals) rlEnableStatePointer(GL_NORMAL_ARRAY, mesh.animNormals);
-    else rlEnableStatePointer(GL_NORMAL_ARRAY, mesh.normals);
+    else if (mesh.normals) rlEnableStatePointer(GL_NORMAL_ARRAY, mesh.normals);
 
-    rlEnableStatePointer(GL_COLOR_ARRAY, mesh.colors);
+    if (mesh.colors) rlEnableStatePointer(GL_COLOR_ARRAY, mesh.colors);
 
     rlPushMatrix();
         rlMultMatrixf(MatrixToFloat(transform));
@@ -3280,7 +3289,7 @@ Mesh GenMeshCubicmap(Image cubicmap, Vector3 cubeSize)
 
     for (int z = 0; z < cubicmap.height; ++z)
     {
-        for (int x = 0; x < cubicmap.width; ++x)
+        for (int x = 0; x < cubicmap.width; x++)
         {
             // Define the 8 vertex of the cube, we will combine them accordingly later...
             Vector3 v1 = { w*(x - 0.5f), h2, h*(z - 0.5f) };
@@ -3889,14 +3898,14 @@ void DrawBillboardPro(Camera camera, Texture2D texture, Rectangle source, Vector
     // Flip the content of the billboard while maintaining the counterclockwise edge rendering order
     if (size.x < 0.0f)
     {
-        source.x += size.x;
+        source.x -= size.x;
         source.width *= -1.0;
         right = Vector3Negate(right);
         origin.x *= -1.0f;
     }
     if (size.y < 0.0f)
     {
-        source.y += size.y;
+        source.y -= size.y;
         source.height *= -1.0;
         up = Vector3Negate(up);
         origin.y *= -1.0f;
@@ -4261,9 +4270,10 @@ static void BuildPoseFromParentJoints(BoneInfo *bones, int boneCount, Transform 
                 continue;
             }
             transforms[i].rotation = QuaternionMultiply(transforms[bones[i].parent].rotation, transforms[i].rotation);
+            transforms[i].scale = Vector3Multiply(transforms[i].scale, transforms[bones[i].parent].scale);
+            transforms[i].translation = Vector3Multiply(transforms[i].translation, transforms[bones[i].parent].scale);
             transforms[i].translation = Vector3RotateByQuaternion(transforms[i].translation, transforms[bones[i].parent].rotation);
             transforms[i].translation = Vector3Add(transforms[i].translation, transforms[bones[i].parent].translation);
-            transforms[i].scale = Vector3Multiply(transforms[i].scale, transforms[bones[i].parent].scale);
         }
     }
 }
@@ -4418,8 +4428,14 @@ static Model LoadOBJ(const char *fileName)
 
         model.meshes[i].vertices = (float *)MemAlloc(sizeof(float)*vertexCount*3);
         model.meshes[i].normals = (float *)MemAlloc(sizeof(float)*vertexCount*3);
+    #if defined(GRAPHICS_API_OPENGL_33) || defined(GRAPHICS_API_OPENGL_ES2)
         model.meshes[i].texcoords = (float *)MemAlloc(sizeof(float)*vertexCount*2);
         model.meshes[i].colors = (unsigned char *)MemAlloc(sizeof(unsigned char)*vertexCount*4);
+    #else
+        if (objAttributes.texcoords != NULL && objAttributes.num_texcoords > 0) model.meshes[i].texcoords = (float *)MemAlloc(sizeof(float)*vertexCount*2);
+        else model.meshes[i].texcoords = NULL;
+        model.meshes[i].colors = NULL;
+    #endif
     }
 
     MemFree(localMeshVertexCounts);
@@ -4473,8 +4489,13 @@ static Model LoadOBJ(const char *fileName)
 
             for (int i = 0; i < 3; i++) model.meshes[meshIndex].vertices[localMeshVertexCount*3 + i] = objAttributes.vertices[vertIndex*3 + i];
 
-            for (int i = 0; i < 2; i++) model.meshes[meshIndex].texcoords[localMeshVertexCount*2 + i] = objAttributes.texcoords[texcordIndex*2 + i];
-            if (objAttributes.normals != NULL && normalIndex != TINYOBJ_INVALID_INDEX && normalIndex >= 0)
+            if ((objAttributes.texcoords != NULL) && (texcordIndex != TINYOBJ_INVALID_INDEX) && (texcordIndex >= 0) && (model.meshes[meshIndex].texcoords))
+            {
+                for (int i = 0; i < 2; i++) model.meshes[meshIndex].texcoords[localMeshVertexCount*2 + i] = objAttributes.texcoords[texcordIndex*2 + i];
+                model.meshes[meshIndex].texcoords[localMeshVertexCount*2 + 1] = 1.0f - model.meshes[meshIndex].texcoords[localMeshVertexCount*2 + 1];
+            }
+
+            if ((objAttributes.normals != NULL) && (normalIndex != TINYOBJ_INVALID_INDEX) && (normalIndex >= 0))
             {
                 for (int i = 0; i < 3; i++) model.meshes[meshIndex].normals[localMeshVertexCount*3 + i] = objAttributes.normals[normalIndex*3 + i];
             }
@@ -4484,11 +4505,9 @@ static Model LoadOBJ(const char *fileName)
                 model.meshes[meshIndex].normals[localMeshVertexCount*3 + 1] = 1.0f;
                 model.meshes[meshIndex].normals[localMeshVertexCount*3 + 2] = 0.0f;
             }
-
-            model.meshes[meshIndex].texcoords[localMeshVertexCount*2 + 1] = 1.0f - model.meshes[meshIndex].texcoords[localMeshVertexCount*2 + 1];
-
+        #if defined(GRAPHICS_API_OPENGL_33) || defined(GRAPHICS_API_OPENGL_ES2)
             for (int i = 0; i < 4; i++) model.meshes[meshIndex].colors[localMeshVertexCount*4 + i] = 255;
-
+        #endif
             faceVertIndex++;
             localMeshVertexCount++;
         }
@@ -4999,9 +5018,9 @@ static ModelAnimation *LoadModelAnimationsIQM(const char *fileName, int *animCou
         animations[a].boneCount = iqmHeader->num_poses;
         animations[a].bones = (BoneInfo *)RL_MALLOC(iqmHeader->num_poses*sizeof(BoneInfo));
         animations[a].framePoses = (Transform **)RL_MALLOC(anim[a].num_frames*sizeof(Transform *));
-        memcpy(animations[a].name, fileDataPtr + iqmHeader->ofs_text + anim[a].name, 32);   //  I don't like this 32 here
-        TraceLog(LOG_INFO, "IQM Anim %s", animations[a].name);
-        // animations[a].framerate = anim.framerate;     // TODO: Use animation framerate data?
+        memcpy(animations[a].name, fileDataPtr + iqmHeader->ofs_text + anim[a].name, 32);
+        TRACELOG(LOG_INFO, "IQM Anim %s", animations[a].name);
+        //animations[a].framerate = anim.framerate; // TODO: Use animation framerate data?
 
         for (unsigned int j = 0; j < iqmHeader->num_poses; j++)
         {
@@ -5009,7 +5028,7 @@ static ModelAnimation *LoadModelAnimationsIQM(const char *fileName, int *animCou
             if (iqmHeader->num_joints > 0)
                 memcpy(animations[a].bones[j].name, fileDataPtr + iqmHeader->ofs_text + joints[j].name, BONE_NAME_LENGTH*sizeof(char));
             else
-                strcpy(animations[a].bones[j].name, "ANIMJOINTNAME"); // default bone name otherwise
+                strcpy(animations[a].bones[j].name, "ANIMJOINTNAME"); // Default bone name otherwise
             animations[a].bones[j].parent = poses[j].parent;
         }
 
@@ -5151,7 +5170,7 @@ static cgltf_result LoadFileGLTFCallback(const struct cgltf_memory_options *memo
 // Release file data callback for cgltf
 static void ReleaseFileGLTFCallback(const struct cgltf_memory_options *memoryOptions, const struct cgltf_file_options *fileOptions, void *data)
 {
-    UnloadFileData(data);
+    UnloadFileData((unsigned char *)data);
 }
 
 // Load image from different glTF provided methods (uri, path, buffer_view)
@@ -5559,6 +5578,56 @@ static Model LoadGLTF(const char *fileName)
                                     vertices[3*k+2] = vt.z;
                                 }
                             }
+                            else if ((attribute->type == cgltf_type_vec3) && (attribute->component_type == cgltf_component_type_r_16u))
+                            {
+                                // Init raylib mesh vertices to copy glTF attribute data
+                                model.meshes[meshIndex].vertexCount = (int)attribute->count;
+                                model.meshes[meshIndex].vertices = (float *)RL_MALLOC(attribute->count*3*sizeof(float));
+
+                                // Load data into a temp buffer to be converted to raylib data type
+                                unsigned short *temp = (unsigned short *)RL_MALLOC(attribute->count*3*sizeof(unsigned short));
+                                LOAD_ATTRIBUTE(attribute, 3, unsigned short, temp);
+
+                                // Convert data to raylib vertex data type (float) the matrix will scale it to the correct size as a float
+                                for (unsigned int t = 0; t < attribute->count*3; t++) model.meshes[meshIndex].vertices[t] = (float)temp[t];
+
+                                RL_FREE(temp);
+
+                                // Transform the vertices
+                                float *vertices = model.meshes[meshIndex].vertices;
+                                for (unsigned int k = 0; k < attribute->count; k++)
+                                {
+                                    Vector3 vt = Vector3Transform((Vector3){ vertices[3*k], vertices[3*k + 1], vertices[3*k + 2] }, worldMatrix);
+                                    vertices[3*k] = vt.x;
+                                    vertices[3*k + 1] = vt.y;
+                                    vertices[3*k + 2] = vt.z;
+                                }
+                            }
+                            else if ((attribute->type == cgltf_type_vec3) && (attribute->component_type == cgltf_component_type_r_16))
+                            {
+                                // Init raylib mesh vertices to copy glTF attribute data
+                                model.meshes[meshIndex].vertexCount = (int)attribute->count;
+                                model.meshes[meshIndex].vertices = (float *)RL_MALLOC(attribute->count*3*sizeof(float));
+
+                                // Load data into a temp buffer to be converted to raylib data type
+                                short *temp = (short *)RL_MALLOC(attribute->count*3*sizeof(short));
+                                LOAD_ATTRIBUTE(attribute, 3, short, temp);
+
+                                // Convert data to raylib vertex data type (float) the matrix will scale it to the correct size as a float
+                                for (unsigned int t = 0; t < attribute->count*3; t++) model.meshes[meshIndex].vertices[t] = (float)temp[t];
+
+                                RL_FREE(temp);
+
+                                // Transform the vertices
+                                float *vertices = model.meshes[meshIndex].vertices;
+                                for (unsigned int k = 0; k < attribute->count; k++)
+                                {
+                                    Vector3 vt = Vector3Transform((Vector3){ vertices[3*k], vertices[3*k + 1], vertices[3*k + 2] }, worldMatrix);
+                                    vertices[3*k] = vt.x;
+                                    vertices[3*k + 1] = vt.y;
+                                    vertices[3*k + 2] = vt.z;
+                                }
+                            }
                             else TRACELOG(LOG_WARNING, "MODEL: [%s] Vertices attribute data format not supported, use vec3 float", fileName);
                         }
                     }
@@ -5585,6 +5654,78 @@ static Model LoadGLTF(const char *fileName)
                                     normals[3*k] = nt.x;
                                     normals[3*k+1] = nt.y;
                                     normals[3*k+2] = nt.z;
+                                }
+                            }
+                            else if ((attribute->type == cgltf_type_vec3) && (attribute->component_type == cgltf_component_type_r_16))
+                            {
+                                // Init raylib mesh normals to copy glTF attribute data
+                                model.meshes[meshIndex].normals = (float *)RL_MALLOC(attribute->count*3*sizeof(float));
+
+                                // Load data into a temp buffer to be converted to raylib data type
+                                short *temp = (short *)RL_MALLOC(attribute->count*3*sizeof(short));
+                                LOAD_ATTRIBUTE(attribute, 3, short, temp);
+
+                                // Convert data to raylib normal data type (float)
+                                for (unsigned int t = 0; t < attribute->count*3; t++) model.meshes[meshIndex].normals[t] = (float)temp[t];
+
+                                RL_FREE(temp);
+
+                                // Transform the normals
+                                float *normals = model.meshes[meshIndex].normals;
+                                for (unsigned int k = 0; k < attribute->count; k++)
+                                {
+                                    Vector3 nt = Vector3Normalize(Vector3Transform((Vector3){ normals[3*k], normals[3*k + 1], normals[3*k + 2] }, worldMatrixNormals));
+                                    normals[3*k] = nt.x;
+                                    normals[3*k + 1] = nt.y;
+                                    normals[3*k + 2] = nt.z;
+                                }
+                            }
+                            else if ((attribute->type == cgltf_type_vec3) && (attribute->component_type == cgltf_component_type_r_8u))
+                            {
+                                // Init raylib mesh normals to copy glTF attribute data
+                                model.meshes[meshIndex].normals = (float *)RL_MALLOC(attribute->count*3*sizeof(float));
+
+                                // Load data into a temp buffer to be converted to raylib data type
+                                unsigned char *temp = (unsigned char *)RL_MALLOC(attribute->count*3*sizeof(unsigned char));
+                                LOAD_ATTRIBUTE(attribute, 3, unsigned char, temp);
+
+                                // Convert data to raylib normal data type (float)
+                                for (unsigned int t = 0; t < attribute->count*3; t++) model.meshes[meshIndex].normals[t] = (float)temp[t];
+
+                                RL_FREE(temp);
+
+                                // Transform the normals
+                                float *normals = model.meshes[meshIndex].normals;
+                                for (unsigned int k = 0; k < attribute->count; k++)
+                                {
+                                    Vector3 nt = Vector3Normalize(Vector3Transform((Vector3){ normals[3*k], normals[3*k + 1], normals[3*k + 2] }, worldMatrixNormals));
+                                    normals[3*k] = nt.x;
+                                    normals[3*k + 1] = nt.y;
+                                    normals[3*k + 2] = nt.z;
+                                }
+                            }
+                            else if ((attribute->type == cgltf_type_vec3) && (attribute->component_type == cgltf_component_type_r_8))
+                            {
+                                // Init raylib mesh normals to copy glTF attribute data
+                                model.meshes[meshIndex].normals = (float *)RL_MALLOC(attribute->count*3*sizeof(float));
+
+                                // Load data into a temp buffer to be converted to raylib data type
+                                char *temp = (char *)RL_MALLOC(attribute->count*3*sizeof(char));
+                                LOAD_ATTRIBUTE(attribute, 3, char, temp);
+
+                                // Convert data to raylib normal data type (float)
+                                for (unsigned int t = 0; t < attribute->count*3; t++) model.meshes[meshIndex].normals[t] = (float)temp[t];
+
+                                RL_FREE(temp);
+
+                                // Transform the normals
+                                float *normals = model.meshes[meshIndex].normals;
+                                for (unsigned int k = 0; k < attribute->count; k++)
+                                {
+                                    Vector3 nt = Vector3Normalize(Vector3Transform((Vector3){ normals[3*k], normals[3*k + 1], normals[3*k + 2] }, worldMatrixNormals));
+                                    normals[3*k] = nt.x;
+                                    normals[3*k + 1] = nt.y;
+                                    normals[3*k + 2] = nt.z;
                                 }
                             }
                             else TRACELOG(LOG_WARNING, "MODEL: [%s] Normals attribute data format not supported, use vec3 float", fileName);
@@ -5855,8 +5996,8 @@ static Model LoadGLTF(const char *fileName)
         //----------------------------------------------------------------------------------------------------
 
         // Load animation data
-        // REF: https://www.khronos.org/registry/glTF/specs/2.0/glTF-2.0.html#skins
-        // REF: https://www.khronos.org/registry/glTF/specs/2.0/glTF-2.0.html#skinned-mesh-attributes
+        // Ref: https://www.khronos.org/registry/glTF/specs/2.0/glTF-2.0.html#skins
+        // Ref: https://www.khronos.org/registry/glTF/specs/2.0/glTF-2.0.html#skinned-mesh-attributes
         //
         // LIMITATIONS:
         //  - Only supports 1 armature per file, and skips loading it if there are multiple armatures
@@ -6112,7 +6253,7 @@ static bool GetPoseAtTimeGLTF(cgltf_interpolation_type interpolationType, cgltf_
                 float tmp[3] = { 0.0f };
                 cgltf_accessor_read_float(output, keyframe, tmp, 3);
                 Vector3 v1 = {tmp[0], tmp[1], tmp[2]};
-                Vector3 *r = data;
+                Vector3 *r = (Vector3 *)data;
 
                 *r = v1;
             } break;
@@ -6123,7 +6264,7 @@ static bool GetPoseAtTimeGLTF(cgltf_interpolation_type interpolationType, cgltf_
                 Vector3 v1 = {tmp[0], tmp[1], tmp[2]};
                 cgltf_accessor_read_float(output, keyframe+1, tmp, 3);
                 Vector3 v2 = {tmp[0], tmp[1], tmp[2]};
-                Vector3 *r = data;
+                Vector3 *r = (Vector3 *)data;
 
                 *r = Vector3Lerp(v1, v2, t);
             } break;
@@ -6138,7 +6279,7 @@ static bool GetPoseAtTimeGLTF(cgltf_interpolation_type interpolationType, cgltf_
                 Vector3 v2 = {tmp[0], tmp[1], tmp[2]};
                 cgltf_accessor_read_float(output, 3*(keyframe+1), tmp, 3);
                 Vector3 tangent2 = {tmp[0], tmp[1], tmp[2]};
-                Vector3 *r = data;
+                Vector3 *r = (Vector3 *)data;
 
                 *r = Vector3CubicHermite(v1, tangent1, v2, tangent2, t);
             } break;
@@ -6155,7 +6296,7 @@ static bool GetPoseAtTimeGLTF(cgltf_interpolation_type interpolationType, cgltf_
                 float tmp[4] = { 0.0f };
                 cgltf_accessor_read_float(output, keyframe, tmp, 4);
                 Vector4 v1 = {tmp[0], tmp[1], tmp[2], tmp[3]};
-                Vector4 *r = data;
+                Vector4 *r = (Vector4 *)data;
 
                 *r = v1;
             } break;
@@ -6166,7 +6307,7 @@ static bool GetPoseAtTimeGLTF(cgltf_interpolation_type interpolationType, cgltf_
                 Vector4 v1 = {tmp[0], tmp[1], tmp[2], tmp[3]};
                 cgltf_accessor_read_float(output, keyframe+1, tmp, 4);
                 Vector4 v2 = {tmp[0], tmp[1], tmp[2], tmp[3]};
-                Vector4 *r = data;
+                Vector4 *r = (Vector4 *)data;
 
                 *r = QuaternionSlerp(v1, v2, t);
             } break;
@@ -6181,7 +6322,7 @@ static bool GetPoseAtTimeGLTF(cgltf_interpolation_type interpolationType, cgltf_
                 Vector4 v2 = {tmp[0], tmp[1], tmp[2], tmp[3]};
                 cgltf_accessor_read_float(output, 3*(keyframe+1), tmp, 4);
                 Vector4 inTangent2 = {tmp[0], tmp[1], tmp[2], 0.0f};
-                Vector4 *r = data;
+                Vector4 *r = (Vector4 *)data;
 
                 v1 = QuaternionNormalize(v1);
                 v2 = QuaternionNormalize(v2);
@@ -6237,6 +6378,18 @@ static ModelAnimation *LoadModelAnimationsGLTF(const char *fileName, int *animCo
             cgltf_skin skin = data->skins[0];
             *animCount = (int)data->animations_count;
             animations = (ModelAnimation *)RL_CALLOC(data->animations_count, sizeof(ModelAnimation));
+
+            Transform worldTransform = { 0 };
+            cgltf_float cgltf_worldTransform[16] = { 0 };
+            cgltf_node *node = skin.joints[0];
+            cgltf_node_transform_world(node->parent, cgltf_worldTransform);
+            Matrix worldMatrix = {
+                cgltf_worldTransform[0], cgltf_worldTransform[4], cgltf_worldTransform[8], cgltf_worldTransform[12],
+                cgltf_worldTransform[1], cgltf_worldTransform[5], cgltf_worldTransform[9], cgltf_worldTransform[13],
+                cgltf_worldTransform[2], cgltf_worldTransform[6], cgltf_worldTransform[10], cgltf_worldTransform[14],
+                cgltf_worldTransform[3], cgltf_worldTransform[7], cgltf_worldTransform[11], cgltf_worldTransform[15]
+            };
+            MatrixDecompose(worldMatrix, &worldTransform.translation, &worldTransform.rotation, &worldTransform.scale);
 
             for (unsigned int i = 0; i < data->animations_count; i++)
             {
@@ -6355,6 +6508,13 @@ static ModelAnimation *LoadModelAnimationsGLTF(const char *fileName, int *animCo
                             .scale = scale
                         };
                     }
+
+                    Transform* root = &animations[i].framePoses[j][0];
+                    root->rotation = QuaternionMultiply(worldTransform.rotation, root->rotation);
+                    root->scale = Vector3Multiply(root->scale, worldTransform.scale);
+                    root->translation = Vector3Multiply(root->translation, worldTransform.scale);
+                    root->translation = Vector3RotateByQuaternion(root->translation, worldTransform.rotation);
+                    root->translation = Vector3Add(root->translation, worldTransform.translation);
 
                     BuildPoseFromParentJoints(animations[i].bones, animations[i].boneCount, animations[i].framePoses[j]);
                 }

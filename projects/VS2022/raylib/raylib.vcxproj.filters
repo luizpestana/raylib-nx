@@ -46,6 +46,12 @@
     <ClCompile Include="..\..\..\src\platforms\rcore_web.c">
       <Filter>Source Files\Platform Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\platforms\rcore_desktop_win32.c">
+      <Filter>Source Files\Platform Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\platforms\rcore_memory.c">
+      <Filter>Source Files\Platform Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\external\cgltf.h">

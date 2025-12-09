@@ -374,7 +374,7 @@ char *LoadFileText(const char *fileName)
 
                     // WARNING: \r\n is converted to \n on reading, so,
                     // read bytes count gets reduced by the number of lines
-                    if (count < size) text = RL_REALLOC(text, count + 1);
+                    if (count < size) text = (char *)RL_REALLOC(text, count + 1);
 
                     // Zero-terminate the string
                     text[count] = '\0';
@@ -451,7 +451,7 @@ FILE *android_fopen(const char *fileName, const char *mode)
 {
     if (mode[0] == 'w')
     {
-        // fopen() is mapped to android_fopen() that only grants read access to
+        // NOTE: fopen() is mapped to android_fopen() that only grants read access to
         // assets directory through AAssetManager but we want to also be able to
         // write data when required using the standard stdio FILE access functions
         // Ref: https://stackoverflow.com/questions/11294487/android-writing-saving-files-from-native-code-only

@@ -6,12 +6,12 @@
 *
 *   Example originally created with raylib 5.5, last time updated with raylib 5.6
 *
-*   Example contributed by Vlad Adrian (@demizdor) and reviewed by Ramon Santamaria (@raysan5)
+*   Example contributed by Vadim Gunko (@GuvaCode) and reviewed by Ramon Santamaria (@raysan5)
 *
 *   Example licensed under an unmodified zlib/libpng license, which is an OSI-certified,
 *   BSD-like license that allows static linking with closed source software
 *
-*   Copyright (c) 2025 Vlad Adrian (@demizdor) and Ramon Santamaria (@raysan5)
+*   Copyright (c) 2025 Vadim Gunko (@GuvaCode) and Ramon Santamaria (@raysan5)
 *
 ********************************************************************************************/
 
@@ -58,7 +58,7 @@ int main(void)
 
             // Load font with default Unicode range: Basic ASCII [32-127]
             font = LoadFont("resources/NotoSansTC-Regular.ttf");
-            
+
             // Add required ranges to loaded font
             switch (unicodeRange)
             {
@@ -128,11 +128,11 @@ int main(void)
         // Draw
         //----------------------------------------------------------------------------------
         BeginDrawing();
-        
+
             ClearBackground(RAYWHITE);
 
             DrawText("ADD CODEPOINTS: [1][2][3][4]", 20, 20, 20, MAROON);
-            
+
             // Render test strings in different languages
             DrawTextEx(font, "> English: Hello World!", (Vector2){ 50, 70 }, 32, 1, DARKGRAY); // English
             DrawTextEx(font, "> Español: Hola mundo!", (Vector2){ 50, 120 }, 32, 1, DARKGRAY); // Spanish
@@ -141,12 +141,12 @@ int main(void)
             DrawTextEx(font, "> 中文: 你好世界!", (Vector2){ 50, 270 }, 32, 1, DARKGRAY);        // Chinese
             DrawTextEx(font, "> 日本語: こんにちは世界!", (Vector2){ 50, 320 }, 32, 1, DARKGRAY); // Japanese
             //DrawTextEx(font, "देवनागरी: होला मुंडो!", (Vector2){ 50, 350 }, 32, 1, DARKGRAY);     // Devanagari (glyphs not available in font)
-            
+
             // Draw font texture scaled to screen
             float atlasScale = 380.0f/font.texture.width;
-            DrawRectangle(400, 16, font.texture.width*atlasScale, font.texture.height*atlasScale, BLACK);
-            DrawTexturePro(font.texture, (Rectangle){ 0, 0, font.texture.width, font.texture.height },
-                (Rectangle){ 400, 16, font.texture.width*atlasScale, font.texture.height*atlasScale }, (Vector2){ 0, 0 }, 0.0f, WHITE);
+            DrawRectangleRec((Rectangle) { 400.0f, 16.0f, font.texture.width* atlasScale, font.texture.height* atlasScale }, BLACK);
+            DrawTexturePro(font.texture, (Rectangle){ 0, 0, (float)font.texture.width, (float)font.texture.height },
+                (Rectangle){ 400.0f, 16.0f, font.texture.width*atlasScale, font.texture.height*atlasScale }, (Vector2){ 0, 0 }, 0.0f, WHITE);
             DrawRectangleLines(400, 16, 380, 380, RED);
 
             DrawText(TextFormat("ATLAS SIZE: %ix%i px (x%02.2f)", font.texture.width, font.texture.height, atlasScale), 20, 380, 20, BLUE);
@@ -161,7 +161,7 @@ int main(void)
                 DrawRectangle(0, 125, screenWidth, 200, GRAY);
                 DrawText("GENERATING FONT ATLAS...", 120, 210, 40, BLACK);
             }
-            
+
         EndDrawing();
         //----------------------------------------------------------------------------------
     }
@@ -184,10 +184,10 @@ static void AddCodepointRange(Font *font, const char *fontPath, int start, int s
 {
     int rangeSize = stop - start + 1;
     int currentRangeSize = font->glyphCount;
-    
+
     // TODO: Load glyphs from provided vector font (if available),
     // add them to existing font, regenerating font image and texture
-    
+
     int updatedCodepointCount = currentRangeSize + rangeSize;
     int *updatedCodepoints = (int *)RL_CALLOC(updatedCodepointCount, sizeof(int));
 
