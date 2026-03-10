@@ -4,6 +4,25 @@ changelog
 Current Release:    raylib 5.5 (18 November 2024)
 
 -------------------------------------------------------------------------
+Release:     raylib 6.0 (?? March 2026)
+-------------------------------------------------------------------------
+KEY CHANGES:
+ - New Software Renderer backend [rlsw]
+ - New rcore platform backend: Memory (memory buffer)
+ - New rcore platform backend: Win32 (experimental)
+ - New rcore platform backend: Emscripten (experimental)
+ - Redesigned Skeletal Animation System
+ - Redesigned fullscreen modes and high-dpi content scaling
+ - Redesigned Build Config System [config.h]
+ - New File System API
+ - New Text Management API
+ - New tool: [rexm] raylib examples manager
+
+Detailed changes:
+
+TODO...
+
+-------------------------------------------------------------------------
 Release:     raylib 5.5 (18 November 2024)
 -------------------------------------------------------------------------
 KEY CHANGES:
@@ -14,8 +33,6 @@ KEY CHANGES:
  - Added raymath C++ operators
 
 Detailed changes:
-
-WIP: Last update with commit from 02-Nov-2024
 
 [rcore] ADDED: Working directory info at initialization by @Ray
 [rcore] ADDED: `GetClipboardImage()`, supported by multiple backends (#4459) by @evertonse

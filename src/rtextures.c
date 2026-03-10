@@ -22,14 +22,10 @@
 *       #define SUPPORT_FILEFORMAT_PVR
 *       #define SUPPORT_FILEFORMAT_ASTC
 *           Select desired fileformats to be supported for image data loading. Some of those formats are
-*           supported by default, to remove support, just comment unrequired #define in this module
+*           supported by default, to remove support, comment unrequired #define in this module
 *
 *       #define SUPPORT_IMAGE_EXPORT
 *           Support image export in multiple file formats
-*
-*       #define SUPPORT_IMAGE_MANIPULATION
-*           Support multiple image editing functions to scale, adjust colors, flip, draw on images, crop...
-*           If not defined only some image editing functions supported: ImageFormat(), ImageAlphaMask(), ImageResize*()
 *
 *       #define SUPPORT_IMAGE_GENERATION
 *           Support procedural image generation functionality (gradient, spot, perlin-noise, cellular)
@@ -42,7 +38,7 @@
 *
 *   LICENSE: zlib/libpng
 *
-*   Copyright (c) 2013-2025 Ramon Santamaria (@raysan5)
+*   Copyright (c) 2013-2026 Ramon Santamaria (@raysan5)
 *
 *   This software is provided "as-is", without any express or implied warranty. In no event
 *   will the authors be held liable for any damages arising from the use of this software.
@@ -63,14 +59,10 @@
 
 #include "raylib.h"             // Declares module functions
 
-// Check if config flags have been externally provided on compilation line
-#if !defined(EXTERNAL_CONFIG_FLAGS)
-    #include "config.h"         // Defines module configuration flags
-#endif
+#include "config.h"             // Defines module configuration flags
 
-#if defined(SUPPORT_MODULE_RTEXTURES)
+#if SUPPORT_MODULE_RTEXTURES
 
-#include "utils.h"              // Required for: TRACELOG()
 #include "rlgl.h"               // OpenGL abstraction layer to multiple versions
 
 #include <stdlib.h>             // Required for: malloc(), calloc(), free()
@@ -79,60 +71,60 @@
 #include <stdio.h>              // Required for: sprintf() [Used in ExportImageAsCode()]
 
 // Support only desired texture formats on stb_image
-#if !defined(SUPPORT_FILEFORMAT_BMP)
+#if !SUPPORT_FILEFORMAT_BMP
     #define STBI_NO_BMP
 #endif
-#if !defined(SUPPORT_FILEFORMAT_PNG)
+#if !SUPPORT_FILEFORMAT_PNG
     #define STBI_NO_PNG
 #endif
-#if !defined(SUPPORT_FILEFORMAT_TGA)
+#if !SUPPORT_FILEFORMAT_TGA
     #define STBI_NO_TGA
 #endif
-#if !defined(SUPPORT_FILEFORMAT_JPG)
+#if !SUPPORT_FILEFORMAT_JPG
     #define STBI_NO_JPEG        // Image format .jpg and .jpeg
 #endif
-#if !defined(SUPPORT_FILEFORMAT_PSD)
+#if !SUPPORT_FILEFORMAT_PSD
     #define STBI_NO_PSD
 #endif
-#if !defined(SUPPORT_FILEFORMAT_GIF)
+#if !SUPPORT_FILEFORMAT_GIF
     #define STBI_NO_GIF
 #endif
-#if !defined(SUPPORT_FILEFORMAT_PIC)
+#if !SUPPORT_FILEFORMAT_PIC
     #define STBI_NO_PIC
 #endif
-#if !defined(SUPPORT_FILEFORMAT_HDR)
+#if !SUPPORT_FILEFORMAT_HDR
     #define STBI_NO_HDR
 #endif
-#if !defined(SUPPORT_FILEFORMAT_PNM)
+#if !SUPPORT_FILEFORMAT_PNM
     #define STBI_NO_PNM
 #endif
 
-#if defined(SUPPORT_FILEFORMAT_DDS)
+#if SUPPORT_FILEFORMAT_DDS
     #define RL_GPUTEX_SUPPORT_DDS
 #endif
-#if defined(SUPPORT_FILEFORMAT_PKM)
+#if SUPPORT_FILEFORMAT_PKM
     #define RL_GPUTEX_SUPPORT_PKM
 #endif
-#if defined(SUPPORT_FILEFORMAT_KTX)
+#if SUPPORT_FILEFORMAT_KTX
     #define RL_GPUTEX_SUPPORT_KTX
 #endif
-#if defined(SUPPORT_FILEFORMAT_PVR)
+#if SUPPORT_FILEFORMAT_PVR
     #define RL_GPUTEX_SUPPORT_PVR
 #endif
-#if defined(SUPPORT_FILEFORMAT_ASTC)
+#if SUPPORT_FILEFORMAT_ASTC
     #define RL_GPUTEX_SUPPORT_ASTC
 #endif
 
 // Image fileformats not supported by default
-#if (defined(SUPPORT_FILEFORMAT_BMP) || \
-     defined(SUPPORT_FILEFORMAT_PNG) || \
-     defined(SUPPORT_FILEFORMAT_TGA) || \
-     defined(SUPPORT_FILEFORMAT_JPG) || \
-     defined(SUPPORT_FILEFORMAT_PSD) || \
-     defined(SUPPORT_FILEFORMAT_GIF) || \
-     defined(SUPPORT_FILEFORMAT_HDR) || \
-     defined(SUPPORT_FILEFORMAT_PIC) || \
-     defined(SUPPORT_FILEFORMAT_PNM))
+#if (SUPPORT_FILEFORMAT_BMP || \
+     SUPPORT_FILEFORMAT_PNG || \
+     SUPPORT_FILEFORMAT_TGA || \
+     SUPPORT_FILEFORMAT_JPG || \
+     SUPPORT_FILEFORMAT_PSD || \
+     SUPPORT_FILEFORMAT_GIF || \
+     SUPPORT_FILEFORMAT_HDR || \
+     SUPPORT_FILEFORMAT_PIC || \
+     SUPPORT_FILEFORMAT_PNM)
 
     #if defined(__GNUC__) // GCC and Clang
         #pragma GCC diagnostic push
@@ -158,11 +150,11 @@
     #endif
 #endif
 
-#if (defined(SUPPORT_FILEFORMAT_DDS) || \
-     defined(SUPPORT_FILEFORMAT_PKM) || \
-     defined(SUPPORT_FILEFORMAT_KTX) || \
-     defined(SUPPORT_FILEFORMAT_PVR) || \
-     defined(SUPPORT_FILEFORMAT_ASTC))
+#if (SUPPORT_FILEFORMAT_DDS || \
+     SUPPORT_FILEFORMAT_PKM || \
+     SUPPORT_FILEFORMAT_KTX || \
+     SUPPORT_FILEFORMAT_PVR || \
+     SUPPORT_FILEFORMAT_ASTC)
 
     #if defined(__GNUC__) // GCC and Clang
         #pragma GCC diagnostic push
@@ -181,7 +173,7 @@
     #endif
 #endif
 
-#if defined(SUPPORT_FILEFORMAT_QOI)
+#if SUPPORT_FILEFORMAT_QOI
     #define QOI_MALLOC RL_MALLOC
     #define QOI_FREE RL_FREE
 
@@ -199,7 +191,7 @@
 
 #endif
 
-#if defined(SUPPORT_IMAGE_EXPORT)
+#if SUPPORT_IMAGE_EXPORT
     #define STBIW_MALLOC RL_MALLOC
     #define STBIW_FREE RL_FREE
     #define STBIW_REALLOC RL_REALLOC
@@ -208,7 +200,7 @@
     #include "external/stb_image_write.h"   // Required for: stbi_write_*()
 #endif
 
-#if defined(SUPPORT_IMAGE_GENERATION)
+#if SUPPORT_IMAGE_GENERATION
     #define STB_PERLIN_IMPLEMENTATION
     #include "external/stb_perlin.h"        // Required for: stb_perlin_fbm_noise3
 #endif
@@ -272,15 +264,15 @@ Image LoadImage(const char *fileName)
 {
     Image image = { 0 };
 
-#if defined(SUPPORT_FILEFORMAT_PNG) || \
-    defined(SUPPORT_FILEFORMAT_BMP) || \
-    defined(SUPPORT_FILEFORMAT_TGA) || \
-    defined(SUPPORT_FILEFORMAT_JPG) || \
-    defined(SUPPORT_FILEFORMAT_GIF) || \
-    defined(SUPPORT_FILEFORMAT_PIC) || \
-    defined(SUPPORT_FILEFORMAT_HDR) || \
-    defined(SUPPORT_FILEFORMAT_PNM) || \
-    defined(SUPPORT_FILEFORMAT_PSD)
+#if SUPPORT_FILEFORMAT_PNG || \
+    SUPPORT_FILEFORMAT_BMP || \
+    SUPPORT_FILEFORMAT_TGA || \
+    SUPPORT_FILEFORMAT_JPG || \
+    SUPPORT_FILEFORMAT_GIF || \
+    SUPPORT_FILEFORMAT_PIC || \
+    SUPPORT_FILEFORMAT_HDR || \
+    SUPPORT_FILEFORMAT_PNM || \
+    SUPPORT_FILEFORMAT_PSD
 
     #define STBI_REQUIRED
 #endif
@@ -342,7 +334,7 @@ Image LoadImageAnim(const char *fileName, int *frames)
     Image image = { 0 };
     int frameCount = 0;
 
-#if defined(SUPPORT_FILEFORMAT_GIF)
+#if SUPPORT_FILEFORMAT_GIF
     if (IsFileExtension(fileName, ".gif"))
     {
         int dataSize = 0;
@@ -387,7 +379,7 @@ Image LoadImageAnimFromMemory(const char *fileType, const unsigned char *fileDat
     // Security check for input data
     if ((fileType == NULL) || (fileData == NULL) || (dataSize == 0)) return image;
 
-#if defined(SUPPORT_FILEFORMAT_GIF)
+#if SUPPORT_FILEFORMAT_GIF
     if ((strcmp(fileType, ".gif") == 0) || (strcmp(fileType, ".GIF") == 0))
     {
         if (fileData != NULL)
@@ -434,30 +426,30 @@ Image LoadImageFromMemory(const char *fileType, const unsigned char *fileData, i
     }
 
     if ((false)
-#if defined(SUPPORT_FILEFORMAT_PNG)
+#if SUPPORT_FILEFORMAT_PNG
         || (strcmp(fileType, ".png") == 0) || (strcmp(fileType, ".PNG") == 0)
 #endif
-#if defined(SUPPORT_FILEFORMAT_BMP)
+#if SUPPORT_FILEFORMAT_BMP
         || (strcmp(fileType, ".bmp") == 0) || (strcmp(fileType, ".BMP") == 0)
 #endif
-#if defined(SUPPORT_FILEFORMAT_TGA)
+#if SUPPORT_FILEFORMAT_TGA
         || (strcmp(fileType, ".tga") == 0) || (strcmp(fileType, ".TGA") == 0)
 #endif
-#if defined(SUPPORT_FILEFORMAT_JPG)
+#if SUPPORT_FILEFORMAT_JPG
         || (strcmp(fileType, ".jpg") == 0) || (strcmp(fileType, ".jpeg") == 0)
         || (strcmp(fileType, ".JPG") == 0) || (strcmp(fileType, ".JPEG") == 0)
 #endif
-#if defined(SUPPORT_FILEFORMAT_GIF)
+#if SUPPORT_FILEFORMAT_GIF
         || (strcmp(fileType, ".gif") == 0) || (strcmp(fileType, ".GIF") == 0)
 #endif
-#if defined(SUPPORT_FILEFORMAT_PIC)
+#if SUPPORT_FILEFORMAT_PIC
         || (strcmp(fileType, ".pic") == 0) || (strcmp(fileType, ".PIC") == 0)
 #endif
-#if defined(SUPPORT_FILEFORMAT_PNM)
+#if SUPPORT_FILEFORMAT_PNM
         || (strcmp(fileType, ".ppm") == 0) || (strcmp(fileType, ".pgm") == 0)
         || (strcmp(fileType, ".PPM") == 0) || (strcmp(fileType, ".PGM") == 0)
 #endif
-#if defined(SUPPORT_FILEFORMAT_PSD)
+#if SUPPORT_FILEFORMAT_PSD
         || (strcmp(fileType, ".psd") == 0) || (strcmp(fileType, ".PSD") == 0)
 #endif
         )
@@ -482,7 +474,7 @@ Image LoadImageFromMemory(const char *fileType, const unsigned char *fileData, i
         }
 #endif
     }
-#if defined(SUPPORT_FILEFORMAT_HDR)
+#if SUPPORT_FILEFORMAT_HDR
     else if ((strcmp(fileType, ".hdr") == 0) || (strcmp(fileType, ".HDR") == 0))
     {
 #if defined(STBI_REQUIRED)
@@ -505,7 +497,7 @@ Image LoadImageFromMemory(const char *fileType, const unsigned char *fileData, i
 #endif
     }
 #endif
-#if defined(SUPPORT_FILEFORMAT_QOI)
+#if SUPPORT_FILEFORMAT_QOI
     else if ((strcmp(fileType, ".qoi") == 0) || (strcmp(fileType, ".QOI") == 0))
     {
         if (fileData != NULL)
@@ -519,31 +511,31 @@ Image LoadImageFromMemory(const char *fileType, const unsigned char *fileData, i
         }
     }
 #endif
-#if defined(SUPPORT_FILEFORMAT_DDS)
+#if SUPPORT_FILEFORMAT_DDS
     else if ((strcmp(fileType, ".dds") == 0) || (strcmp(fileType, ".DDS") == 0))
     {
         image.data = rl_load_dds_from_memory(fileData, dataSize, &image.width, &image.height, &image.format, &image.mipmaps);
     }
 #endif
-#if defined(SUPPORT_FILEFORMAT_PKM)
+#if SUPPORT_FILEFORMAT_PKM
     else if ((strcmp(fileType, ".pkm") == 0) || (strcmp(fileType, ".PKM") == 0))
     {
         image.data = rl_load_pkm_from_memory(fileData, dataSize, &image.width, &image.height, &image.format, &image.mipmaps);
     }
 #endif
-#if defined(SUPPORT_FILEFORMAT_KTX)
+#if SUPPORT_FILEFORMAT_KTX
     else if ((strcmp(fileType, ".ktx") == 0) || (strcmp(fileType, ".KTX") == 0))
     {
         image.data = rl_load_ktx_from_memory(fileData, dataSize, &image.width, &image.height, &image.format, &image.mipmaps);
     }
 #endif
-#if defined(SUPPORT_FILEFORMAT_PVR)
+#if SUPPORT_FILEFORMAT_PVR
     else if ((strcmp(fileType, ".pvr") == 0) || (strcmp(fileType, ".PVR") == 0))
     {
         image.data = rl_load_pvr_from_memory(fileData, dataSize, &image.width, &image.height, &image.format, &image.mipmaps);
     }
 #endif
-#if defined(SUPPORT_FILEFORMAT_ASTC)
+#if SUPPORT_FILEFORMAT_ASTC
     else if ((strcmp(fileType, ".astc") == 0) || (strcmp(fileType, ".ASTC") == 0))
     {
         image.data = rl_load_astc_from_memory(fileData, dataSize, &image.width, &image.height, &image.format, &image.mipmaps);
@@ -632,7 +624,7 @@ bool ExportImage(Image image, const char *fileName)
     // Security check for input data
     if ((image.width == 0) || (image.height == 0) || (image.data == NULL)) return result;
 
-#if defined(SUPPORT_IMAGE_EXPORT)
+#if SUPPORT_IMAGE_EXPORT
     int channels = 4;
     bool allocatedData = false;
     unsigned char *imgData = (unsigned char *)image.data;
@@ -649,7 +641,7 @@ bool ExportImage(Image image, const char *fileName)
     }
 
     if (false) { } // Required to attach following 'else' cases
-#if defined(SUPPORT_FILEFORMAT_PNG)
+#if SUPPORT_FILEFORMAT_PNG
     else if (IsFileExtension(fileName, ".png"))
     {
         int dataSize = 0;
@@ -658,17 +650,17 @@ bool ExportImage(Image image, const char *fileName)
         RL_FREE(fileData);
     }
 #endif
-#if defined(SUPPORT_FILEFORMAT_BMP)
+#if SUPPORT_FILEFORMAT_BMP
     else if (IsFileExtension(fileName, ".bmp")) result = stbi_write_bmp(fileName, image.width, image.height, channels, imgData);
 #endif
-#if defined(SUPPORT_FILEFORMAT_TGA)
+#if SUPPORT_FILEFORMAT_TGA
     else if (IsFileExtension(fileName, ".tga")) result = stbi_write_tga(fileName, image.width, image.height, channels, imgData);
 #endif
-#if defined(SUPPORT_FILEFORMAT_JPG)
+#if SUPPORT_FILEFORMAT_JPG
     else if (IsFileExtension(fileName, ".jpg") ||
              IsFileExtension(fileName, ".jpeg")) result = stbi_write_jpg(fileName, image.width, image.height, channels, imgData, 90);  // JPG quality: between 1 and 100
 #endif
-#if defined(SUPPORT_FILEFORMAT_QOI)
+#if SUPPORT_FILEFORMAT_QOI
     else if (IsFileExtension(fileName, ".qoi"))
     {
         channels = 0;
@@ -688,7 +680,7 @@ bool ExportImage(Image image, const char *fileName)
         }
     }
 #endif
-#if defined(SUPPORT_FILEFORMAT_KTX)
+#if SUPPORT_FILEFORMAT_KTX
     else if (IsFileExtension(fileName, ".ktx"))
     {
         result = rl_save_ktx(fileName, image.data, image.width, image.height, image.format, image.mipmaps);
@@ -703,7 +695,7 @@ bool ExportImage(Image image, const char *fileName)
     else TRACELOG(LOG_WARNING, "IMAGE: Export image format requested not supported");
 
     if (allocatedData) RL_FREE(imgData);
-#endif      // SUPPORT_IMAGE_EXPORT
+#endif // SUPPORT_IMAGE_EXPORT
 
     if (result != 0) TRACELOG(LOG_INFO, "FILEIO: [%s] Image exported successfully", fileName);
     else TRACELOG(LOG_WARNING, "FILEIO: [%s] Failed to export image", fileName);
@@ -720,7 +712,6 @@ unsigned char *ExportImageToMemory(Image image, const char *fileType, int *dataS
     // Security check for input data
     if ((image.width == 0) || (image.height == 0) || (image.data == NULL)) return NULL;
 
-#if defined(SUPPORT_IMAGE_EXPORT)
     int channels = 4;
 
     if (image.format == PIXELFORMAT_UNCOMPRESSED_GRAYSCALE) channels = 1;
@@ -728,13 +719,13 @@ unsigned char *ExportImageToMemory(Image image, const char *fileType, int *dataS
     else if (image.format == PIXELFORMAT_UNCOMPRESSED_R8G8B8) channels = 3;
     else if (image.format == PIXELFORMAT_UNCOMPRESSED_R8G8B8A8) channels = 4;
 
-#if defined(SUPPORT_FILEFORMAT_PNG)
+#if SUPPORT_IMAGE_EXPORT
     if ((strcmp(fileType, ".png") == 0) || (strcmp(fileType, ".PNG") == 0))
     {
         fileData = stbi_write_png_to_mem((const unsigned char *)image.data, image.width*channels, image.width, image.height, channels, dataSize);
     }
-#endif
-
+#else
+    TRACELOG(LOG_WARNING, "IMAGE: To export image, enable flag SUPPORT_IMAGE_EXPORT");
 #endif
 
     return fileData;
@@ -744,8 +735,6 @@ unsigned char *ExportImageToMemory(Image image, const char *fileType, int *dataS
 bool ExportImageAsCode(Image image, const char *fileName)
 {
     bool success = false;
-
-#if defined(SUPPORT_IMAGE_EXPORT)
 
 #ifndef TEXT_BYTES_PER_LINE
     #define TEXT_BYTES_PER_LINE     20
@@ -765,13 +754,13 @@ bool ExportImageAsCode(Image image, const char *fileName)
     byteCount += sprintf(txtData + byteCount, "// more info and bugs-report:  github.com/raysan5/raylib                              //\n");
     byteCount += sprintf(txtData + byteCount, "// feedback and support:       ray[at]raylib.com                                      //\n");
     byteCount += sprintf(txtData + byteCount, "//                                                                                    //\n");
-    byteCount += sprintf(txtData + byteCount, "// Copyright (c) 2018-2025 Ramon Santamaria (@raysan5)                                //\n");
+    byteCount += sprintf(txtData + byteCount, "// Copyright (c) 2018-2026 Ramon Santamaria (@raysan5)                                //\n");
     byteCount += sprintf(txtData + byteCount, "//                                                                                    //\n");
     byteCount += sprintf(txtData + byteCount, "////////////////////////////////////////////////////////////////////////////////////////\n\n");
 
     // Get file name from path and convert variable name to uppercase
     char varFileName[256] = { 0 };
-    strcpy(varFileName, GetFileNameWithoutExt(fileName));
+    strncpy(varFileName, GetFileNameWithoutExt(fileName), 256 - 1); // NOTE: Using function provided by [rcore] module
     for (int i = 0; varFileName[i] != '\0'; i++) if ((varFileName[i] >= 'a') && (varFileName[i] <= 'z')) { varFileName[i] = varFileName[i] - 32; }
 
     // Add image information
@@ -788,8 +777,6 @@ bool ExportImageAsCode(Image image, const char *fileName)
     success = SaveFileText(fileName, txtData);
 
     RL_FREE(txtData);
-
-#endif      // SUPPORT_IMAGE_EXPORT
 
     if (success != 0) TRACELOG(LOG_INFO, "FILEIO: [%s] Image as code exported successfully", fileName);
     else TRACELOG(LOG_WARNING, "FILEIO: [%s] Failed to export image as code", fileName);
@@ -818,7 +805,7 @@ Image GenImageColor(int width, int height, Color color)
     return image;
 }
 
-#if defined(SUPPORT_IMAGE_GENERATION)
+#if SUPPORT_IMAGE_GENERATION
 // Generate image: linear gradient
 // The direction value specifies the direction of the gradient (in degrees)
 // with 0 being vertical (from top to bottom), 90 being horizontal (from left to right)
@@ -887,7 +874,7 @@ Image GenImageGradientRadial(int width, int height, float density, Color inner, 
             float factor = (dist - radius*density)/(radius*(1.0f - density));
 
             factor = (float)fmax(factor, 0.0f);
-            factor = (float)fmin(factor, 1.f); // dist can be bigger than radius, so we have to check
+            factor = (float)fmin(factor, 1.f); // Distance can be bigger than radius, so it needs to be checked
 
             pixels[y*width + x].r = (int)((float)outer.r*factor + (float)inner.r*(1.0f - factor));
             pixels[y*width + x].g = (int)((float)outer.g*factor + (float)inner.g*(1.0f - factor));
@@ -1036,7 +1023,7 @@ Image GenImagePerlinNoise(int width, int height, int offsetX, int offsetY, float
             if (p < -1.0f) p = -1.0f;
             if (p > 1.0f) p = 1.0f;
 
-            // We need to normalize the data from [-1..1] to [0..1]
+            // Data needs to be normalized from [-1..1] to [0..1]
             float np = (p + 1.0f)/2.0f;
 
             unsigned char intensity = (unsigned char)(np*255.0f);
@@ -1126,20 +1113,22 @@ Image GenImageText(int width, int height, const char *text)
 {
     Image image = { 0 };
 
-    int textLength = (int)strlen(text);
-    int imageViewSize = width*height;
-
+    int imageSize = width*height;
     image.width = width;
     image.height = height;
     image.format = PIXELFORMAT_UNCOMPRESSED_GRAYSCALE;
-    image.data = RL_CALLOC(imageViewSize, 1);
+    image.data = RL_CALLOC(imageSize, 1);
     image.mipmaps = 1;
 
-    memcpy(image.data, text, (textLength > imageViewSize)? imageViewSize : textLength);
+    if (text != NULL)
+    {
+        int textLength = (int)strlen(text);
+        memcpy(image.data, text, (textLength > imageSize)? imageSize : textLength);
+    }
 
     return image;
 }
-#endif      // SUPPORT_IMAGE_GENERATION
+#endif // SUPPORT_IMAGE_GENERATION
 
 //------------------------------------------------------------------------------------
 // Image manipulation functions
@@ -1266,7 +1255,7 @@ void ImageFormat(Image *image, int newFormat)
         {
             Vector4 *pixels = LoadImageDataNormalized(*image);     // Supports 8 to 32 bit per channel
 
-            RL_FREE(image->data);      // WARNING! We loose mipmaps data --> Regenerated at the end...
+            RL_FREE(image->data);      // WARNING! Loosing mipmaps data --> Regenerated at the end
             image->data = NULL;
             image->format = newFormat;
 
@@ -1453,9 +1442,7 @@ void ImageFormat(Image *image, int newFormat)
             if (image->mipmaps > 1)
             {
                 image->mipmaps = 1;
-            #if defined(SUPPORT_IMAGE_MANIPULATION)
                 if (image->data != NULL) ImageMipmaps(image);
-            #endif
             }
         }
         else TRACELOG(LOG_WARNING, "IMAGE: Data format is compressed, can not be converted");
@@ -1466,7 +1453,7 @@ void ImageFormat(Image *image, int newFormat)
 Image ImageText(const char *text, int fontSize, Color color)
 {
     Image imText = { 0 };
-#if defined(SUPPORT_MODULE_RTEXT)
+#if SUPPORT_MODULE_RTEXT
     int defaultFontSize = 10;   // Default Font chars height in pixel
     if (fontSize < defaultFontSize) fontSize = defaultFontSize;
     int spacing = fontSize/defaultFontSize;
@@ -1483,9 +1470,10 @@ Image ImageText(const char *text, int fontSize, Color color)
 Image ImageTextEx(Font font, const char *text, float fontSize, float spacing, Color tint)
 {
     Image imText = { 0 };
-#if defined(SUPPORT_MODULE_RTEXT)
-    int size = (int)strlen(text);   // Get size in bytes of text
+#if SUPPORT_MODULE_RTEXT
+    if (text == NULL) return imText;
 
+    int textLength = (int)strlen(text); // Get length of text in bytes
     int textOffsetX = 0;            // Image drawing position X
     int textOffsetY = 0;            // Offset between lines (on linebreak '\n')
 
@@ -1496,7 +1484,7 @@ Image ImageTextEx(Font font, const char *text, float fontSize, float spacing, Co
     // Create image to store text
     imText = GenImageColor((int)imSize.x, (int)imSize.y, BLANK);
 
-    for (int i = 0; i < size;)
+    for (int i = 0; i < textLength;)
     {
         // Get next codepoint from byte string and glyph index in font
         int codepointByteCount = 0;
@@ -1724,7 +1712,8 @@ void ImageResizeNN(Image *image, int newWidth, int newHeight)
     int xRatio = (int)((image->width << 16)/newWidth) + 1;
     int yRatio = (int)((image->height << 16)/newHeight) + 1;
 
-    int x2, y2;
+    int x2 = 0;
+    int y2 = 0;
     for (int y = 0; y < newHeight; y++)
     {
         for (int x = 0; x < newWidth; x++)
@@ -1759,7 +1748,7 @@ void ImageResize(Image *image, int newWidth, int newHeight)
     // Security check to avoid program crash
     if ((image->data == NULL) || (image->width == 0) || (image->height == 0)) return;
 
-    // Check if we can use a fast path on image scaling
+    // Check if a fast path can be used on image scaling
     // It can be for 8 bit per channel images with 1 to 4 channels per pixel
     if ((image->format == PIXELFORMAT_UNCOMPRESSED_GRAYSCALE) ||
         (image->format == PIXELFORMAT_UNCOMPRESSED_GRAY_ALPHA) ||
@@ -1873,7 +1862,6 @@ void ImageResizeCanvas(Image *image, int newWidth, int newHeight, int offsetX, i
     }
 }
 
-#if defined(SUPPORT_IMAGE_MANIPULATION)
 // Convert image to POT (power-of-two)
 // NOTE: It could be useful on OpenGL ES 2.0 (RPI, HTML5)
 void ImageToPOT(Image *image, Color fill)
@@ -1882,7 +1870,7 @@ void ImageToPOT(Image *image, Color fill)
     if ((image->data == NULL) || (image->width == 0) || (image->height == 0)) return;
 
     // Calculate next power-of-two values
-    // NOTE: Just add the required amount of pixels at the right and bottom sides of image...
+    // NOTE: Add the required amount of pixels at the right and bottom sides of image...
     int potWidth = (int)powf(2, ceilf(logf((float)image->width)/logf(2)));
     int potHeight = (int)powf(2, ceilf(logf((float)image->height)/logf(2)));
 
@@ -2026,7 +2014,7 @@ void ImageAlphaMask(Image *image, Image alphaMask)
         Image mask = ImageCopy(alphaMask);
         if (mask.format != PIXELFORMAT_UNCOMPRESSED_GRAYSCALE) ImageFormat(&mask, PIXELFORMAT_UNCOMPRESSED_GRAYSCALE);
 
-        // In case image is only grayscale, we just add alpha channel
+        // In case image is only grayscale, add alpha channel
         if (image->format == PIXELFORMAT_UNCOMPRESSED_GRAYSCALE)
         {
             unsigned char *data = (unsigned char *)RL_MALLOC(image->width*image->height*2);
@@ -2391,7 +2379,7 @@ void ImageMipmaps(Image *image)
         if (mipWidth < 1) mipWidth = 1;
         if (mipHeight < 1) mipHeight = 1;
 
-        TRACELOGD("IMAGE: Next mipmap level: %i x %i - current size %i", mipWidth, mipHeight, mipSize);
+        TRACELOG(LOG_DEBUG, "IMAGE: Next mipmap level: %i x %i - current size %i", mipWidth, mipHeight, mipSize);
 
         mipCount++;
         mipSize += GetPixelDataSize(mipWidth, mipHeight, image->format);       // Add mipmap size (in bytes)
@@ -2428,7 +2416,7 @@ void ImageMipmaps(Image *image)
 
             if (i < image->mipmaps) continue;
 
-            TRACELOGD("IMAGE: Generating mipmap level: %i (%i x %i) - size: %i - offset: 0x%x", i, mipWidth, mipHeight, mipSize, nextmip);
+            TRACELOG(LOG_DEBUG, "IMAGE: Generating mipmap level: %i (%i x %i) - size: %i - offset: 0x%x", i, mipWidth, mipHeight, mipSize, nextmip);
             ImageResize(&imCopy, mipWidth, mipHeight); // Uses internally Mitchell cubic downscale filter
             memcpy(nextmip, imCopy.data, mipSize);
         }
@@ -2479,14 +2467,19 @@ void ImageDither(Image *image, int rBpp, int gBpp, int bBpp, int aBpp)
             TRACELOG(LOG_WARNING, "IMAGE: Unsupported dithered OpenGL internal format: %ibpp (R%iG%iB%iA%i)", (rBpp+gBpp+bBpp+aBpp), rBpp, gBpp, bBpp, aBpp);
         }
 
-        // NOTE: We will store the dithered data as unsigned short (16bpp)
+        // NOTE: Storing the dithered data as unsigned short (16bpp)
         image->data = (unsigned short *)RL_MALLOC(image->width*image->height*sizeof(unsigned short));
 
         Color oldPixel = WHITE;
         Color newPixel = WHITE;
 
-        int rError, gError, bError;
-        unsigned short rPixel, gPixel, bPixel, aPixel;   // Used for 16bit pixel composition
+        int rError = 0;
+        int gError = 0;
+        int bError = 0;
+        unsigned short rPixel = 0;   // Used for 16bit pixel composition
+        unsigned short gPixel = 0;
+        unsigned short bPixel = 0;
+        unsigned short aPixel = 0;
 
         #define MIN(a,b) (((a)<(b))?(a):(b))
 
@@ -2502,8 +2495,8 @@ void ImageDither(Image *image, int rBpp, int gBpp, int bBpp, int aBpp)
                 newPixel.b = oldPixel.b >> (8 - bBpp);     // B bits
                 newPixel.a = oldPixel.a >> (8 - aBpp);     // A bits (not used on dithering)
 
-                // NOTE: Error must be computed between new and old pixel but using same number of bits!
-                // We want to know how much color precision we have lost...
+                // NOTE: Error must be computed between new and old pixel but using same number of bits,
+                // to know how much color precision has been lost
                 rError = (int)oldPixel.r - (int)(newPixel.r << (8 - rBpp));
                 gError = (int)oldPixel.g - (int)(newPixel.g << (8 - gBpp));
                 bError = (int)oldPixel.b - (int)(newPixel.b << (8 - bBpp));
@@ -2596,7 +2589,7 @@ void ImageFlipHorizontal(Image *image)
                 // OPTION 1: Move pixels with memcpy()
                 //memcpy(flippedData + (y*image->width + x)*bytesPerPixel, ((unsigned char *)image->data) + (y*image->width + (image->width - 1 - x))*bytesPerPixel, bytesPerPixel);
 
-                // OPTION 2: Just copy data pixel by pixel
+                // OPTION 2: Copy data pixel by pixel
                 for (int i = 0; i < bytesPerPixel; i++) flippedData[(y*image->width + x)*bytesPerPixel + i] = ((unsigned char *)image->data)[(y*image->width + (image->width - 1 - x))*bytesPerPixel + i];
             }
         }
@@ -2939,7 +2932,6 @@ void ImageColorReplace(Image *image, Color color, Color replace)
         (format == PIXELFORMAT_COMPRESSED_ETC2_RGB) ||
         (format == PIXELFORMAT_COMPRESSED_PVRT_RGB)) ImageFormat(image, format);
 }
-#endif      // SUPPORT_IMAGE_MANIPULATION
 
 // Load color data from image as a Color array (RGBA - 32bit)
 // NOTE: Memory allocated should be freed using UnloadImageColors();
@@ -3129,7 +3121,7 @@ Color *LoadImagePalette(Image image, int maxPaletteSize, int *colorCount)
                     palette[palCount] = pixels[i];      // Add pixels[i] to palette
                     palCount++;
 
-                    // We reached the limit of colors supported by palette
+                    // Reached the limit of colors supported by palette
                     if (palCount >= maxPaletteSize)
                     {
                         i = image.width*image.height;   // Finish palette get
@@ -3290,9 +3282,9 @@ Color GetImageColor(Image image, int x, int y)
             case PIXELFORMAT_UNCOMPRESSED_R32G32B32A32:
             {
                 color.r = (unsigned char)(((float *)image.data)[(y*image.width + x)*4]*255.0f);
-                color.g = (unsigned char)(((float *)image.data)[(y*image.width + x)*4]*255.0f);
-                color.b = (unsigned char)(((float *)image.data)[(y*image.width + x)*4]*255.0f);
-                color.a = (unsigned char)(((float *)image.data)[(y*image.width + x)*4]*255.0f);
+                color.g = (unsigned char)(((float *)image.data)[(y*image.width + x)*4 + 1]*255.0f);
+                color.b = (unsigned char)(((float *)image.data)[(y*image.width + x)*4 + 2]*255.0f);
+                color.a = (unsigned char)(((float *)image.data)[(y*image.width + x)*4 + 3]*255.0f);
 
             } break;
             case PIXELFORMAT_UNCOMPRESSED_R16:
@@ -3314,9 +3306,9 @@ Color GetImageColor(Image image, int x, int y)
             case PIXELFORMAT_UNCOMPRESSED_R16G16B16A16:
             {
                 color.r = (unsigned char)(HalfToFloat(((unsigned short *)image.data)[(y*image.width + x)*4])*255.0f);
-                color.g = (unsigned char)(HalfToFloat(((unsigned short *)image.data)[(y*image.width + x)*4])*255.0f);
-                color.b = (unsigned char)(HalfToFloat(((unsigned short *)image.data)[(y*image.width + x)*4])*255.0f);
-                color.a = (unsigned char)(HalfToFloat(((unsigned short *)image.data)[(y*image.width + x)*4])*255.0f);
+                color.g = (unsigned char)(HalfToFloat(((unsigned short *)image.data)[(y*image.width + x)*4 + 1])*255.0f);
+                color.b = (unsigned char)(HalfToFloat(((unsigned short *)image.data)[(y*image.width + x)*4 + 2])*255.0f);
+                color.a = (unsigned char)(HalfToFloat(((unsigned short *)image.data)[(y*image.width + x)*4 + 3])*255.0f);
 
             } break;
             default: TRACELOG(LOG_WARNING, "Compressed image format does not support color reading"); break;
@@ -3620,7 +3612,7 @@ void ImageDrawLineEx(Image *dst, Vector2 start, Vector2 end, int thick, Color co
 }
 
 // Draw circle within an image
-void ImageDrawCircle(Image* dst, int centerX, int centerY, int radius, Color color)
+void ImageDrawCircle(Image *dst, int centerX, int centerY, int radius, Color color)
 {
     int x = 0;
     int y = radius;
@@ -3644,7 +3636,7 @@ void ImageDrawCircle(Image* dst, int centerX, int centerY, int radius, Color col
 }
 
 // Draw circle within an image (Vector version)
-void ImageDrawCircleV(Image* dst, Vector2 center, int radius, Color color)
+void ImageDrawCircleV(Image *dst, Vector2 center, int radius, Color color)
 {
     ImageDrawCircle(dst, (int)center.x, (int)center.y, radius, color);
 }
@@ -3801,7 +3793,7 @@ void ImageDrawTriangle(Image *dst, Vector2 v1, Vector2 v2, Vector2 v3, Color col
         for (int x = xMin; x <= xMax; x++)
         {
             // Check if the pixel is inside the triangle using barycentric coordinates
-            // If it is then we can draw the pixel with the given color
+            // If it is, the pixel can be drawn with the given color
             if ((w1 | w2 | w3) >= 0) ImageDrawPixel(dst, x, y, color);
 
             // Increment the barycentric coordinates for the next pixel
@@ -3858,9 +3850,6 @@ void ImageDrawTriangleEx(Image *dst, Vector2 v1, Vector2 v2, Vector2 v3, Color c
     int w3Row = (int)((xMin - v1.x)*w3XStep + w3YStep*(yMin - v1.y));
 
     // Calculate the inverse of the sum of the barycentric coordinates for normalization
-    // NOTE 1: Here, we act as if we multiply by 255 the reciprocal, which avoids additional
-    //         calculations in the loop. This is acceptable because we are only interpolating colors
-    // NOTE 2: This sum remains constant throughout the triangle
     float wInvSum = 255.0f/(w1Row + w2Row + w3Row);
 
     // Rasterization loop
@@ -3960,11 +3949,11 @@ void ImageDraw(Image *dst, Image src, Rectangle srcRec, Rectangle dstRec, Color 
         if ((srcRec.y + srcRec.height) > src.height) srcRec.height = src.height - srcRec.y;
 
         // Check if source rectangle needs to be resized to destination rectangle
-        // In that case, we make a copy of source, and we apply all required transform
+        // In that case, make a copy of source, and apply all required transform
         if (((int)srcRec.width != (int)dstRec.width) || ((int)srcRec.height != (int)dstRec.height))
         {
-            srcMod = ImageFromImage(src, srcRec);   // Create image from another image
-            ImageResize(&srcMod, (int)dstRec.width, (int)dstRec.height);   // Resize to destination rectangle
+            srcMod = ImageFromImage(src, srcRec); // Create image from another image
+            ImageResize(&srcMod, (int)dstRec.width, (int)dstRec.height); // Resize to destination rectangle
             srcRec = (Rectangle){ 0, 0, (float)srcMod.width, (float)srcMod.height };
 
             srcPtr = &srcMod;
@@ -4003,7 +3992,9 @@ void ImageDraw(Image *dst, Image src, Rectangle srcRec, Rectangle dstRec, Color 
         //    [-] GetPixelColor(): Get Vector4 instead of Color, easier for ColorAlphaBlend()
         //    [ ] TODO: Support 16bit and 32bit (float) channels drawing
 
-        Color colSrc, colDst, blend;
+        Color colSrc = { 0 };
+        Color colDst = { 0 };
+        Color blend = { 0 };
         bool blendRequired = true;
 
         // Fast path: Avoid blend if source has no alpha to blend
@@ -4091,7 +4082,7 @@ void ImageDraw(Image *dst, Image src, Rectangle srcRec, Rectangle dstRec, Color 
 // Draw text (default font) within an image (destination)
 void ImageDrawText(Image *dst, const char *text, int posX, int posY, int fontSize, Color color)
 {
-#if defined(SUPPORT_MODULE_RTEXT) && defined(SUPPORT_DEFAULT_FONT)
+#if SUPPORT_MODULE_RTEXT
     // Make sure default font is loaded to be used on image text drawing
     if (GetFontDefault().texture.id == 0) LoadFontDefault();
 
@@ -4200,7 +4191,7 @@ TextureCubemap LoadTextureCubemap(Image image, int layout)
         /*else if (layout == CUBEMAP_LAYOUT_PANORAMA)
         {
             // TODO: Implement panorama by converting image to square faces...
-            // Ref: https://github.com/denivip/panorama/blob/master/panorama.cpp
+            // REF: https://github.com/denivip/panorama/blob/master/panorama.cpp
         } */
         else
         {
@@ -4230,13 +4221,11 @@ TextureCubemap LoadTextureCubemap(Image image, int layout)
             ImageFormat(&faces, image.format);
 
             Image mipmapped = ImageCopy(image);
-        #if defined(SUPPORT_IMAGE_MANIPULATION)
             if (image.mipmaps > 1)
             {
                 ImageMipmaps(&mipmapped);
                 ImageMipmaps(&faces);
             }
-        #endif
 
             for (int i = 0; i < 6; i++) ImageDraw(&faces, mipmapped, faceRecs[i], (Rectangle){ 0, (float)size*i, (float)size, (float)size }, WHITE);
 
@@ -4598,10 +4587,10 @@ void DrawTexturePro(Texture2D texture, Rectangle source, Rectangle dest, Vector2
         rlSetTexture(0);
 
         // NOTE: Vertex position can be transformed using matrices
-        // but the process is way more costly than just calculating
+        // but the process is way more costly than calculating
         // the vertex positions manually, like done above
         // Old implementation is left here for educational purposes,
-        // just in case someone wants to do some performance test
+        // in case someone wants to do some performance test
         /*
         rlSetTexture(texture.id);
         rlPushMatrix();
@@ -4678,17 +4667,23 @@ void DrawTextureNPatch(Texture2D texture, NPatchInfo nPatchInfo, Rectangle dest,
             bottomBorder = patchHeight - topBorder;
         }
 
-        Vector2 vertA, vertB, vertC, vertD;
-        vertA.x = 0.0f;                             // outer left
-        vertA.y = 0.0f;                             // outer top
-        vertB.x = leftBorder;                       // inner left
-        vertB.y = topBorder;                        // inner top
-        vertC.x = patchWidth  - rightBorder;        // inner right
-        vertC.y = patchHeight - bottomBorder;       // inner bottom
-        vertD.x = patchWidth;                       // outer right
-        vertD.y = patchHeight;                      // outer bottom
+        Vector2 vertA = { 0 };
+        Vector2 vertB = { 0 };
+        Vector2 vertC = { 0 };
+        Vector2 vertD = { 0 };
+        vertA.x = 0.0f;                             // Outer left
+        vertA.y = 0.0f;                             // Outer top
+        vertB.x = leftBorder;                       // Inner left
+        vertB.y = topBorder;                        // Inner top
+        vertC.x = patchWidth  - rightBorder;        // Inner right
+        vertC.y = patchHeight - bottomBorder;       // Inner bottom
+        vertD.x = patchWidth;                       // Outer right
+        vertD.y = patchHeight;                      // Outer bottom
 
-        Vector2 coordA, coordB, coordC, coordD;
+        Vector2 coordA = { 0 };
+        Vector2 coordB = { 0 };
+        Vector2 coordC = { 0 };
+        Vector2 coordD = { 0 };
         coordA.x = nPatchInfo.source.x/width;
         coordA.y = nPatchInfo.source.y/height;
         coordB.x = (nPatchInfo.source.x + leftBorder)/width;
@@ -4904,7 +4899,9 @@ Vector3 ColorToHSV(Color color)
 {
     Vector3 hsv = { 0 };
     Vector3 rgb = { (float)color.r/255.0f, (float)color.g/255.0f, (float)color.b/255.0f };
-    float min, max, delta;
+    float min = 0.0f;
+    float max = 0.0f;
+    float delta = 0.0f;
 
     min = rgb.x < rgb.y? rgb.x : rgb.y;
     min = min  < rgb.z? min  : rgb.z;
@@ -5111,7 +5108,7 @@ Color ColorAlphaBlend(Color dst, Color src, Color tint)
     else if (src.a == 255) out = src;
     else
     {
-        unsigned int alpha = (unsigned int)src.a + 1;     // We are shifting by 8 (dividing by 256), so we need to take that excess into account
+        unsigned int alpha = (unsigned int)src.a + 1; // Shifting by 8 (dividing by 256), so need to take that excess into account
         out.a = (unsigned char)(((unsigned int)alpha*256 + (unsigned int)dst.a*(256 - alpha)) >> 8);
 
         if (out.a > 0)
@@ -5407,7 +5404,7 @@ int GetPixelDataSize(int width, int height, int format)
 // Module Internal Functions Definition
 //----------------------------------------------------------------------------------
 // Convert half-float (stored as unsigned short) to float
-// Ref: https://stackoverflow.com/questions/1659440/32-bit-to-16-bit-floating-point-conversion/60047308#60047308
+// REF: https://stackoverflow.com/questions/1659440/32-bit-to-16-bit-floating-point-conversion/60047308#60047308
 static float HalfToFloat(unsigned short x)
 {
     float result = 0.0f;
@@ -5587,4 +5584,4 @@ static Vector4 *LoadImageDataNormalized(Image image)
     return pixels;
 }
 
-#endif      // SUPPORT_MODULE_RTEXTURES
+#endif // SUPPORT_MODULE_RTEXTURES

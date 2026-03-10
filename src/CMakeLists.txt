@@ -1,7 +1,7 @@
 # Setup the project and settings
 project(raylib C)
-set(PROJECT_VERSION 5.5.0)
-set(API_VERSION 550)
+set(PROJECT_VERSION 6.0.0)
+set(API_VERSION 600)
 
 include(GNUInstallDirs)
 include(JoinPaths)
@@ -36,7 +36,6 @@ set(raylib_sources
     rshapes.c
     rtext.c
     rtextures.c
-    utils.c
     )
 
 # <root>/cmake/GlfwImport.cmake handles the details around the inclusion of glfw
@@ -80,6 +79,12 @@ if (${PLATFORM} MATCHES "Web")
     endif()
 endif()
 
+if (${PLATFORM} MATCHES "Android")
+    # Wrap fopen at link time so all code (including third-party libs) goes
+    # through __wrap_fopen, which handles Android APK asset loading
+    target_link_options(raylib INTERFACE -Wl,--wrap=fopen)
+endif()
+
 set_target_properties(raylib PROPERTIES
                       PUBLIC_HEADER "${raylib_public_headers}"
                       VERSION ${PROJECT_VERSION}
@@ -116,6 +121,21 @@ target_include_directories(raylib
 
 # Copy the header files to the build directory for convenience
 file(COPY ${raylib_public_headers} DESTINATION "include")
+if (PLATFORM STREQUAL "Desktop")
+    if (UNIX AND NOT APPLE)
+        if (GLFW_BUILD_X11)
+            find_package(X11 REQUIRED)
+
+            target_compile_definitions(raylib PRIVATE _GLFW_X11)
+
+            target_link_libraries(raylib PRIVATE 
+                ${X11_LIBRARIES}
+            )
+            
+            message(STATUS "X11 support enabled for raylib")
+        endif()
+    endif()
+endif()
 
 # Includes information on how the library will be installed on the system
 # when cmake --install is run

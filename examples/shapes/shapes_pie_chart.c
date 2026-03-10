@@ -49,8 +49,8 @@ int main(void)
     bool showPercentages = false;
     bool showDonut = false;
     int hoveredSlice = -1;
-    Rectangle scrollPanelBounds = {0};
-    Vector2 scrollContentOffset = {0};
+    Rectangle scrollPanelBounds = { 0 };
+    Vector2 scrollContentOffset = { 0 };
     Rectangle view = { 0 };
 
     // UI layout parameters
@@ -160,7 +160,7 @@ int main(void)
 
                 // Draw inner circle to create donut effect
                 // TODO: This is a hacky solution, better use DrawRing()
-                if (showDonut) DrawCircle(center.x, center.y, donutInnerRadius, RAYWHITE);
+                if (showDonut) DrawCircleV(center, donutInnerRadius, RAYWHITE);
 
                 startAngle += sweepAngle;
             }

@@ -25,7 +25,7 @@
 *
 *   LICENSE: zlib/libpng
 *
-*   Copyright (c) 2013-2025 Ramon Santamaria (@raysan5)
+*   Copyright (c) 2013-2026 Ramon Santamaria (@raysan5)
 *
 *   This software is provided "as-is", without any express or implied warranty. In no event
 *   will the authors be held liable for any damages arising from the use of this software.
@@ -46,12 +46,9 @@
 
 #include "raylib.h"     // Declares module functions
 
-// Check if config flags have been externally provided on compilation line
-#if !defined(EXTERNAL_CONFIG_FLAGS)
-    #include "config.h"         // Defines module configuration flags
-#endif
+#include "config.h"     // Defines module configuration flags
 
-#if defined(SUPPORT_MODULE_RSHAPES)
+#if SUPPORT_MODULE_RSHAPES
 
 #include "rlgl.h"       // OpenGL abstraction layer to OpenGL 1.1, 2.1, 3.3+ or ES2
 
@@ -62,9 +59,9 @@
 //----------------------------------------------------------------------------------
 // Defines and Macros
 //----------------------------------------------------------------------------------
-// Error rate to calculate how many segments we need to draw a smooth circle,
-// taken from https://stackoverflow.com/a/2244088
 #ifndef SMOOTH_CIRCLE_ERROR_RATE
+    // Define error rate to calculate how many segments are needed to draw a smooth circle
+    // REF: https://stackoverflow.com/a/2244088
     #define SMOOTH_CIRCLE_ERROR_RATE    0.5f      // Circle error rate
 #endif
 #ifndef SPLINE_SEGMENT_DIVISIONS
@@ -131,7 +128,7 @@ void DrawPixel(int posX, int posY, Color color)
 // Draw a pixel (Vector version)
 void DrawPixelV(Vector2 position, Color color)
 {
-#if defined(SUPPORT_QUADS_DRAW_MODE)
+#if SUPPORT_QUADS_DRAW_MODE
     rlSetTexture(GetShapesTexture().id);
     Rectangle shapeRect = GetShapesTextureRectangle();
 
@@ -321,7 +318,7 @@ void DrawCircle(int centerX, int centerY, float radius, Color color)
 }
 
 // Draw a color-filled circle (Vector version)
-// NOTE: On OpenGL 3.3 and ES2 we use QUADS to avoid drawing order issues
+// NOTE: On OpenGL 3.3 and ES2 using QUADS to avoid drawing order issues
 void DrawCircleV(Vector2 center, float radius, Color color)
 {
     DrawCircleSector(center, radius, 0, 360, 36, color);
@@ -356,7 +353,7 @@ void DrawCircleSector(Vector2 center, float radius, float startAngle, float endA
     float stepLength = (endAngle - startAngle)/(float)segments;
     float angle = startAngle;
 
-#if defined(SUPPORT_QUADS_DRAW_MODE)
+#if SUPPORT_QUADS_DRAW_MODE
     rlSetTexture(GetShapesTexture().id);
     Rectangle shapeRect = GetShapesTextureRectangle();
 
@@ -382,7 +379,7 @@ void DrawCircleSector(Vector2 center, float radius, float startAngle, float endA
             angle += (stepLength*2.0f);
         }
 
-        // NOTE: In case number of segments is odd, we add one last piece to the cake
+        // NOTE: In case number of segments is odd, adding one last piece to the cake
         if ((((unsigned int)segments)%2) == 1)
         {
             rlColor4ub(color.r, color.g, color.b, color.a);
@@ -597,7 +594,7 @@ void DrawRing(Vector2 center, float innerRadius, float outerRadius, float startA
     float stepLength = (endAngle - startAngle)/(float)segments;
     float angle = startAngle;
 
-#if defined(SUPPORT_QUADS_DRAW_MODE)
+#if SUPPORT_QUADS_DRAW_MODE
     rlSetTexture(GetShapesTexture().id);
     Rectangle shapeRect = GetShapesTextureRectangle();
 
@@ -725,7 +722,7 @@ void DrawRectangle(int posX, int posY, int width, int height, Color color)
 }
 
 // Draw a color-filled rectangle (Vector version)
-// NOTE: On OpenGL 3.3 and ES2 we use QUADS to avoid drawing order issues
+// NOTE: On OpenGL 3.3 and ES2 using QUADS to avoid drawing order issues
 void DrawRectangleV(Vector2 position, Vector2 size, Color color)
 {
     DrawRectanglePro((Rectangle){ position.x, position.y, size.x, size.y }, (Vector2){ 0.0f, 0.0f }, 0.0f, color);
@@ -777,7 +774,7 @@ void DrawRectanglePro(Rectangle rec, Vector2 origin, float rotation, Color color
         bottomRight.y = y + (dx + rec.width)*sinRotation + (dy + rec.height)*cosRotation;
     }
 
-#if defined(SUPPORT_QUADS_DRAW_MODE)
+#if SUPPORT_QUADS_DRAW_MODE
     rlSetTexture(GetShapesTexture().id);
     Rectangle shapeRect = GetShapesTextureRectangle();
 
@@ -887,7 +884,7 @@ void DrawRectangleLines(int posX, int posY, int width, int height, Color color)
 
 /*
 // Previous implementation, it has issues... but it does not require view matrix...
-#if defined(SUPPORT_QUADS_DRAW_MODE)
+#if SUPPORT_QUADS_DRAW_MODE
     DrawRectangle(posX, posY, width, 1, color);
     DrawRectangle(posX + width - 1, posY + 1, 1, height - 2, color);
     DrawRectangle(posX, posY + height - 1, width, 1, color);
@@ -971,7 +968,7 @@ void DrawRectangleRounded(Rectangle rec, float roundness, int segments, Color co
 
     /*
     Quick sketch to make sense of all of this,
-    there are 9 parts to draw, also mark the 12 points we'll use
+    there are 9 parts to draw, also mark the 12 points used
 
           P0____________________P1
           /|                    |\
@@ -997,7 +994,7 @@ void DrawRectangleRounded(Rectangle rec, float roundness, int segments, Color co
     const Vector2 centers[4] = { point[8], point[9], point[10], point[11] };
     const float angles[4] = { 180.0f, 270.0f, 0.0f, 90.0f };
 
-#if defined(SUPPORT_QUADS_DRAW_MODE)
+#if SUPPORT_QUADS_DRAW_MODE
     rlSetTexture(GetShapesTexture().id);
     Rectangle shapeRect = GetShapesTextureRectangle();
 
@@ -1027,7 +1024,7 @@ void DrawRectangleRounded(Rectangle rec, float roundness, int segments, Color co
                 angle += (stepLength*2);
             }
 
-            // NOTE: In case number of segments is odd, we add one last piece to the cake
+            // NOTE: In case number of segments is odd, adding one last piece to the cake
             if (segments%2)
             {
                 rlColor4ub(color.r, color.g, color.b, color.a);
@@ -1171,7 +1168,7 @@ void DrawRectangleRounded(Rectangle rec, float roundness, int segments, Color co
 // Draw rectangle with rounded edges
 void DrawRectangleRoundedLines(Rectangle rec, float roundness, int segments, Color color)
 {
-    // NOTE: For line thicknes <=1.0f we use RL_LINES, otherwise wee use RL_QUADS/RL_TRIANGLES
+    // NOTE: For line thicknes <=1.0f using RL_LINES, otherwise using RL_QUADS/RL_TRIANGLES
     DrawRectangleRoundedLinesEx(rec, roundness, segments, 1.0f, color);
 }
 
@@ -1207,7 +1204,7 @@ void DrawRectangleRoundedLinesEx(Rectangle rec, float roundness, int segments, f
 
     /*
     Quick sketch to make sense of all of this,
-    marks the 16 + 4(corner centers P16-19) points we'll use
+    marks the 16 + 4(corner centers P16-19) points used
 
            P0 ================== P1
           // P8                P9 \\
@@ -1251,7 +1248,7 @@ void DrawRectangleRoundedLinesEx(Rectangle rec, float roundness, int segments, f
 
     if (lineThick > 1)
     {
-#if defined(SUPPORT_QUADS_DRAW_MODE)
+#if SUPPORT_QUADS_DRAW_MODE
         rlSetTexture(GetShapesTexture().id);
         Rectangle shapeRect = GetShapesTextureRectangle();
 
@@ -1425,7 +1422,7 @@ void DrawRectangleRoundedLinesEx(Rectangle rec, float roundness, int segments, f
 // NOTE: Vertex must be provided in counter-clockwise order
 void DrawTriangle(Vector2 v1, Vector2 v2, Vector2 v3, Color color)
 {
-#if defined(SUPPORT_QUADS_DRAW_MODE)
+#if SUPPORT_QUADS_DRAW_MODE
     rlSetTexture(GetShapesTexture().id);
     Rectangle shapeRect = GetShapesTextureRectangle();
 
@@ -1541,7 +1538,7 @@ void DrawPoly(Vector2 center, int sides, float radius, float rotation, Color col
     float centralAngle = rotation*DEG2RAD;
     float angleStep = 360.0f/(float)sides*DEG2RAD;
 
-#if defined(SUPPORT_QUADS_DRAW_MODE)
+#if SUPPORT_QUADS_DRAW_MODE
     rlSetTexture(GetShapesTexture().id);
     Rectangle shapeRect = GetShapesTextureRectangle();
 
@@ -1610,7 +1607,7 @@ void DrawPolyLinesEx(Vector2 center, int sides, float radius, float rotation, fl
     float exteriorAngle = 360.0f/(float)sides*DEG2RAD;
     float innerRadius = radius - (lineThick*cosf(DEG2RAD*exteriorAngle/2.0f));
 
-#if defined(SUPPORT_QUADS_DRAW_MODE)
+#if SUPPORT_QUADS_DRAW_MODE
     rlSetTexture(GetShapesTexture().id);
     Rectangle shapeRect = GetShapesTextureRectangle();
 
@@ -1666,7 +1663,7 @@ void DrawSplineLinear(const Vector2 *points, int pointCount, float thick, Color 
 {
     if (pointCount < 2) return;
 
-#if defined(SUPPORT_SPLINE_MITERS)
+#if SUPPORT_SPLINE_MITERS
     Vector2 prevNormal = (Vector2){-(points[1].y - points[0].y), (points[1].x - points[0].x)};
     float prevLength = sqrtf(prevNormal.x*prevNormal.x + prevNormal.y*prevNormal.y);
 
@@ -1773,8 +1770,8 @@ void DrawSplineLinear(const Vector2 *points, int pointCount, float thick, Color 
     }
 #endif
 
-#if defined(SUPPORT_SPLINE_SEGMENT_CAPS)
-    // TODO: Add spline segment rounded caps at the begin/end of the spline
+#if SUPPORT_SPLINE_SEGMENT_CAPS
+    // TODO: Add spline segment rounded caps at the begin/end of the spline?
 #endif
 }
 
@@ -1949,7 +1946,7 @@ void DrawSplineBezierCubic(const Vector2 *points, int pointCount, float thick, C
 // Draw spline segment: Linear, 2 points
 void DrawSplineSegmentLinear(Vector2 p1, Vector2 p2, float thick, Color color)
 {
-    // NOTE: For the linear spline we don't use subdivisions, just a single quad
+    // NOTE: For the linear spline no subdivisions are used, only a single quad
 
     Vector2 delta = { p2.x - p1.x, p2.y - p1.y };
     float length = sqrtf(delta.x*delta.x + delta.y*delta.y);
@@ -2366,28 +2363,32 @@ bool CheckCollisionCircleRec(Vector2 center, float radius, Rectangle rec)
 }
 
 // Check the collision between two lines defined by two points each, returns collision point by reference
+// REF: https://en.wikipedia.org/wiki/Line–line_intersection#Given_two_points_on_each_line_segment
 bool CheckCollisionLines(Vector2 startPos1, Vector2 endPos1, Vector2 startPos2, Vector2 endPos2, Vector2 *collisionPoint)
 {
     bool collision = false;
 
-    float div = (endPos2.y - startPos2.y)*(endPos1.x - startPos1.x) - (endPos2.x - startPos2.x)*(endPos1.y - startPos1.y);
+    float rx = endPos1.x - startPos1.x;
+    float ry = endPos1.y - startPos1.y;
+    float sx = endPos2.x - startPos2.x;
+    float sy = endPos2.y - startPos2.y;
+
+    float div = rx*sy - ry*sx;
 
     if (fabsf(div) >= FLT_EPSILON)
     {
-        collision = true;
+        float s12x = startPos2.x - startPos1.x;
+        float s12y = startPos2.y - startPos1.y;
 
-        float xi = ((startPos2.x - endPos2.x)*(startPos1.x*endPos1.y - startPos1.y*endPos1.x) - (startPos1.x - endPos1.x)*(startPos2.x*endPos2.y - startPos2.y*endPos2.x))/div;
-        float yi = ((startPos2.y - endPos2.y)*(startPos1.x*endPos1.y - startPos1.y*endPos1.x) - (startPos1.y - endPos1.y)*(startPos2.x*endPos2.y - startPos2.y*endPos2.x))/div;
+        float t = (s12x*sy - s12y*sx)/div;
+        float u = (s12x*ry - s12y*rx)/div;
 
-        if (((fabsf(startPos1.x - endPos1.x) > FLT_EPSILON) && (xi < fminf(startPos1.x, endPos1.x) || (xi > fmaxf(startPos1.x, endPos1.x)))) ||
-            ((fabsf(startPos2.x - endPos2.x) > FLT_EPSILON) && (xi < fminf(startPos2.x, endPos2.x) || (xi > fmaxf(startPos2.x, endPos2.x)))) ||
-            ((fabsf(startPos1.y - endPos1.y) > FLT_EPSILON) && (yi < fminf(startPos1.y, endPos1.y) || (yi > fmaxf(startPos1.y, endPos1.y)))) ||
-            ((fabsf(startPos2.y - endPos2.y) > FLT_EPSILON) && (yi < fminf(startPos2.y, endPos2.y) || (yi > fmaxf(startPos2.y, endPos2.y))))) collision = false;
-
-        if (collision && (collisionPoint != 0))
+        if ((0.0f <= t) && (t <= 1.0f) && (0.0f <= u) && (u <= 1.0f))
         {
-            collisionPoint->x = xi;
-            collisionPoint->y = yi;
+            collisionPoint->x = startPos1.x + t*rx;
+            collisionPoint->y = startPos1.y + t*ry;
+
+            collision = true;
         }
     }
 
@@ -2483,4 +2484,4 @@ static float EaseCubicInOut(float t, float b, float c, float d)
     return result;
 }
 
-#endif      // SUPPORT_MODULE_RSHAPES
+#endif // SUPPORT_MODULE_RSHAPES

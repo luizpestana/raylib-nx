@@ -58,6 +58,10 @@ packages/
 *.h.pch
 ./*.obj
 
+# Ignore SDL libs for testing
+src/external/SDL2
+src/external/SDL3
+
 # Emscripten
 emsdk
 
@@ -136,3 +140,8 @@ tools/rexm/rexm
 # CI
 emsdk-cache/
 raylib.com/
+
+# Wayland files
+src/*protocol.h
+src/*protocol-code.h
+src/*protocol-code.c

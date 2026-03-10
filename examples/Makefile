@@ -30,7 +30,7 @@
 #     > PLATFORM_ANDROID:
 #         - Android (ARM, ARM64)
 #
-#   Copyright (c) 2013-2025 Ramon Santamaria (@raysan5)
+#   Copyright (c) 2013-2026 Ramon Santamaria (@raysan5)
 #
 #   This software is provided "as-is", without any express or implied warranty. In no event
 #   will the authors be held liable for any damages arising from the use of this software.
@@ -69,7 +69,7 @@ endif
 
 # Define required raylib variables
 PROJECT_NAME          ?= raylib_examples
-RAYLIB_VERSION        ?= 5.5.0
+RAYLIB_VERSION        ?= 6.0.0
 RAYLIB_PATH           ?= ..
 
 # Define raylib source code path
@@ -89,6 +89,16 @@ BUILD_MODE            ?= RELEASE
 
 # Use external GLFW library instead of rglfw module
 USE_EXTERNAL_GLFW     ?= FALSE
+
+# Enable support for X11 by default on Linux when using GLFW
+# NOTE: Wayland is disabled by default, only enable if you are sure
+GLFW_LINUX_ENABLE_WAYLAND  ?= FALSE
+GLFW_LINUX_ENABLE_X11      ?= TRUE
+
+# Enable support for X11 by default on Linux when using GLFW
+# NOTE: Wayland is disabled by default, only enable if you are sure
+RGFW_LINUX_ENABLE_WAYLAND  ?= FALSE
+RGFW_LINUX_ENABLE_X11      ?= TRUE
 
 # PLATFORM_DESKTOP_SDL: It requires SDL library to be provided externally
 # WARNING: Library is not included in raylib, it MUST be configured by users
@@ -224,15 +234,17 @@ ifeq ($(TARGET_PLATFORM),PLATFORM_DESKTOP_GLFW)
     endif
 endif
 ifeq ($(TARGET_PLATFORM),PLATFORM_ANDROID)
-    MAKE = mingw32-make
+    ifeq ($(PLATFORM_OS),WINDOWS)
+        MAKE = mingw32-make
+    endif
 endif
 ifeq ($(TARGET_PLATFORM),$(filter $(TARGET_PLATFORM),PLATFORM_WEB PLATFORM_WEB_RGFW))
-    ifeq ($(OS),Windows_NT)
+    ifeq ($(PLATFORM_OS),WINDOWS)
         MAKE = mingw32-make
     else
-        EMMAKE != type emmake
+        EMMAKE := $(shell command -v emmake)
         ifneq (, $(EMMAKE))
-            MAKE = emmake make
+            MAKE = $(EMMAKE) make
         else
             MAKE = mingw32-make
         endif
@@ -421,14 +433,16 @@ ifeq ($(TARGET_PLATFORM),PLATFORM_DESKTOP_GLFW)
         # NOTE: Required packages: libegl1-mesa-dev
         LDLIBS = -lraylib -lGL -lm -lpthread -ldl -lrt
 
-        # On X11 requires also below libraries
-        LDLIBS += -lX11
-        # NOTE: It seems additional libraries are not required any more, latest GLFW just dlopen them
-        #LDLIBS += -lXrandr -lXinerama -lXi -lXxf86vm -lXcursor
-
-        # On Wayland windowing system, additional libraries requires
-        ifeq ($(USE_WAYLAND_DISPLAY),TRUE)
+        # On Wayland, additional libraries requires
+        ifeq ($(GLFW_LINUX_ENABLE_WAYLAND),TRUE)
             LDLIBS += -lwayland-client -lwayland-cursor -lwayland-egl -lxkbcommon
+        endif
+
+        ifeq ($(GLFW_LINUX_ENABLE_X11),TRUE)
+            # On X11, additional libraries required
+            LDLIBS += -lX11
+            # NOTE: It seems additional libraries are not required any more, latest GLFW just dlopen them
+            #LDLIBS += -lXrandr -lXinerama -lXi -lXxf86vm -lXcursor
         endif
         # Explicit link to libc
         ifeq ($(RAYLIB_LIBTYPE),SHARED)
@@ -467,15 +481,16 @@ ifeq ($(TARGET_PLATFORM),PLATFORM_DESKTOP_SDL)
         # NOTE: Required packages: libegl1-mesa-dev
         LDLIBS = -lraylib $(SDL_LIBRARIES) -lGL -lm -lpthread -ldl -lrt
 
-        # On X11 requires also below libraries
+        # On X11, addition libraries required
         LDLIBS += -lX11
         # NOTE: It seems additional libraries are not required any more, latest GLFW just dlopen them
         #LDLIBS += -lXrandr -lXinerama -lXi -lXxf86vm -lXcursor
 
-        # On Wayland windowing system, additional libraries requires
+        # On Wayland, additional libraries requires
         ifeq ($(USE_WAYLAND_DISPLAY),TRUE)
             LDLIBS += -lwayland-client -lwayland-cursor -lwayland-egl -lxkbcommon
         endif
+
         # Explicit link to libc
         ifeq ($(RAYLIB_LIBTYPE),SHARED)
             LDLIBS += -lc
@@ -495,7 +510,15 @@ ifeq ($(TARGET_PLATFORM),PLATFORM_DESKTOP_RGFW)
         # Libraries for Debian GNU/Linux desktop compipling
         # NOTE: Required packages: libegl1-mesa-dev
         LDFLAGS += -L../src
-        LDLIBS = -lraylib -lGL -lX11 -lXrandr -lXinerama -lXi -lXxf86vm -lXcursor -lm -lpthread -ldl -lrt
+        LDLIBS = -lraylib -lm
+
+        ifeq ($(RGFW_LINUX_ENABLE_X11),TRUE)
+            LDLIBS += -lGL -lX11 -lXrandr -lXinerama -lXi -lXxf86vm -lXcursor -lpthread -ldl -lrt
+        endif
+
+        ifeq ($(RGFW_LINUX_ENABLE_WAYLAND),TRUE)
+            LDLIBS += -lwayland-client -lwayland-cursor -lwayland-egl -lxkbcommon
+        endif
 
         # Explicit link to libc
         ifeq ($(RAYLIB_LIBTYPE),SHARED)
@@ -564,7 +587,7 @@ CORE = \
     core/core_delta_time \
     core/core_directory_files \
     core/core_drop_files \
-    core/core_high_dpi \
+    core/core_highdpi_demo \
     core/core_highdpi_testbed \
     core/core_input_actions \
     core/core_input_gamepad \
@@ -575,6 +598,7 @@ CORE = \
     core/core_input_mouse_wheel \
     core/core_input_multitouch \
     core/core_input_virtual_controls \
+    core/core_keyboard_testbed \
     core/core_monitor_detector \
     core/core_random_sequence \
     core/core_random_values \
@@ -590,6 +614,7 @@ CORE = \
     core/core_window_flags \
     core/core_window_letterbox \
     core/core_window_should_close \
+    core/core_window_web \
     core/core_world_screen
 
 SHAPES = \
@@ -607,7 +632,9 @@ SHAPES = \
     shapes/shapes_easings_ball \
     shapes/shapes_easings_box \
     shapes/shapes_easings_rectangles \
+    shapes/shapes_easings_testbed \
     shapes/shapes_following_eyes \
+    shapes/shapes_hilbert_curve \
     shapes/shapes_kaleidoscope \
     shapes/shapes_lines_bezier \
     shapes/shapes_lines_drawing \
@@ -616,6 +643,7 @@ SHAPES = \
     shapes/shapes_math_angle_rotation \
     shapes/shapes_math_sine_cosine \
     shapes/shapes_mouse_trail \
+    shapes/shapes_penrose_tile \
     shapes/shapes_pie_chart \
     shapes/shapes_rectangle_advanced \
     shapes/shapes_rectangle_scaling \
@@ -635,7 +663,9 @@ TEXTURES = \
     textures/textures_background_scrolling \
     textures/textures_blend_modes \
     textures/textures_bunnymark \
+    textures/textures_cellular_automata \
     textures/textures_fog_of_war \
+    textures/textures_framebuffer_rendering \
     textures/textures_gif_player \
     textures/textures_image_channel \
     textures/textures_image_drawing \
@@ -673,14 +703,17 @@ TEXT = \
     text/text_input_box \
     text/text_rectangle_bounds \
     text/text_sprite_fonts \
+    text/text_strings_management \
     text/text_unicode_emojis \
     text/text_unicode_ranges \
     text/text_words_alignment \
     text/text_writing_anim
 
 MODELS = \
+    models/models_animation_blend_custom \
+    models/models_animation_blending \
     models/models_animation_gpu_skinning \
-    models/models_animation_playing \
+    models/models_animation_timing \
     models/models_basic_voxel \
     models/models_billboard_rendering \
     models/models_bone_socket \
@@ -693,6 +726,7 @@ MODELS = \
     models/models_heightmap_rendering \
     models/models_loading \
     models/models_loading_gltf \
+    models/models_loading_iqm \
     models/models_loading_m3d \
     models/models_loading_vox \
     models/models_mesh_generation \
@@ -718,6 +752,7 @@ SHADERS = \
     shaders/shaders_depth_writing \
     shaders/shaders_eratosthenes_sieve \
     shaders/shaders_fog_rendering \
+    shaders/shaders_game_of_life \
     shaders/shaders_hot_reloading \
     shaders/shaders_hybrid_rendering \
     shaders/shaders_julia_set \
@@ -730,6 +765,7 @@ SHADERS = \
     shaders/shaders_palette_switch \
     shaders/shaders_postprocessing \
     shaders/shaders_raymarching_rendering \
+    shaders/shaders_rlgl_compute \
     shaders/shaders_rounded_rectangle \
     shaders/shaders_shadowmap_rendering \
     shaders/shaders_shapes_textures \
@@ -751,16 +787,6 @@ AUDIO = \
     audio/audio_sound_positioning \
     audio/audio_spectrum_visualizer \
     audio/audio_stream_effects
-
-ifneq ($(TARGET_PLATFORM),PLATFORM_NX)
-OTHERS = \
-    others/easings_testbed \
-    others/embedded_files_loading \
-    others/raylib_opengl_interop \
-    others/rlgl_compute_shader \
-    others/rlgl_standalone \
-    others/web_basic_window
-endif
 #EXAMPLES_LIST_END
 
 # Define processes to execute

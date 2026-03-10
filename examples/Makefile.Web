@@ -30,7 +30,7 @@
 #     > PLATFORM_ANDROID:
 #         - Android (ARM, ARM64)
 #
-#   Copyright (c) 2013-2025 Ramon Santamaria (@raysan5)
+#   Copyright (c) 2013-2026 Ramon Santamaria (@raysan5)
 #
 #   This software is provided "as-is", without any express or implied warranty. In no event
 #   will the authors be held liable for any damages arising from the use of this software.
@@ -69,7 +69,7 @@ endif
 
 # Define required raylib variables
 PROJECT_NAME          ?= raylib_examples
-RAYLIB_VERSION        ?= 5.5.0
+RAYLIB_VERSION        ?= 6.0.0
 RAYLIB_PATH           ?= ..
 
 # Define raylib source code path
@@ -208,12 +208,12 @@ ifeq ($(TARGET_PLATFORM),PLATFORM_ANDROID)
     MAKE = mingw32-make
 endif
 ifeq ($(TARGET_PLATFORM),$(filter $(TARGET_PLATFORM),PLATFORM_WEB PLATFORM_WEB_RGFW))
-    ifeq ($(OS),Windows_NT)
+    ifeq ($(PLATFORM_OS),WINDOWS)
         MAKE = mingw32-make
     else
-        EMMAKE != type emmake
+        EMMAKE := $(shell command -v emmake)
         ifneq (, $(EMMAKE))
-            MAKE = emmake make
+            MAKE = $(EMMAKE) make
         else
             MAKE = mingw32-make
         endif
@@ -519,7 +519,7 @@ CORE = \
     core/core_delta_time \
     core/core_directory_files \
     core/core_drop_files \
-    core/core_high_dpi \
+    core/core_highdpi_demo \
     core/core_highdpi_testbed \
     core/core_input_actions \
     core/core_input_gamepad \
@@ -530,6 +530,7 @@ CORE = \
     core/core_input_mouse_wheel \
     core/core_input_multitouch \
     core/core_input_virtual_controls \
+    core/core_keyboard_testbed \
     core/core_monitor_detector \
     core/core_random_sequence \
     core/core_random_values \
@@ -545,6 +546,7 @@ CORE = \
     core/core_window_flags \
     core/core_window_letterbox \
     core/core_window_should_close \
+    core/core_window_web \
     core/core_world_screen
 
 SHAPES = \
@@ -562,7 +564,9 @@ SHAPES = \
     shapes/shapes_easings_ball \
     shapes/shapes_easings_box \
     shapes/shapes_easings_rectangles \
+    shapes/shapes_easings_testbed \
     shapes/shapes_following_eyes \
+    shapes/shapes_hilbert_curve \
     shapes/shapes_kaleidoscope \
     shapes/shapes_lines_bezier \
     shapes/shapes_lines_drawing \
@@ -571,6 +575,7 @@ SHAPES = \
     shapes/shapes_math_angle_rotation \
     shapes/shapes_math_sine_cosine \
     shapes/shapes_mouse_trail \
+    shapes/shapes_penrose_tile \
     shapes/shapes_pie_chart \
     shapes/shapes_rectangle_advanced \
     shapes/shapes_rectangle_scaling \
@@ -590,7 +595,9 @@ TEXTURES = \
     textures/textures_background_scrolling \
     textures/textures_blend_modes \
     textures/textures_bunnymark \
+    textures/textures_cellular_automata \
     textures/textures_fog_of_war \
+    textures/textures_framebuffer_rendering \
     textures/textures_gif_player \
     textures/textures_image_channel \
     textures/textures_image_drawing \
@@ -628,14 +635,17 @@ TEXT = \
     text/text_input_box \
     text/text_rectangle_bounds \
     text/text_sprite_fonts \
+    text/text_strings_management \
     text/text_unicode_emojis \
     text/text_unicode_ranges \
     text/text_words_alignment \
     text/text_writing_anim
 
 MODELS = \
+    models/models_animation_blend_custom \
+    models/models_animation_blending \
     models/models_animation_gpu_skinning \
-    models/models_animation_playing \
+    models/models_animation_timing \
     models/models_basic_voxel \
     models/models_billboard_rendering \
     models/models_bone_socket \
@@ -648,6 +658,7 @@ MODELS = \
     models/models_heightmap_rendering \
     models/models_loading \
     models/models_loading_gltf \
+    models/models_loading_iqm \
     models/models_loading_m3d \
     models/models_loading_vox \
     models/models_mesh_generation \
@@ -673,6 +684,7 @@ SHADERS = \
     shaders/shaders_depth_writing \
     shaders/shaders_eratosthenes_sieve \
     shaders/shaders_fog_rendering \
+    shaders/shaders_game_of_life \
     shaders/shaders_hot_reloading \
     shaders/shaders_hybrid_rendering \
     shaders/shaders_julia_set \
@@ -685,6 +697,7 @@ SHADERS = \
     shaders/shaders_palette_switch \
     shaders/shaders_postprocessing \
     shaders/shaders_raymarching_rendering \
+    shaders/shaders_rlgl_compute \
     shaders/shaders_rounded_rectangle \
     shaders/shaders_shadowmap_rendering \
     shaders/shaders_shapes_textures \
@@ -779,7 +792,7 @@ core/core_directory_files: core/core_directory_files.c
 core/core_drop_files: core/core_drop_files.c
 	$(CC) -o $@$(EXT) $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM)
 
-core/core_high_dpi: core/core_high_dpi.c
+core/core_highdpi_demo: core/core_highdpi_demo.c
 	$(CC) -o $@$(EXT) $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM)
 
 core/core_highdpi_testbed: core/core_highdpi_testbed.c
@@ -812,6 +825,9 @@ core/core_input_multitouch: core/core_input_multitouch.c
 	$(CC) -o $@$(EXT) $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM)
 
 core/core_input_virtual_controls: core/core_input_virtual_controls.c
+	$(CC) -o $@$(EXT) $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM)
+
+core/core_keyboard_testbed: core/core_keyboard_testbed.c
 	$(CC) -o $@$(EXT) $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM)
 
 core/core_monitor_detector: core/core_monitor_detector.c
@@ -861,6 +877,9 @@ core/core_window_letterbox: core/core_window_letterbox.c
 core/core_window_should_close: core/core_window_should_close.c
 	$(CC) -o $@$(EXT) $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM)
 
+core/core_window_web: core/core_window_web.c
+	$(CC) -o $@$(EXT) $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM)
+
 core/core_world_screen: core/core_world_screen.c
 	$(CC) -o $@$(EXT) $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM)
 
@@ -907,7 +926,13 @@ shapes/shapes_easings_box: shapes/shapes_easings_box.c
 shapes/shapes_easings_rectangles: shapes/shapes_easings_rectangles.c
 	$(CC) -o $@$(EXT) $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM)
 
+shapes/shapes_easings_testbed: shapes/shapes_easings_testbed.c
+	$(CC) -o $@$(EXT) $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM)
+
 shapes/shapes_following_eyes: shapes/shapes_following_eyes.c
+	$(CC) -o $@$(EXT) $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM)
+
+shapes/shapes_hilbert_curve: shapes/shapes_hilbert_curve.c
 	$(CC) -o $@$(EXT) $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM)
 
 shapes/shapes_kaleidoscope: shapes/shapes_kaleidoscope.c
@@ -932,6 +957,9 @@ shapes/shapes_math_sine_cosine: shapes/shapes_math_sine_cosine.c
 	$(CC) -o $@$(EXT) $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM)
 
 shapes/shapes_mouse_trail: shapes/shapes_mouse_trail.c
+	$(CC) -o $@$(EXT) $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM)
+
+shapes/shapes_penrose_tile: shapes/shapes_penrose_tile.c
 	$(CC) -o $@$(EXT) $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM)
 
 shapes/shapes_pie_chart: shapes/shapes_pie_chart.c
@@ -992,7 +1020,13 @@ textures/textures_bunnymark: textures/textures_bunnymark.c
 	$(CC) -o $@$(EXT) $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM) \
     --preload-file textures/resources/raybunny.png@resources/raybunny.png
 
+textures/textures_cellular_automata: textures/textures_cellular_automata.c
+	$(CC) -o $@$(EXT) $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM)
+
 textures/textures_fog_of_war: textures/textures_fog_of_war.c
+	$(CC) -o $@$(EXT) $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM)
+
+textures/textures_framebuffer_rendering: textures/textures_framebuffer_rendering.c
 	$(CC) -o $@$(EXT) $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM)
 
 textures/textures_gif_player: textures/textures_gif_player.c
@@ -1143,6 +1177,9 @@ text/text_sprite_fonts: text/text_sprite_fonts.c
     --preload-file text/resources/sprite_fonts/alpha_beta.png@resources/sprite_fonts/alpha_beta.png \
     --preload-file text/resources/sprite_fonts/jupiter_crash.png@resources/sprite_fonts/jupiter_crash.png
 
+text/text_strings_management: text/text_strings_management.c
+	$(CC) -o $@$(EXT) $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM)
+
 text/text_unicode_emojis: text/text_unicode_emojis.c
 	$(CC) -o $@$(EXT) $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM) \
     --preload-file text/resources/dejavu.fnt@resources/dejavu.fnt \
@@ -1163,17 +1200,27 @@ text/text_writing_anim: text/text_writing_anim.c
 	$(CC) -o $@$(EXT) $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM)
 
 # Compile MODELS examples
+models/models_animation_blend_custom: models/models_animation_blend_custom.c
+	$(CC) -o $@$(EXT) $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM) \
+    --preload-file models/resources/models/gltf/greenman.glb@resources/models/gltf/greenman.glb \
+    --preload-file models/resources/shaders/glsl100/skinning.vs@resources/shaders/glsl100/skinning.vs \
+    --preload-file models/resources/shaders/glsl100/skinning.fs@resources/shaders/glsl100/skinning.fs
+
+models/models_animation_blending: models/models_animation_blending.c
+	$(CC) -o $@$(EXT) $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM) \
+    --preload-file models/resources/models/gltf/robot.glb@resources/models/gltf/robot.glb \
+    --preload-file models/resources/shaders/glsl100/skinning.vs@resources/shaders/glsl100/skinning.vs \
+    --preload-file models/resources/shaders/glsl100/skinning.fs@resources/shaders/glsl100/skinning.fs
+
 models/models_animation_gpu_skinning: models/models_animation_gpu_skinning.c
 	$(CC) -o $@$(EXT) $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM) \
     --preload-file models/resources/models/gltf/greenman.glb@resources/models/gltf/greenman.glb \
     --preload-file models/resources/shaders/glsl100/skinning.vs@resources/shaders/glsl100/skinning.vs \
     --preload-file models/resources/shaders/glsl100/skinning.fs@resources/shaders/glsl100/skinning.fs
 
-models/models_animation_playing: models/models_animation_playing.c
+models/models_animation_timing: models/models_animation_timing.c
 	$(CC) -o $@$(EXT) $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM) \
-    --preload-file models/resources/models/iqm/guy.iqm@resources/models/iqm/guy.iqm \
-    --preload-file models/resources/models/iqm/guytex.png@resources/models/iqm/guytex.png \
-    --preload-file models/resources/models/iqm/guyanim.iqm@resources/models/iqm/guyanim.iqm
+    --preload-file models/resources/models/gltf/robot.glb@resources/models/gltf/robot.glb
 
 models/models_basic_voxel: models/models_basic_voxel.c
 	$(CC) -o $@$(EXT) $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM)
@@ -1227,6 +1274,12 @@ models/models_loading: models/models_loading.c
 models/models_loading_gltf: models/models_loading_gltf.c
 	$(CC) -o $@$(EXT) $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM) \
     --preload-file models/resources/models/gltf/robot.glb@resources/models/gltf/robot.glb
+
+models/models_loading_iqm: models/models_loading_iqm.c
+	$(CC) -o $@$(EXT) $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM) \
+    --preload-file models/resources/models/iqm/guy.iqm@resources/models/iqm/guy.iqm \
+    --preload-file models/resources/models/iqm/guytex.png@resources/models/iqm/guytex.png \
+    --preload-file models/resources/models/iqm/guyanim.iqm@resources/models/iqm/guyanim.iqm
 
 models/models_loading_m3d: models/models_loading_m3d.c
 	$(CC) -o $@$(EXT) $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM) \
@@ -1351,6 +1404,19 @@ shaders/shaders_fog_rendering: shaders/shaders_fog_rendering.c
     --preload-file shaders/resources/shaders/glsl100/lighting.vs@resources/shaders/glsl100/lighting.vs \
     --preload-file shaders/resources/shaders/glsl100/fog.fs@resources/shaders/glsl100/fog.fs
 
+shaders/shaders_game_of_life: shaders/shaders_game_of_life.c
+	$(CC) -o $@$(EXT) $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM) \
+    --preload-file shaders/resources/shaders/glsl100/game_of_life.fs@resources/shaders/glsl100/game_of_life.fs \
+    --preload-file shaders/resources/game_of_life/r_pentomino.png@resources/game_of_life/r_pentomino.png \
+    --preload-file shaders/resources/game_of_life/glider.png@resources/game_of_life/glider.png \
+    --preload-file shaders/resources/game_of_life/acorn.png@resources/game_of_life/acorn.png \
+    --preload-file shaders/resources/game_of_life/spaceships.png@resources/game_of_life/spaceships.png \
+    --preload-file shaders/resources/game_of_life/still_lifes.png@resources/game_of_life/still_lifes.png \
+    --preload-file shaders/resources/game_of_life/oscillators.png@resources/game_of_life/oscillators.png \
+    --preload-file shaders/resources/game_of_life/puffer_train.png@resources/game_of_life/puffer_train.png \
+    --preload-file shaders/resources/game_of_life/glider_gun.png@resources/game_of_life/glider_gun.png \
+    --preload-file shaders/resources/game_of_life/breeder.png@resources/game_of_life/breeder.png
+
 shaders/shaders_hot_reloading: shaders/shaders_hot_reloading.c
 	$(CC) -o $@$(EXT) $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM) \
     --preload-file shaders/resources/shaders/glsl100/reload.fs@resources/shaders/glsl100/reload.fs
@@ -1422,6 +1488,9 @@ shaders/shaders_postprocessing: shaders/shaders_postprocessing.c
 shaders/shaders_raymarching_rendering: shaders/shaders_raymarching_rendering.c
 	$(CC) -o $@$(EXT) $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM) \
     --preload-file shaders/resources/shaders/glsl100/raymarching.fs@resources/shaders/glsl100/raymarching.fs
+
+shaders/shaders_rlgl_compute: shaders/shaders_rlgl_compute.c
+	$(CC) -o $@$(EXT) $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM)
 
 shaders/shaders_rounded_rectangle: shaders/shaders_rounded_rectangle.c
 	$(CC) -o $@$(EXT) $< $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM) \
