@@ -687,8 +687,7 @@ int InitPlatform(void)
     CORE.Window.screen.height = 720;
     CORE.Window.display.width = CORE.Window.screen.width;
     CORE.Window.display.height = CORE.Window.screen.height;
-    CORE.Window.fullscreen = true;
-    CORE.Window.flags |= FLAG_FULLSCREEN_MODE;
+    FLAG_SET(CORE.Window.flags, FLAG_FULLSCREEN_MODE);
 
     const EGLint framebufferAttribs[] =
     {
