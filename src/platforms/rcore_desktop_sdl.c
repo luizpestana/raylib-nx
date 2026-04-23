@@ -60,7 +60,7 @@
     #include "SDL.h"
 #endif
 
-#if !defined(GRAPHICS_API_OPENGL_11_SOFTWARE)
+#if !defined(GRAPHICS_API_OPENGL_SOFTWARE)
   #if defined(GRAPHICS_API_OPENGL_ES2)
       // It seems it does not need to be included to work
       //#include "SDL_opengles2.h"
@@ -1259,7 +1259,7 @@ void DisableCursor(void)
 // Swap back buffer with front buffer (screen drawing)
 void SwapScreenBuffer(void)
 {
-#if defined(GRAPHICS_API_OPENGL_11_SOFTWARE)
+#if defined(GRAPHICS_API_OPENGL_SOFTWARE)
     // NOTE: Using a preprocessor condition here because rlCopyFramebuffer() is only declared for software rendering
     SDL_Surface *surface = SDL_GetWindowSurface(platform.window);
     rlCopyFramebuffer(0, 0, CORE.Window.render.width, CORE.Window.render.height, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, surface->pixels);
@@ -1276,8 +1276,8 @@ void SwapScreenBuffer(void)
 // Get elapsed time measure in seconds
 double GetTime(void)
 {
-    unsigned int ms = SDL_GetTicks();    // Elapsed time in milliseconds since SDL_Init()
-    double time = (double)ms/1000;
+    double time = ((double)SDL_GetPerformanceCounter()/(double)SDL_GetPerformanceFrequency()) - CORE.Time.base;
+
     return time;
 }
 
@@ -1527,6 +1527,10 @@ void PollInputEvents(void)
 
                             if ((width + borderLeft + borderRight != usableBounds.w) && (height + borderTop + borderBottom != usableBounds.h)) FLAG_CLEAR(CORE.Window.flags, FLAG_WINDOW_MAXIMIZED);
                         }
+                        #endif
+
+                        #if defined(GRAPHICS_API_OPENGL_SOFTWARE)
+                        swResize(width, height);
                         #endif
                     } break;
 
@@ -1981,7 +1985,7 @@ int InitPlatform(void)
 
     // NOTE: Some OpenGL context attributes must be set before window creation
 
-    if (rlGetVersion() != RL_OPENGL_11_SOFTWARE)
+    if (rlGetVersion() != RL_OPENGL_SOFTWARE)
     {
         // Add the flag telling the window to use an OpenGL context
         flags |= SDL_WINDOW_OPENGL;
@@ -2044,12 +2048,12 @@ int InitPlatform(void)
 #endif
 
     // Init OpenGL context
-    if (rlGetVersion() != RL_OPENGL_11_SOFTWARE)
+    if (rlGetVersion() != RL_OPENGL_SOFTWARE)
     {
         platform.glContext = SDL_GL_CreateContext(platform.window);
     }
 
-    if ((platform.window != NULL) && ((rlGetVersion() == RL_OPENGL_11_SOFTWARE) || (platform.glContext != NULL)))
+    if ((platform.window != NULL) && ((rlGetVersion() == RL_OPENGL_SOFTWARE) || (platform.glContext != NULL)))
     {
         CORE.Window.ready = true;
 
@@ -2064,7 +2068,8 @@ int InitPlatform(void)
         CORE.Window.currentFbo.width = CORE.Window.render.width;
         CORE.Window.currentFbo.height = CORE.Window.render.height;
 
-        TRACELOG(LOG_INFO, "DISPLAY: Device initialized successfully");
+        TRACELOG(LOG_INFO, "DISPLAY: Device initialized successfully %s",
+            FLAG_IS_SET(CORE.Window.flags, FLAG_WINDOW_HIGHDPI)? "(HighDPI)" : "");
         TRACELOG(LOG_INFO, "    > Display size: %i x %i", CORE.Window.display.width, CORE.Window.display.height);
         TRACELOG(LOG_INFO, "    > Screen size:  %i x %i", CORE.Window.screen.width, CORE.Window.screen.height);
         TRACELOG(LOG_INFO, "    > Render size:  %i x %i", CORE.Window.render.width, CORE.Window.render.height);
@@ -2124,12 +2129,14 @@ int InitPlatform(void)
 
     // Initialize timing system
     //----------------------------------------------------------------------------
-    // NOTE: No need to call InitTimer(), let SDL manage it internally
-    CORE.Time.previous = GetTime();     // Get time as double
+    // Get base time from window initialization
+    CORE.Time.base = (double)SDL_GetPerformanceCounter()/(double)SDL_GetPerformanceFrequency();
 
     #if defined(_WIN32) && SUPPORT_WINMM_HIGHRES_TIMER && !SUPPORT_BUSY_WAIT_LOOP
     SDL_SetHint(SDL_HINT_TIMER_RESOLUTION, "1"); // SDL equivalent of timeBeginPeriod() and timeEndPeriod()
     #endif
+
+    // NOTE: No need to call InitTimer(), let SDL manage it internally
     //----------------------------------------------------------------------------
 
     // Initialize storage system
@@ -2164,7 +2171,7 @@ static KeyboardKey ConvertScancodeToKey(SDL_Scancode sdlScancode)
         return mapScancodeToKey[sdlScancode];
     }
 
-    return KEY_NULL; // No equivalent key in Raylib
+    return KEY_NULL; // No equivalent key in raylib
 }
 
 // Get next codepoint in a byte sequence and bytes processed

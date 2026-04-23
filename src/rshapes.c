@@ -8,18 +8,18 @@
 *       are used but QUADS implementation can be selected with SUPPORT_QUADS_DRAW_MODE define
 *
 *       Some functions define texture coordinates (rlTexCoord2f()) for the shapes and use a
-*       user-provided texture with SetShapesTexture(), the pourpouse of this implementation
+*       user-provided texture with SetShapesTexture(), the purpose of this implementation
 *       is allowing to reduce draw calls when combined with a texture-atlas
 *
 *       By default, raylib sets the default texture and rectangle at InitWindow()[rcore] to one
-*       white character of default font [rtext], this way, raylib text and shapes can be draw with
+*       white character of default font [rtext], this way, raylib text and shapes can be drawn with
 *       a single draw call and it also allows users to configure it the same way with their own fonts
 *
 *   CONFIGURATION:
-*       #define SUPPORT_MODULE_RSHAPES
+*       #define SUPPORT_MODULE_RSHAPES      1
 *           rshapes module is included in the build
 *
-*       #define SUPPORT_QUADS_DRAW_MODE
+*       #define SUPPORT_QUADS_DRAW_MODE     1
 *           Use QUADS instead of TRIANGLES for drawing when possible. Lines-based shapes still use LINES
 *
 *
@@ -324,6 +324,22 @@ void DrawCircleV(Vector2 center, float radius, Color color)
     DrawCircleSector(center, radius, 0, 360, 36, color);
 }
 
+// Draw a gradient-filled circle
+void DrawCircleGradient(Vector2 center, float radius, Color inner, Color outer)
+{
+    rlBegin(RL_TRIANGLES);
+        for (int i = 0; i < 360; i += 10)
+        {
+            rlColor4ub(inner.r, inner.g, inner.b, inner.a);
+            rlVertex2f(center.x, center.y);
+            rlColor4ub(outer.r, outer.g, outer.b, outer.a);
+            rlVertex2f(center.x + cosf(DEG2RAD*(i + 10))*radius, center.y + sinf(DEG2RAD*(i + 10))*radius);
+            rlColor4ub(outer.r, outer.g, outer.b, outer.a);
+            rlVertex2f(center.x + cosf(DEG2RAD*i)*radius, center.y + sinf(DEG2RAD*i)*radius);
+        }
+    rlEnd();
+}
+
 // Draw a piece of a circle
 void DrawCircleSector(Vector2 center, float radius, float startAngle, float endAngle, int segments, Color color)
 {
@@ -469,22 +485,6 @@ void DrawCircleSectorLines(Vector2 center, float radius, float startAngle, float
             rlColor4ub(color.r, color.g, color.b, color.a);
             rlVertex2f(center.x, center.y);
             rlVertex2f(center.x + cosf(DEG2RAD*angle)*radius, center.y + sinf(DEG2RAD*angle)*radius);
-        }
-    rlEnd();
-}
-
-// Draw a gradient-filled circle
-void DrawCircleGradient(int centerX, int centerY, float radius, Color inner, Color outer)
-{
-    rlBegin(RL_TRIANGLES);
-        for (int i = 0; i < 360; i += 10)
-        {
-            rlColor4ub(inner.r, inner.g, inner.b, inner.a);
-            rlVertex2f((float)centerX, (float)centerY);
-            rlColor4ub(outer.r, outer.g, outer.b, outer.a);
-            rlVertex2f((float)centerX + cosf(DEG2RAD*(i + 10))*radius, (float)centerY + sinf(DEG2RAD*(i + 10))*radius);
-            rlColor4ub(outer.r, outer.g, outer.b, outer.a);
-            rlVertex2f((float)centerX + cosf(DEG2RAD*i)*radius, (float)centerY + sinf(DEG2RAD*i)*radius);
         }
     rlEnd();
 }
@@ -2348,16 +2348,18 @@ bool CheckCollisionCircleRec(Vector2 center, float radius, Rectangle rec)
     float dx = fabsf(center.x - recCenterX);
     float dy = fabsf(center.y - recCenterY);
 
-    if (dx > (rec.width/2.0f + radius)) { return false; }
-    if (dy > (rec.height/2.0f + radius)) { return false; }
+    if ((dx <= (rec.width/2.0f + radius)) && (dy <= (rec.height/2.0f + radius)))
+    {
+        if (dx <= (rec.width/2.0f)) collision = true;
+        else if (dy <= (rec.height/2.0f)) collision = true;
+        else
+        {
+            float cornerDistanceSq = (dx - rec.width/2.0f)*(dx - rec.width/2.0f) +
+                (dy - rec.height/2.0f)*(dy - rec.height/2.0f);
 
-    if (dx <= (rec.width/2.0f)) { return true; }
-    if (dy <= (rec.height/2.0f)) { return true; }
-
-    float cornerDistanceSq = (dx - rec.width/2.0f)*(dx - rec.width/2.0f) +
-                             (dy - rec.height/2.0f)*(dy - rec.height/2.0f);
-
-    collision = (cornerDistanceSq <= (radius*radius));
+            collision = (cornerDistanceSq <= (radius*radius));
+        }
+    }
 
     return collision;
 }
@@ -2418,25 +2420,31 @@ bool CheckCollisionPointLine(Vector2 point, Vector2 p1, Vector2 p2, int threshol
 // Check if circle collides with a line created between two points [p1] and [p2]
 bool CheckCollisionCircleLine(Vector2 center, float radius, Vector2 p1, Vector2 p2)
 {
+    bool collision = false;
+
     float dx = p1.x - p2.x;
     float dy = p1.y - p2.y;
 
     if ((fabsf(dx) + fabsf(dy)) <= FLT_EPSILON)
     {
-        return CheckCollisionCircles(p1, 0, center, radius);
+        collision = CheckCollisionCircles(p1, 0, center, radius);
+    }
+    else
+    {
+        float lengthSQ = ((dx*dx) + (dy*dy));
+        float dotProduct = (((center.x - p1.x)*(p2.x - p1.x)) + ((center.y - p1.y)*(p2.y - p1.y)))/(lengthSQ);
+
+        if (dotProduct > 1.0f) dotProduct = 1.0f;
+        else if (dotProduct < 0.0f) dotProduct = 0.0f;
+
+        float dx2 = (p1.x - (dotProduct*(dx))) - center.x;
+        float dy2 = (p1.y - (dotProduct*(dy))) - center.y;
+        float distanceSQ = ((dx2*dx2) + (dy2*dy2));
+
+        if (distanceSQ <= radius*radius) collision = true;
     }
 
-    float lengthSQ = ((dx*dx) + (dy*dy));
-    float dotProduct = (((center.x - p1.x)*(p2.x - p1.x)) + ((center.y - p1.y)*(p2.y - p1.y)))/(lengthSQ);
-
-    if (dotProduct > 1.0f) dotProduct = 1.0f;
-    else if (dotProduct < 0.0f) dotProduct = 0.0f;
-
-    float dx2 = (p1.x - (dotProduct*(dx))) - center.x;
-    float dy2 = (p1.y - (dotProduct*(dy))) - center.y;
-    float distanceSQ = ((dx2*dx2) + (dy2*dy2));
-
-    return (distanceSQ <= radius*radius);
+    return collision;
 }
 
 // Get collision rectangle for two rectangles collision

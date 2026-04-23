@@ -797,22 +797,22 @@ EM_ASYNC_JS(void, RequestClipboardData, (void), {
             {
                 const blob = await item.getType(item.types.find(t => t.startsWith("image/")));
                 const bitmap = await createImageBitmap(blob);
-                
+
                 const canvas = document.createElement('canvas');
                 canvas.width = bitmap.width;
                 canvas.height = bitmap.height;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(bitmap, 0, 0);
-                
+
                 const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-                
+
                 // Store image and data for the Fetch function
                 window._lastImgWidth = canvas.width;
                 window._lastImgHeight = canvas.height;
-                window._lastImgData = imgData; 
+                window._lastImgData = imgData;
             }
         }
-    } 
+    }
     else console.warn("Clipboard read() requires HTTPS/Localhost");
 });
 
@@ -838,15 +838,15 @@ EM_JS(unsigned char *, GetLastPastedImage, (int *width, int *height), {
         {
             const ptr = _malloc(data.length);
             HEAPU8.set(data, ptr);
-            
+
             // Set the width and height via the pointers passed from C
             // HEAP32 handles the 4-byte integers
             if (width)  setValue(width, window._lastImgWidth,  'i32');
             if (height) setValue(height, window._lastImgHeight, 'i32');
-            
+
             // Clear the JS buffer so there is no need to fetch the same image twice
-            window._lastImgData = null; 
-            
+            window._lastImgData = null;
+
             return ptr;
         }
     }
@@ -876,7 +876,7 @@ Image GetClipboardImage(void)
         image.mipmaps = 1;
         image.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
     }
-    
+
     return image;
 }
 
@@ -927,7 +927,7 @@ void DisableCursor(void)
 // Swap back buffer with front buffer (screen drawing)
 void SwapScreenBuffer(void)
 {
-#if defined(GRAPHICS_API_OPENGL_11_SOFTWARE)
+#if defined(GRAPHICS_API_OPENGL_SOFTWARE)
     // Update framebuffer
     rlCopyFramebuffer(0, 0, CORE.Window.render.width, CORE.Window.render.height, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, platform.pixels);
 
@@ -962,14 +962,7 @@ void SwapScreenBuffer(void)
 // Get elapsed time measure in seconds since InitTimer()
 double GetTime(void)
 {
-    double time = 0.0;
-    /*
-    struct timespec ts = { 0 };
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    unsigned long long int nanoSeconds = (unsigned long long int)ts.tv_sec*1000000000LLU + (unsigned long long int)ts.tv_nsec;
-    time = (double)(nanoSeconds - CORE.Time.base)*1e-9;  // Elapsed time since InitTimer()
-    */
-    time = emscripten_get_now()*1000.0;
+    double time = emscripten_get_now()*1000.0;
 
     return time;
 }
@@ -1195,7 +1188,7 @@ int InitPlatform(void)
     if (FLAG_IS_SET(CORE.Window.flags, FLAG_MSAA_4X_HINT)) attribs.antialias = EM_TRUE;
 
     // Check selection OpenGL version
-    if (rlGetVersion() == RL_OPENGL_11_SOFTWARE)
+    if (rlGetVersion() == RL_OPENGL_SOFTWARE)
     {
         // Avoid creating a WebGL canvas, create 2d canvas for software rendering
         emscripten_set_canvas_element_size(platform.canvasId, CORE.Window.screen.width, CORE.Window.screen.height);
@@ -1252,7 +1245,8 @@ int InitPlatform(void)
         CORE.Window.currentFbo.width = fbWidth;
         CORE.Window.currentFbo.height = fbHeight;
 
-        TRACELOG(LOG_INFO, "DISPLAY: Device initialized successfully");
+        TRACELOG(LOG_INFO, "DISPLAY: Device initialized successfully %s",
+            FLAG_IS_SET(CORE.Window.flags, FLAG_WINDOW_HIGHDPI)? "(HighDPI)" : "");
         TRACELOG(LOG_INFO, "    > Display size: %i x %i", CORE.Window.display.width, CORE.Window.display.height);
         TRACELOG(LOG_INFO, "    > Screen size:  %i x %i", CORE.Window.screen.width, CORE.Window.screen.height);
         TRACELOG(LOG_INFO, "    > Render size:  %i x %i", CORE.Window.render.width, CORE.Window.render.height);

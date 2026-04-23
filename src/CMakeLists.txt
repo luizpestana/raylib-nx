@@ -82,7 +82,7 @@ endif()
 if (${PLATFORM} MATCHES "Android")
     # Wrap fopen at link time so all code (including third-party libs) goes
     # through __wrap_fopen, which handles Android APK asset loading
-    target_link_options(raylib INTERFACE -Wl,--wrap=fopen)
+    target_link_options(raylib PUBLIC -Wl,--wrap=fopen)
 endif()
 
 set_target_properties(raylib PROPERTIES
@@ -128,10 +128,10 @@ if (PLATFORM STREQUAL "Desktop")
 
             target_compile_definitions(raylib PRIVATE _GLFW_X11)
 
-            target_link_libraries(raylib PRIVATE 
+            target_link_libraries(raylib PRIVATE
                 ${X11_LIBRARIES}
             )
-            
+
             message(STATUS "X11 support enabled for raylib")
         endif()
     endif()

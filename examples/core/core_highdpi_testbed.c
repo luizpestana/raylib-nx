@@ -4,7 +4,7 @@
 *
 *   Example complexity rating: [★☆☆☆] 1/4
 *
-*   Example originally created with raylib 5.6-dev, last time updated with raylib 5.6-dev
+*   Example originally created with raylib 6.0, last time updated with raylib 6.0
 *
 *   Example contributed by Ramon Santamaria (@raysan5) and reviewed by Ramon Santamaria (@raysan5)
 *
@@ -73,7 +73,7 @@ int main(void)
             }
 
             // Draw UI info
-            DrawText(TextFormat("CURRENT MONITOR: %i/%i (%ix%i)", currentMonitor + 1, GetMonitorCount(), 
+            DrawText(TextFormat("CURRENT MONITOR: %i/%i (%ix%i)", currentMonitor + 1, GetMonitorCount(),
                 GetMonitorWidth(currentMonitor), GetMonitorHeight(currentMonitor)), 50, 50, 20, DARKGRAY);
             DrawText(TextFormat("WINDOW POSITION: %ix%i", (int)windowPos.x, (int)windowPos.y), 50, 90, 20, DARKGRAY);
             DrawText(TextFormat("SCREEN SIZE: %ix%i", GetScreenWidth(), GetScreenHeight()), 50, 130, 20, DARKGRAY);

@@ -4,7 +4,7 @@
 *
 *   Example complexity rating: [★★★☆] 3/4
 *
-*   Example originally created with raylib 5.6, last time updated with raylib 5.6
+*   Example originally created with raylib 6.0, last time updated with raylib 6.0
 *
 *   Example licensed under an unmodified zlib/libpng license, which is an OSI-certified,
 *   BSD-like license that allows static linking with closed source software
@@ -94,26 +94,26 @@ int main(void)
             BeginMode3D(camera);
 
                 DrawModel(model, position, 1.0f, WHITE);
-            
+
                 DrawGrid(10, 1.0f);
-            
+
             EndMode3D();
 
             // Draw UI, select anim and playing speed
             GuiSetStyle(DROPDOWNBOX, DROPDOWN_ITEMS_SPACING, 1);
-            if (GuiDropdownBox((Rectangle){ 10, 10, 140, 24 }, TextJoin(animNames, animCount, ";"), 
+            if (GuiDropdownBox((Rectangle){ 10, 10, 140, 24 }, TextJoin(animNames, animCount, ";"),
                 &animIndex, dropdownEditMode)) dropdownEditMode = !dropdownEditMode;
 
             GuiSlider((Rectangle){ 260, 10, 500, 24 }, "FRAME SPEED: ", TextFormat("x%.1f", animFrameSpeed),
                 &animFrameSpeed, 0.1f, 2.0f);
 
             // Draw playing timeline with keyframes
-            GuiLabel((Rectangle){ 10, GetScreenHeight() - 64.0f, GetScreenWidth() - 20.0f, 24 }, 
+            GuiLabel((Rectangle){ 10, GetScreenHeight() - 64.0f, GetScreenWidth() - 20.0f, 24 },
                 TextFormat("CURRENT FRAME: %.2f / %i", animFrameProgress, anims[animIndex].keyframeCount));
             GuiProgressBar((Rectangle){ 10, GetScreenHeight() - 40.0f, GetScreenWidth() - 20.0f, 24 }, NULL, NULL,
                 &animFrameProgress, 0.0f, (float)anims[animIndex].keyframeCount);
             for (int i = 0; i < anims[animIndex].keyframeCount; i++)
-                DrawRectangle(10 + (int)(((float)(GetScreenWidth() - 20)/(float)anims[animIndex].keyframeCount)*(float)i), 
+                DrawRectangle(10 + (int)(((float)(GetScreenWidth() - 20)/(float)anims[animIndex].keyframeCount)*(float)i),
                     GetScreenHeight() - 40, 1, 24, BLUE);
 
         EndDrawing();

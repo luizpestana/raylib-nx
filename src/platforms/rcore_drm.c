@@ -65,7 +65,7 @@
 #include <xf86drm.h>        // Direct Rendering Manager user-level library interface
 #include <xf86drmMode.h>    // Direct Rendering Manager mode setting (KMS) interface
 
-#if !defined(GRAPHICS_API_OPENGL_11_SOFTWARE)
+#if !defined(GRAPHICS_API_OPENGL_SOFTWARE)
     #include <gbm.h>            // Generic Buffer Management (native platform for EGL on DRM)
     #include "EGL/egl.h"        // Native platform windowing system interface
     #include "EGL/eglext.h"     // EGL extensions
@@ -111,7 +111,7 @@ typedef struct {
     int modeIndex;                      // Index of the used mode of connector->modes
     uint32_t prevFB;                    // Previous DRM framebufer (during frame swapping)
 
-#if !defined(GRAPHICS_API_OPENGL_11_SOFTWARE)
+#if !defined(GRAPHICS_API_OPENGL_SOFTWARE)
     struct gbm_device *gbmDevice;       // GBM device
     struct gbm_surface *gbmSurface;     // GBM surface
     struct gbm_bo *prevBO;              // Previous GBM buffer object (during frame swapping)
@@ -796,7 +796,7 @@ void SwapScreenBuffer()
 // Swap back buffer with front buffer (screen drawing)
 void SwapScreenBuffer(void)
 {
-#if !defined(GRAPHICS_API_OPENGL_11_SOFTWARE)
+#if !defined(GRAPHICS_API_OPENGL_SOFTWARE)
     // Hardware rendering buffer swap with EGL
     eglSwapBuffers(platform.device, platform.surface);
 
@@ -837,14 +837,8 @@ void SwapScreenBuffer(void)
     uint32_t height = mode->vdisplay;
 
     // Dumb buffers use a fixed format based on bpp
-#if SW_COLOR_BUFFER_BITS == 24
     const uint32_t bpp = 32;    // 32 bits per pixel (XRGB8888 format)
     const uint32_t depth = 24;  // Color depth, here only 24 bits, alpha is not used
-#else
-    // REVIEW: Not sure how it will be interpreted (RGB or RGBA?)
-    const uint32_t bpp = SW_COLOR_BUFFER_BITS;
-    const uint32_t depth = SW_COLOR_BUFFER_BITS;
-#endif
 
     // Create a dumb buffer for software rendering
     struct drm_mode_create_dumb creq = { 0 };
@@ -899,7 +893,7 @@ void SwapScreenBuffer(void)
 
     // Copy the software rendered buffer to the dumb buffer with scaling if needed
     // NOTE: RLSW will make a simple copy if the dimensions match
-    swBlitFramebuffer(0, 0, width, height, 0, 0, width, height, SW_RGBA, SW_UNSIGNED_BYTE, dumbBuffer);
+    swBlitPixels(0, 0, width, height, 0, 0, width, height, SW_RGBA, SW_UNSIGNED_BYTE, dumbBuffer);
 
     // Unmap the buffer
     munmap(dumbBuffer, creq.size);
@@ -1140,7 +1134,7 @@ int InitPlatform(void)
     platform.crtc = NULL;
     platform.prevFB = 0;
 
-#if !defined(GRAPHICS_API_OPENGL_11_SOFTWARE)
+#if !defined(GRAPHICS_API_OPENGL_SOFTWARE)
     platform.gbmDevice = NULL;
     platform.gbmSurface = NULL;
     platform.prevBO = NULL;
@@ -1224,7 +1218,7 @@ int InitPlatform(void)
         // WARNING: Accept CONNECTED, UNKNOWN and even those without encoder_id connectors for software mode
         if (((con->connection == DRM_MODE_CONNECTED) || (con->connection == DRM_MODE_UNKNOWNCONNECTION)) && (con->count_modes > 0))
         {
-#if !defined(GRAPHICS_API_OPENGL_11_SOFTWARE)
+#if !defined(GRAPHICS_API_OPENGL_SOFTWARE)
             // For hardware rendering, an encoder_id is needed
             if (con->encoder_id)
             {
@@ -1256,7 +1250,7 @@ int InitPlatform(void)
         return -1;
     }
 
-#if !defined(GRAPHICS_API_OPENGL_11_SOFTWARE)
+#if !defined(GRAPHICS_API_OPENGL_SOFTWARE)
     drmModeEncoder *enc = drmModeGetEncoder(platform.fd, platform.connector->encoder_id);
     if (!enc)
     {
@@ -1367,7 +1361,7 @@ int InitPlatform(void)
     drmModeFreeResources(res);
     res = NULL;
 
-#if !defined(GRAPHICS_API_OPENGL_11_SOFTWARE)
+#if !defined(GRAPHICS_API_OPENGL_SOFTWARE)
     // Hardware rendering initialization with EGL
     platform.gbmDevice = gbm_create_device(platform.fd);
     if (!platform.gbmDevice)
@@ -1432,7 +1426,7 @@ int InitPlatform(void)
         if (eglGetPlatformDisplayEXT != NULL) platform.device = eglGetPlatformDisplayEXT(EGL_PLATFORM_GBM_KHR, platform.gbmDevice, NULL);
     }
 
-    // In case extension not found or display could not be retrieved, try useing legacy version
+    // In case extension not found or display could not be retrieved, try using legacy version
     if (platform.device == EGL_NO_DISPLAY) platform.device = eglGetDisplay((EGLNativeDisplayType)platform.gbmDevice);
 #endif
     if (platform.device == EGL_NO_DISPLAY)
@@ -1555,12 +1549,6 @@ int InitPlatform(void)
         CORE.Window.render.height = CORE.Window.screen.height;
         CORE.Window.currentFbo.width = CORE.Window.render.width;
         CORE.Window.currentFbo.height = CORE.Window.render.height;
-
-        TRACELOG(LOG_INFO, "DISPLAY: Device initialized successfully");
-        TRACELOG(LOG_INFO, "    > Display size: %i x %i", CORE.Window.display.width, CORE.Window.display.height);
-        TRACELOG(LOG_INFO, "    > Screen size:  %i x %i", CORE.Window.screen.width, CORE.Window.screen.height);
-        TRACELOG(LOG_INFO, "    > Render size:  %i x %i", CORE.Window.render.width, CORE.Window.render.height);
-        TRACELOG(LOG_INFO, "    > Viewport offsets: %i, %i", CORE.Window.renderOffset.x, CORE.Window.renderOffset.y);
     }
     else
     {
@@ -1586,13 +1574,14 @@ int InitPlatform(void)
     CORE.Window.render.height = CORE.Window.screen.height;
     CORE.Window.currentFbo.width = CORE.Window.render.width;
     CORE.Window.currentFbo.height = CORE.Window.render.height;
+#endif
 
-    TRACELOG(LOG_INFO, "DISPLAY: Device initialized successfully (Software Rendering)");
+    TRACELOG(LOG_INFO, "DISPLAY: Device initialized successfully %s",
+        FLAG_IS_SET(CORE.Window.flags, FLAG_WINDOW_HIGHDPI)? "(HighDPI)" : "");
     TRACELOG(LOG_INFO, "    > Display size: %i x %i", CORE.Window.display.width, CORE.Window.display.height);
     TRACELOG(LOG_INFO, "    > Screen size:  %i x %i", CORE.Window.screen.width, CORE.Window.screen.height);
     TRACELOG(LOG_INFO, "    > Render size:  %i x %i", CORE.Window.render.width, CORE.Window.render.height);
     TRACELOG(LOG_INFO, "    > Viewport offsets: %i, %i", CORE.Window.renderOffset.x, CORE.Window.renderOffset.y);
-#endif
 
     if (FLAG_IS_SET(CORE.Window.flags, FLAG_WINDOW_MINIMIZED)) MinimizeWindow();
 
@@ -1657,7 +1646,7 @@ void ClosePlatform(void)
         platform.prevFB = 0;
     }
 
-#if !defined(GRAPHICS_API_OPENGL_11_SOFTWARE)
+#if !defined(GRAPHICS_API_OPENGL_SOFTWARE)
     if (platform.prevBO)
     {
         gbm_surface_release_buffer(platform.gbmSurface, platform.prevBO);
@@ -1697,7 +1686,7 @@ void ClosePlatform(void)
         platform.fd = -1;
     }
 
-#if !defined(GRAPHICS_API_OPENGL_11_SOFTWARE)
+#if !defined(GRAPHICS_API_OPENGL_SOFTWARE)
     // Close surface, context and display
     if (platform.device != EGL_NO_DISPLAY)
     {

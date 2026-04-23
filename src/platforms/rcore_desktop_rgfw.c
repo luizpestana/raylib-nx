@@ -174,10 +174,16 @@ extern "C" {
 // Types and Structures Definition
 //----------------------------------------------------------------------------------
 typedef struct {
-    double startTime;
     RGFW_window *window;                // Native display device (physical screen connection)
     RGFW_monitor *monitor;
     mg_gamepads minigamepad;
+
+    #if defined(GRAPHICS_API_OPENGL_SOFTWARE)
+        RGFW_surface *surface;
+        u8 *surfacePixels;
+        i32 surfaceWidth;
+        i32 surfaceHeight;
+    #endif
 } PlatformData;
 
 //----------------------------------------------------------------------------------
@@ -724,7 +730,7 @@ void SetWindowIcon(Image image)
         TRACELOG(LOG_WARNING, "RGFW: Window icon image must be in R8G8B8A8 pixel format");
         return;
     }
-    RGFW_window_setIcon(platform.window, (u8 *)image.data, image.width, image.height, 4);
+    RGFW_window_setIcon(platform.window, (u8 *)image.data, image.width, image.height, RGFW_formatRGBA8);
 }
 
 // Set icon for window
@@ -750,8 +756,8 @@ void SetWindowIcons(Image *images, int count)
             if ((smallIcon == NULL) || ((images[i].width < smallIcon->width) && (images[i].height > smallIcon->height))) smallIcon = &images[i];
         }
 
-        if (smallIcon != NULL) RGFW_window_setIconEx(platform.window, (u8 *)smallIcon->data, smallIcon->width, smallIcon->height, 4, RGFW_iconWindow);
-        if (bigIcon != NULL) RGFW_window_setIconEx(platform.window, (u8 *)bigIcon->data, bigIcon->width, bigIcon->height, 4, RGFW_iconTaskbar);
+        if (smallIcon != NULL) RGFW_window_setIconEx(platform.window, (u8 *)smallIcon->data, smallIcon->width, smallIcon->height, RGFW_formatRGBA8, RGFW_iconWindow);
+        if (bigIcon != NULL) RGFW_window_setIconEx(platform.window, (u8 *)bigIcon->data, bigIcon->width, bigIcon->height, RGFW_formatRGBA8, RGFW_iconTaskbar);
     }
 }
 
@@ -820,6 +826,11 @@ void SetWindowSize(int width, int height)
     {
         CORE.Window.screen.width = width;
         CORE.Window.screen.height = height;
+    }
+
+    if (!CORE.Window.usingFbo)
+    {
+        SetupViewport(CORE.Window.screen.width, CORE.Window.screen.height);
     }
 
     RGFW_window_resize(platform.window, CORE.Window.screen.width, CORE.Window.screen.height);
@@ -1096,7 +1107,7 @@ void HideCursor(void)
 // Enables cursor (unlock cursor)
 void EnableCursor(void)
 {
-    RGFW_window_captureMouse(platform.window, false);
+    RGFW_window_captureRawMouse(platform.window, false);
 
     // Set cursor position in the middle
     SetMousePosition(CORE.Window.screen.width/2, CORE.Window.screen.height/2);
@@ -1108,7 +1119,7 @@ void EnableCursor(void)
 // Disables cursor (lock cursor)
 void DisableCursor(void)
 {
-    RGFW_window_captureMouse(platform.window, true);
+    RGFW_window_captureRawMouse(platform.window, true);
     HideCursor();
 
     CORE.Input.Mouse.cursorLocked = true;
@@ -1117,7 +1128,35 @@ void DisableCursor(void)
 // Swap back buffer with front buffer (screen drawing)
 void SwapScreenBuffer(void)
 {
-    RGFW_window_swapBuffers_OpenGL(platform.window);
+    #if defined(GRAPHICS_API_OPENGL_SOFTWARE)
+    {
+        if (platform.surface)
+        {
+            // copy rlsw pixel data to the surface framebuffer
+            swReadPixels(0, 0, platform.surfaceWidth, platform.surfaceHeight, SW_RGBA, SW_UNSIGNED_BYTE, platform.surfacePixels);
+
+            // Mac wants a different pixel order. I cant seem to get this to work any other way
+            #if defined(__APPLE__)
+                unsigned char temp = 0;
+                unsigned char *p = NULL;
+                for (int i = 0; i < (platform.surfaceWidth * platform.surfaceHeight); i += 1)
+                {
+                    p = platform.surfacePixels + (i * 4);
+                    temp = p[0];
+                    p[0] = p[2];
+                    p[2] = temp;
+                }
+            #endif
+
+            // blit surface to the window
+            RGFW_window_blitSurface(platform.window, platform.surface);
+        }
+    }
+    #else
+    {
+        RGFW_window_swapBuffers_OpenGL(platform.window);
+    }
+    #endif
 }
 
 //----------------------------------------------------------------------------------
@@ -1127,7 +1166,11 @@ void SwapScreenBuffer(void)
 // Get elapsed time measure in seconds since InitTimer()
 double GetTime(void)
 {
-    return get_time_seconds() - platform.startTime;
+    // CORE.Time.base is nanoseconds as integer
+    double baseTime = (double)CORE.Time.base*1e-9;
+    double time = get_time_seconds() - baseTime;
+
+    return time;
 }
 
 // Open URL with default system browser (if available)
@@ -1307,6 +1350,9 @@ void PollInputEvents(void)
             // Window events are also polled (Minimized, maximized, close...)
             case RGFW_windowResized:
             {
+                // set flag that the window was resized
+                CORE.Window.resizedLastFrame = true;
+                
                 #if defined(__APPLE__)
                     if (FLAG_IS_SET(CORE.Window.flags, FLAG_WINDOW_HIGHDPI))
                     {
@@ -1331,7 +1377,7 @@ void PollInputEvents(void)
                     CORE.Window.currentFbo.width = CORE.Window.render.width;
                     CORE.Window.currentFbo.height = CORE.Window.render.height;
                 #elif defined(PLATFORM_WEB_RGFW)
-                    return;
+                    // do nothing but prevent other behavior
                 #else
                     SetupViewport(platform.window->w, platform.window->h);
 
@@ -1355,7 +1401,42 @@ void PollInputEvents(void)
                     CORE.Window.currentFbo.width = CORE.Window.screen.width;
                     CORE.Window.currentFbo.height = CORE.Window.screen.height;
                 #endif
-                CORE.Window.resizedLastFrame = true;
+
+                #if defined(GRAPHICS_API_OPENGL_SOFTWARE)
+                    #if defined(__APPLE__)
+                        RGFW_monitor* currentMonitor = RGFW_window_getMonitor(platform.window);
+                        CORE.Window.screenScale = MatrixScale(currentMonitor->pixelRatio, currentMonitor->pixelRatio, 1.0f);
+                        SetupViewport(platform.window->w * currentMonitor->pixelRatio, platform.window->h * currentMonitor->pixelRatio);
+
+                        CORE.Window.render.width = CORE.Window.screen.width * currentMonitor->pixelRatio;
+                        CORE.Window.render.height = CORE.Window.screen.height * currentMonitor->pixelRatio;
+                        CORE.Window.currentFbo.width = CORE.Window.render.width;
+                        CORE.Window.currentFbo.height = CORE.Window.render.height;
+                    #endif
+                    platform.surfaceWidth = CORE.Window.currentFbo.width;
+                    platform.surfaceHeight = CORE.Window.currentFbo.height;
+
+                    // in software mode we dont have the viewport so we need to reverse the highdpi changes
+                    if (FLAG_IS_SET(CORE.Window.flags, FLAG_WINDOW_HIGHDPI))
+                    {
+                        Vector2 scaleDpi = GetWindowScaleDPI();
+                        platform.surfaceWidth *= scaleDpi.x;
+                        platform.surfaceHeight *= scaleDpi.y;
+                    }
+
+                    if (platform.surfacePixels != NULL)
+                    {
+                        RL_FREE(platform.surfacePixels);
+                        platform.surfacePixels = RL_MALLOC(platform.surfaceWidth * platform.surfaceHeight * 4);
+                    }
+
+                    if (platform.surface != NULL)
+                    {
+                        RGFW_surface_free(platform.surface);
+                        platform.surface = RGFW_window_createSurface(platform.window, platform.surfacePixels, platform.surfaceWidth, platform.surfaceHeight, RGFW_formatBGRA8);
+                        swResize(platform.surfaceWidth, platform.surfaceHeight);
+                    }
+                #endif
             } break;
             case RGFW_windowMaximized:
             {
@@ -1446,15 +1527,35 @@ void PollInputEvents(void)
             } break;
             case RGFW_mousePosChanged:
             {
+                float mouseX = 0.0f;
+                float mouseY = 0.0f;
                 if (RGFW_window_isCaptured(platform.window))
                 {
-                    CORE.Input.Mouse.currentPosition.x += (float)rgfw_event.mouse.vecX;
-                    CORE.Input.Mouse.currentPosition.y += (float)rgfw_event.mouse.vecY;
+                    mouseX = (float)rgfw_event.mouse.vecX;
+                    mouseY = (float)rgfw_event.mouse.vecY;
                 }
                 else
                 {
-                    CORE.Input.Mouse.currentPosition.x = (float)rgfw_event.mouse.x;
-                    CORE.Input.Mouse.currentPosition.y = (float)rgfw_event.mouse.y;
+                    mouseX = (float)rgfw_event.mouse.x;
+                    mouseY = (float)rgfw_event.mouse.y;
+                }
+
+#if defined(__EMSCRIPTEN__)
+                double canvasWidth = 0.0;
+                double canvasHeight = 0.0;
+                emscripten_get_element_css_size("#canvas", &canvasWidth, &canvasHeight);
+                mouseX *= ((float)GetScreenWidth()/(float)canvasWidth);
+                mouseY *= ((float)GetScreenHeight()/(float)canvasHeight);
+#endif
+                if (RGFW_window_isCaptured(platform.window))
+                {
+                    CORE.Input.Mouse.currentPosition.x += mouseX;
+                    CORE.Input.Mouse.currentPosition.y += mouseY;
+                }
+                else
+                {
+                    CORE.Input.Mouse.currentPosition.x = mouseX;
+                    CORE.Input.Mouse.currentPosition.y = mouseY;
                 }
 
                 CORE.Input.Touch.position[0] = CORE.Input.Mouse.currentPosition;
@@ -1613,6 +1714,12 @@ int InitPlatform(void)
         hints->major = 4;
         hints->minor = 3;
     }
+    else if (rlGetVersion() == RL_OPENGL_SOFTWARE)
+    {
+        hints->major = 1;
+        hints->minor = 1;
+        hints->renderer = RGFW_glSoftware;
+    }
 
     if (FLAG_IS_SET(CORE.Window.flags, FLAG_MSAA_4X_HINT)) hints->samples = 4;
 
@@ -1628,7 +1735,6 @@ int InitPlatform(void)
 
     RGFW_setGlobalHints_OpenGL(hints);
     platform.window = RGFW_createWindow((CORE.Window.title != 0)? CORE.Window.title : " ", 0, 0, CORE.Window.screen.width, CORE.Window.screen.height, flags | RGFW_windowOpenGL);
-    platform.startTime = get_time_seconds();
 
 #ifndef PLATFORM_WEB_RGFW
     i32 screenSizeWidth;
@@ -1693,7 +1799,41 @@ int InitPlatform(void)
         #endif
     }
 
-    TRACELOG(LOG_INFO, "DISPLAY: Device initialized successfully");
+    #if defined(GRAPHICS_API_OPENGL_SOFTWARE)
+        // apple always scales for retina
+        #if defined(__APPLE__)
+            RGFW_monitor* currentMonitor = RGFW_window_getMonitor(platform.window);
+            CORE.Window.screenScale = MatrixScale(currentMonitor->pixelRatio, currentMonitor->pixelRatio, 1.0f);
+
+            CORE.Window.render.width = CORE.Window.screen.width * currentMonitor->pixelRatio;
+            CORE.Window.render.height = CORE.Window.screen.height * currentMonitor->pixelRatio;
+            CORE.Window.currentFbo.width = CORE.Window.render.width;
+            CORE.Window.currentFbo.height = CORE.Window.render.height;
+        #endif
+
+        platform.surfaceWidth = CORE.Window.currentFbo.width;
+        platform.surfaceHeight = CORE.Window.currentFbo.height;
+
+        platform.surfacePixels = RL_MALLOC(platform.surfaceWidth * platform.surfaceHeight * 4);
+        if (platform.surfacePixels == NULL)
+        {
+            TRACELOG(LOG_FATAL, "PLATFORM: Failed to initialize software pixel buffer");
+            return -1;
+        }
+
+        platform.surface = RGFW_window_createSurface(platform.window, platform.surfacePixels, platform.surfaceWidth, platform.surfaceHeight, RGFW_formatBGRA8);
+
+        if (platform.surface == NULL)
+        {
+            RL_FREE(platform.surfacePixels);
+
+            TRACELOG(LOG_FATAL, "PLATFORM: Failed to initialize software surface");
+            return -1;
+        }
+    #endif
+
+    TRACELOG(LOG_INFO, "DISPLAY: Device initialized successfully %s",
+        FLAG_IS_SET(CORE.Window.flags, FLAG_WINDOW_HIGHDPI)? "(HighDPI)" : "");
     TRACELOG(LOG_INFO, "    > Display size: %i x %i", CORE.Window.display.width, CORE.Window.display.height);
     TRACELOG(LOG_INFO, "    > Screen size:  %i x %i", CORE.Window.screen.width, CORE.Window.screen.height);
     TRACELOG(LOG_INFO, "    > Render size:  %i x %i", CORE.Window.render.width, CORE.Window.render.height);
@@ -1722,20 +1862,63 @@ int InitPlatform(void)
     //----------------------------------------------------------------------------
 
 #if defined(RGFW_WAYLAND)
-    if (RGFW_usingWayland()) TRACELOG(LOG_INFO, "PLATFORM: DESKTOP (RGFW - Wayland): Initialized successfully");
-    else TRACELOG(LOG_INFO, "PLATFORM: DESKTOP (RGFW - X11 (fallback)): Initialized successfully");
+    if (rlGetVersion() == RL_OPENGL_SOFTWARE)
+    {
+        if (RGFW_usingWayland()) TRACELOG(LOG_INFO, "PLATFORM: DESKTOP (RGFW - Wayland, Software): Initialized successfully");
+        else TRACELOG(LOG_INFO, "PLATFORM: DESKTOP (RGFW - X11, Software (fallback)): Initialized successfully");
+    }
+    else
+    {
+        if (RGFW_usingWayland()) TRACELOG(LOG_INFO, "PLATFORM: DESKTOP (RGFW - Wayland): Initialized successfully");
+        else TRACELOG(LOG_INFO, "PLATFORM: DESKTOP (RGFW - X11 (fallback)): Initialized successfully");
+    }
 #elif defined(RGFW_X11)
     #if defined(__APPLE__)
-        TRACELOG(LOG_INFO, "PLATFORM: DESKTOP (RGFW - X11 (MacOS)): Initialized successfully");
+        if (rlGetVersion() == RL_OPENGL_SOFTWARE)
+        {
+            TRACELOG(LOG_INFO, "PLATFORM: DESKTOP (RGFW - X11, Software, (MacOS)): Initialized successfully");
+        }
+        else
+        {
+            TRACELOG(LOG_INFO, "PLATFORM: DESKTOP (RGFW - X11, (MacOS)): Initialized successfully");
+        }
     #else
-        TRACELOG(LOG_INFO, "PLATFORM: DESKTOP (RGFW - X11): Initialized successfully");
+        if (rlGetVersion() == RL_OPENGL_SOFTWARE)
+        {
+            TRACELOG(LOG_INFO, "PLATFORM: DESKTOP (RGFW - X11, Software): Initialized successfully");
+        }
+        else
+        {
+            TRACELOG(LOG_INFO, "PLATFORM: DESKTOP (RGFW - X11): Initialized successfully");
+        }
     #endif
 #elif defined (RGFW_WINDOWS)
-    TRACELOG(LOG_INFO, "PLATFORM: DESKTOP (RGFW - Win32): Initialized successfully");
+    if (rlGetVersion() == RL_OPENGL_SOFTWARE)
+    {
+        TRACELOG(LOG_INFO, "PLATFORM: DESKTOP (RGFW - Win32, Software): Initialized successfully");
+    }
+    else
+    {
+        TRACELOG(LOG_INFO, "PLATFORM: DESKTOP (RGFW - Win32): Initialized successfully");
+    }
 #elif defined(RGFW_WASM)
-    TRACELOG(LOG_INFO, "PLATFORM: DESKTOP (RGFW - WASMs): Initialized successfully");
+    if (rlGetVersion() == RL_OPENGL_SOFTWARE)
+    {
+        TRACELOG(LOG_INFO, "PLATFORM: DESKTOP (RGFW - WASMs, Software): Initialized successfully");
+    }
+    else
+    {
+        TRACELOG(LOG_INFO, "PLATFORM: DESKTOP (RGFW - WASMs): Initialized successfully");
+    }
 #elif defined(RGFW_MACOS)
-    TRACELOG(LOG_INFO, "PLATFORM: DESKTOP (RGFW - MacOS): Initialized successfully");
+    if (rlGetVersion() == RL_OPENGL_SOFTWARE)
+    {
+        TRACELOG(LOG_INFO, "PLATFORM: DESKTOP (RGFW - MacOS, Software): Initialized successfully");
+    }
+    else
+    {
+        TRACELOG(LOG_INFO, "PLATFORM: DESKTOP (RGFW - MacOS): Initialized successfully");
+    }
 #endif
 
     mg_gamepads_init(&platform.minigamepad);
@@ -1748,6 +1931,18 @@ void ClosePlatform(void)
 {
     mg_gamepads_free(&platform.minigamepad);
     RGFW_window_close(platform.window);
+
+    #if defined(GRAPHICS_API_OPENGL_SOFTWARE)
+        if (platform.surfacePixels != NULL)
+        {
+            RL_FREE(platform.surfacePixels);
+        }
+
+        if (platform.surface != NULL)
+        {
+            RGFW_surface_free(platform.surface);
+        }
+    #endif
 }
 
 // Keycode mapping
@@ -1765,34 +1960,36 @@ double get_time_seconds(void)
 
     #if defined(_WIN32)
         static LARGE_INTEGER freq = { 0 };
-        static int freq_init = 0;
-        LARGE_INTEGER counter;
-        if (!freq_init) {
+        static bool freqInitialized = false;
+        LARGE_INTEGER counter = { 0 };
+        if (!freqInitialized)
+        {
+            // Lazy initialization
             QueryPerformanceFrequency(&freq);
-            freq_init = 1;
+            freqInitialized = true;
         }
         QueryPerformanceCounter(&counter);
-        currentTime = (double)counter.QuadPart / (double)freq.QuadPart;
+        currentTime = (double)counter.QuadPart/(double)freq.QuadPart;
     #elif defined(__EMSCRIPTEN__)
-        currentTime = emscripten_get_now() / 1000.0;
+        currentTime = emscripten_get_now()/1000.0;
     #elif defined(__APPLE__)
-        static mach_timebase_info_data_t tb;
-        static int tb_initialized = 0;
-
-        if (!tb_initialized) {
+        static mach_timebase_info_data_t tb = { 0 };
+        static bool tbInitialized = false;
+        if (!tbInitialized)
+        {
             mach_timebase_info(&tb);
-            tb_initialized = 1;
+            tbInitialized = true;
         }
         uint64_t ticks = mach_absolute_time();
 
-        currentTime = (double)ticks * (double)tb.numer / (double)tb.denom / 1e9;
+        currentTime = (double)ticks*(double)tb.numer/(double)tb.denom/1e9;
     #elif defined(__linux__)
-        struct timespec ts;
+        struct timespec ts = { 0 };
         clock_gettime(CLOCK_MONOTONIC, &ts);
-        currentTime = (double)ts.tv_sec + (double)ts.tv_nsec / 1e9;
+        currentTime = (double)ts.tv_sec + (double)ts.tv_nsec/1e9;
     #else
-        // fallback to cstd
-        currentTime = (double)clock() / (double)CLOCKS_PER_SEC;
+        // Fallback to cstd
+        currentTime = (double)clock()/(double)CLOCKS_PER_SEC;
     #endif
 
     return currentTime;
