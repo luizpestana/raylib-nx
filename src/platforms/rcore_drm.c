@@ -266,9 +266,12 @@ static void PollKeyboardEvents(void);           // Process evdev keyboard events
 static void PollGamepadEvents(void);            // Process evdev gamepad events
 static void PollMouseEvents(void);              // Process evdev mouse events
 
+// Not used by software rendering.
+#if !defined(GRAPHICS_API_OPENGL_SOFTWARE)
 static int FindMatchingConnectorMode(const drmModeConnector *connector, const drmModeModeInfo *mode);                               // Search matching DRM mode in connector's mode list
 static int FindExactConnectorMode(const drmModeConnector *connector, uint width, uint height, uint fps, bool allowInterlaced);      // Search exactly matching DRM connector mode in connector's list
 static int FindNearestConnectorMode(const drmModeConnector *connector, uint width, uint height, uint fps, bool allowInterlaced);    // Search the nearest matching DRM connector mode in connector's list
+#endif
 
 static void SetupFramebuffer(int width, int height); // Setup main framebuffer (required by InitPlatform())
 
@@ -561,13 +564,13 @@ void ShowCursor(void)
     CORE.Input.Mouse.cursorHidden = false;
 }
 
-// Hides mouse cursor
+// Hide mouse cursor
 void HideCursor(void)
 {
     CORE.Input.Mouse.cursorHidden = true;
 }
 
-// Enables cursor (unlock cursor)
+// Enable cursor (unlock cursor)
 void EnableCursor(void)
 {
     // Set cursor position in the middle
@@ -577,7 +580,7 @@ void EnableCursor(void)
     CORE.Input.Mouse.cursorLocked = false;
 }
 
-// Disables cursor (lock cursor)
+// Disable cursor (lock cursor)
 void DisableCursor(void)
 {
     // Set cursor position in the middle
@@ -1003,17 +1006,16 @@ double GetTime(void)
     double time = 0.0;
     struct timespec ts = { 0 };
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    unsigned long long int nanoSeconds = (unsigned long long int)ts.tv_sec*1000000000LLU + (unsigned long long int)ts.tv_nsec;
+    unsigned long long nanoSeconds = (unsigned long long)ts.tv_sec*1000000000LLU + (unsigned long long)ts.tv_nsec;
 
-    time = (double)(nanoSeconds - CORE.Time.base)*1e-9;  // Elapsed time since InitTimer()
+    time = (double)(nanoSeconds - CORE.Time.base)*1e-9; // Elapsed time since InitTimer()
 
     return time;
 }
 
 // Open URL with default system browser (if available)
-// NOTE: This function is only safe to use if the provided URL is safe
-// A user could craft a malicious string performing another action
-// Avoid calling this function with user input non-validated strings
+// WARNING: This function is only safe to use if you control the URL given,
+// a user could craft a malicious string to perform and undesired action
 void OpenURL(const char *url)
 {
     TRACELOG(LOG_WARNING, "OpenURL() not implemented on target platform");
@@ -1443,7 +1445,9 @@ int InitPlatform(void)
         return -1;
     }
 
-    if (!eglChooseConfig(platform.device, NULL, NULL, 0, &numConfigs))
+    // WARNING: Providing framebufferAttribs is not logically necessary, 
+    // but it may prevent segfaults on some nvidia drivers
+    if (!eglChooseConfig(platform.device, framebufferAttribs, NULL, 0, &numConfigs))
     {
         TRACELOG(LOG_WARNING, "DISPLAY: Failed to get EGL config count: 0x%x", eglGetError());
         return -1;
@@ -2560,6 +2564,7 @@ static void PollMouseEvents(void)
     }
 }
 
+#if !defined(GRAPHICS_API_OPENGL_SOFTWARE)
 // Search matching DRM mode in connector's mode list
 static int FindMatchingConnectorMode(const drmModeConnector *connector, const drmModeModeInfo *mode)
 {
@@ -2648,6 +2653,7 @@ static int FindNearestConnectorMode(const drmModeConnector *connector, uint widt
 
     return nearestIndex;
 }
+#endif
 
 // Compute framebuffer size relative to screen size and display size
 // NOTE: Global variables CORE.Window.render.width/CORE.Window.render.height and CORE.Window.renderOffset.x/CORE.Window.renderOffset.y can be modified

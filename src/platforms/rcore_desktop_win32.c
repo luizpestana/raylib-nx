@@ -566,100 +566,100 @@ static KeyboardKey GetKeyFromWparam(WPARAM wparam)
         case 'X': return KEY_X;
         case 'Y': return KEY_Y;
         case 'Z': return KEY_Z;
-        /* case VK_LWIN: return KEY_; */
-        /* case VK_RWIN: return KEY_; */
-        /* case VK_APPS: return KEY_; */
-        /* case VK_SLEEP: return KEY_; */
-        /* case VK_NUMPAD0: return KEY_; */
-        /* case VK_NUMPAD1: return KEY_; */
-        /* case VK_NUMPAD2: return KEY_; */
-        /* case VK_NUMPAD3: return KEY_; */
-        /* case VK_NUMPAD4: return KEY_; */
-        /* case VK_NUMPAD5: return KEY_; */
-        /* case VK_NUMPAD6: return KEY_; */
-        /* case VK_NUMPAD7: return KEY_; */
-        /* case VK_NUMPAD8: return KEY_; */
-        /* case VK_NUMPAD9: return KEY_; */
-        /* case VK_MULTIPLY: return KEY_; */
-        /* case VK_ADD: return KEY_; */
-        /* case VK_SEPARATOR: return KEY_; */
-        /* case VK_SUBTRACT: return KEY_; */
-        /* case VK_DECIMAL: return KEY_; */
-        /* case VK_DIVIDE: return KEY_; */
-        /* case VK_F1: return KEY_; */
-        /* case VK_F2: return KEY_; */
-        /* case VK_F3: return KEY_; */
-        /* case VK_F4: return KEY_; */
-        /* case VK_F5: return KEY_; */
-        /* case VK_F6: return KEY_; */
-        /* case VK_F7: return KEY_; */
-        /* case VK_F8: return KEY_; */
-        /* case VK_F9: return KEY_; */
-        /* case VK_F10: return KEY_; */
-        /* case VK_F11: return KEY_; */
-        /* case VK_F12: return KEY_; */
-        /* case VK_F13: return KEY_; */
-        /* case VK_F14: return KEY_; */
-        /* case VK_F15: return KEY_; */
-        /* case VK_F16: return KEY_; */
-        /* case VK_F17: return KEY_; */
-        /* case VK_F18: return KEY_; */
-        /* case VK_F19: return KEY_; */
-        /* case VK_F20: return KEY_; */
-        /* case VK_F21: return KEY_; */
-        /* case VK_F22: return KEY_; */
-        /* case VK_F23: return KEY_; */
-        /* case VK_F24: return KEY_; */
-        /* case VK_NUMLOCK: return KEY_; */
-        /* case VK_SCROLL: return KEY_; */
-        /* case VK_LSHIFT: return KEY_; */
-        /* case VK_RSHIFT: return KEY_; */
-        /* case VK_LCONTROL: return KEY_; */
-        /* case VK_RCONTROL: return KEY_; */
-        /* case VK_LMENU: return KEY_; */
-        /* case VK_RMENU: return KEY_; */
-        /* case VK_BROWSER_BACK: return KEY_; */
-        /* case VK_BROWSER_FORWARD: return KEY_; */
-        /* case VK_BROWSER_REFRESH: return KEY_; */
-        /* case VK_BROWSER_STOP: return KEY_; */
-        /* case VK_BROWSER_SEARCH: return KEY_; */
-        /* case VK_BROWSER_FAVORITES: return KEY_; */
-        /* case VK_BROWSER_HOME: return KEY_; */
-        /* case VK_VOLUME_MUTE: return KEY_; */
-        /* case VK_VOLUME_DOWN: return KEY_; */
-        /* case VK_VOLUME_UP: return KEY_; */
-        /* case VK_MEDIA_NEXT_TRACK: return KEY_; */
-        /* case VK_MEDIA_PREV_TRACK: return KEY_; */
-        /* case VK_MEDIA_STOP: return KEY_; */
-        /* case VK_MEDIA_PLAY_PAUSE: return KEY_; */
-        /* case VK_LAUNCH_MAIL: return KEY_; */
-        /* case VK_LAUNCH_MEDIA_SELECT: return KEY_; */
-        /* case VK_LAUNCH_APP1: return KEY_; */
-        /* case VK_LAUNCH_APP2: return KEY_; */
-        /* case VK_OEM_1: return KEY_; */
-        /* case VK_OEM_PLUS: return KEY_; */
-        /* case VK_OEM_COMMA: return KEY_; */
-        /* case VK_OEM_MINUS: return KEY_; */
-        /* case VK_OEM_PERIOD: return KEY_; */
-        /* case VK_OEM_2: return KEY_; */
-        /* case VK_OEM_3: return KEY_; */
-        /* case VK_OEM_4: return KEY_; */
-        /* case VK_OEM_5: return KEY_; */
-        /* case VK_OEM_6: return KEY_; */
-        /* case VK_OEM_7: return KEY_; */
-        /* case VK_OEM_8: return KEY_; */
-        /* case VK_OEM_102: return KEY_; */
-        /* case VK_PROCESSKEY: return KEY_; */
-        /* case VK_PACKET: return KEY_; */
-        /* case VK_ATTN: return KEY_; */
-        /* case VK_CRSEL: return KEY_; */
-        /* case VK_EXSEL: return KEY_; */
-        /* case VK_EREOF: return KEY_; */
-        /* case VK_PLAY: return KEY_; */
-        /* case VK_ZOOM: return KEY_; */
-        /* case VK_NONAME: return KEY_; */
-        /* case VK_PA1: return KEY_; */
-        /* case VK_OEM_CLEAR: return KEY_; */
+        //case VK_LWIN: return KEY_;
+        //case VK_RWIN: return KEY_;
+        //case VK_APPS: return KEY_;
+        //case VK_SLEEP: return KEY_;
+        //case VK_NUMPAD0: return KEY_;
+        //case VK_NUMPAD1: return KEY_;
+        //case VK_NUMPAD2: return KEY_;
+        //case VK_NUMPAD3: return KEY_;
+        //case VK_NUMPAD4: return KEY_;
+        //case VK_NUMPAD5: return KEY_;
+        //case VK_NUMPAD6: return KEY_;
+        //case VK_NUMPAD7: return KEY_;
+        //case VK_NUMPAD8: return KEY_;
+        //case VK_NUMPAD9: return KEY_;
+        //case VK_MULTIPLY: return KEY_;
+        //case VK_ADD: return KEY_;
+        //case VK_SEPARATOR: return KEY_;
+        //case VK_SUBTRACT: return KEY_;
+        //case VK_DECIMAL: return KEY_;
+        //case VK_DIVIDE: return KEY_;
+        //case VK_F1: return KEY_;
+        //case VK_F2: return KEY_;
+        //case VK_F3: return KEY_;
+        //case VK_F4: return KEY_;
+        //case VK_F5: return KEY_;
+        //case VK_F6: return KEY_;
+        //case VK_F7: return KEY_;
+        //case VK_F8: return KEY_;
+        //case VK_F9: return KEY_;
+        //case VK_F10: return KEY_;
+        //case VK_F11: return KEY_;
+        //case VK_F12: return KEY_;
+        //case VK_F13: return KEY_;
+        //case VK_F14: return KEY_;
+        //case VK_F15: return KEY_;
+        //case VK_F16: return KEY_;
+        //case VK_F17: return KEY_;
+        //case VK_F18: return KEY_;
+        //case VK_F19: return KEY_;
+        //case VK_F20: return KEY_;
+        //case VK_F21: return KEY_;
+        //case VK_F22: return KEY_;
+        //case VK_F23: return KEY_;
+        //case VK_F24: return KEY_;
+        //case VK_NUMLOCK: return KEY_;
+        //case VK_SCROLL: return KEY_;
+        //case VK_LSHIFT: return KEY_;
+        //case VK_RSHIFT: return KEY_;
+        //case VK_LCONTROL: return KEY_;
+        //case VK_RCONTROL: return KEY_;
+        //case VK_LMENU: return KEY_;
+        //case VK_RMENU: return KEY_;
+        //case VK_BROWSER_BACK: return KEY_;
+        //case VK_BROWSER_FORWARD: return KEY_;
+        //case VK_BROWSER_REFRESH: return KEY_;
+        //case VK_BROWSER_STOP: return KEY_;
+        //case VK_BROWSER_SEARCH: return KEY_;
+        //case VK_BROWSER_FAVORITES: return KEY_;
+        //case VK_BROWSER_HOME: return KEY_;
+        //case VK_VOLUME_MUTE: return KEY_;
+        //case VK_VOLUME_DOWN: return KEY_;
+        //case VK_VOLUME_UP: return KEY_;
+        //case VK_MEDIA_NEXT_TRACK: return KEY_;
+        //case VK_MEDIA_PREV_TRACK: return KEY_;
+        //case VK_MEDIA_STOP: return KEY_;
+        //case VK_MEDIA_PLAY_PAUSE: return KEY_;
+        //case VK_LAUNCH_MAIL: return KEY_;
+        //case VK_LAUNCH_MEDIA_SELECT: return KEY_;
+        //case VK_LAUNCH_APP1: return KEY_;
+        //case VK_LAUNCH_APP2: return KEY_;
+        //case VK_OEM_1: return KEY_;
+        //case VK_OEM_PLUS: return KEY_;
+        //case VK_OEM_COMMA: return KEY_;
+        //case VK_OEM_MINUS: return KEY_;
+        //case VK_OEM_PERIOD: return KEY_;
+        //case VK_OEM_2: return KEY_;
+        //case VK_OEM_3: return KEY_;
+        //case VK_OEM_4: return KEY_;
+        //case VK_OEM_5: return KEY_;
+        //case VK_OEM_6: return KEY_;
+        //case VK_OEM_7: return KEY_;
+        //case VK_OEM_8: return KEY_;
+        //case VK_OEM_102: return KEY_;
+        //case VK_PROCESSKEY: return KEY_;
+        //case VK_PACKET: return KEY_;
+        //case VK_ATTN: return KEY_;
+        //case VK_CRSEL: return KEY_;
+        //case VK_EXSEL: return KEY_;
+        //case VK_EREOF: return KEY_;
+        //case VK_PLAY: return KEY_;
+        //case VK_ZOOM: return KEY_;
+        //case VK_NONAME: return KEY_;
+        //case VK_PA1: return KEY_;
+        //case VK_OEM_CLEAR: return KEY_;
         default: return KEY_NULL;
     }
 }
@@ -1023,7 +1023,7 @@ void SetWindowFocused(void)
 // Get native window handle
 void *GetWindowHandle(void)
 {
-    return platform.hwnd;
+    return (void *)platform.hwnd;
 }
 
 int GetMonitorCount(void)
@@ -1146,7 +1146,7 @@ void ShowCursor(void)
     CORE.Input.Mouse.cursorHidden = false;
 }
 
-// Hides mouse cursor
+// Hide mouse cursor
 void HideCursor(void)
 {
     // NOTE: Using SetCursor() instead of ShowCursor() because
@@ -1155,7 +1155,7 @@ void HideCursor(void)
     CORE.Input.Mouse.cursorHidden = true;
 }
 
-// Enables cursor (unlock cursor)
+// Enable cursor (unlock cursor)
 void EnableCursor(void)
 {
     if (CORE.Input.Mouse.cursorLocked)
@@ -1247,18 +1247,28 @@ double GetTime(void)
 }
 
 // Open URL with default system browser (if available)
-// NOTE: This function is only safe to use if the provided URL is safe
-// A user could craft a malicious string performing another action
-// Avoid calling this function with user input non-validated strings
-// REF: https://github.com/raysan5/raylib/issues/686
+// WARNING: This function is only safe to use if you control the URL given,
+// a user could craft a malicious string to perform and undesired action
+// NOTE: Some safety checks have been added to mitigate security issues
 void OpenURL(const char *url)
 {
-    // Security check to (partially) avoid malicious code on target platform
-    if (strchr(url, '\'') != NULL) TRACELOG(LOG_WARNING, "SYSTEM: Provided URL could be potentially malicious, avoid [\'] character");
-    else
+    // Security check to (partially) avoid malicious code
+    if ((strchr(url, '\'') != NULL) || (strchr(url, '\"') != NULL))
     {
-        char *cmd = (char *)RL_CALLOC(strlen(url) + 32, sizeof(char));
-        sprintf(cmd, "explorer \"%s\"", url);
+        // Filter characters: ' and "
+        TRACELOG(LOG_WARNING, "SYSTEM: Provided URL could be potentially malicious, avoid [\'\"] characters");
+    }
+    else if ((strncmp(url, "http://", 7) != 0) && (strncmp(url, "https://", 8) != 0))
+    {
+        // Only allow URL starting with "http://" or "https://" protocols
+        TRACELOG(LOG_WARNING, "SYSTEM: Provided URL must start with 'http://' or 'https://' protocols");
+    }
+    else
+    {       
+        int len = strlen(url) + 16;
+        char *cmd = (char *)RL_CALLOC(len, sizeof(char));
+        snprintf(cmd, len, "explorer \"%s\"", url);
+        
         int result = system(cmd);
         if (result == -1) TRACELOG(LOG_WARNING, "OpenURL() child process could not be created");
         RL_FREE(cmd);
@@ -1526,7 +1536,6 @@ int InitPlatform(void)
         if (hr < 0) TRACELOG(LOG_ERROR, "%s failed, hresult=0x%lx", "SetProcessDpiAwareness", (DWORD)hr);
     }
 */
-
     HINSTANCE hInstance = GetModuleHandleW(0);
 
     // Define window class
@@ -1775,9 +1784,9 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpara
             // WARNING: Don't trust the docs, they say this message can not be obtained if not calling DefWindowProc()
             // in response to WM_WINDOWPOSCHANGED but looks like when a window is created,
             // this message can be obtained without getting WM_WINDOWPOSCHANGED
-            
+
 #if defined(GRAPHICS_API_OPENGL_SOFTWARE)
-            // WARNING: Waiting two frames before resizing because software-renderer backend is initilized with swInit() later 
+            // WARNING: Waiting two frames before resizing because software-renderer backend is initilized with swInit() later
             // than InitPlatform(), that triggers WM_SIZE, so avoid crashing
             if (CORE.Time.frameCounter > 2) HandleWindowResize(hwnd, &platform.appScreenWidth, &platform.appScreenHeight);
 #else
@@ -2034,7 +2043,7 @@ static void HandleKey(WPARAM wparam, LPARAM lparam, char state)
     {
         CORE.Input.Keyboard.currentKeyState[key] = state;
 
-        if ((key == KEY_ESCAPE) && (state == 1)) CORE.Window.shouldClose = true;
+        if ((key == CORE.Input.Keyboard.exitKey) && (state == 1)) CORE.Window.shouldClose = true;
     }
     else TRACELOG(LOG_WARNING, "INPUT: Unknown (or currently unhandled) virtual keycode %d (0x%x)", wparam, wparam);
 
@@ -2053,8 +2062,11 @@ static void HandleMouseButton(int button, char state)
 static void HandleRawInput(LPARAM lparam)
 {
     RAWINPUT input = { 0 };
+    UINT inputSize = 0;
 
-    UINT inputSize = sizeof(input);
+    if (GetRawInputData((HRAWINPUT)lparam, RID_INPUT, NULL, &inputSize, sizeof(RAWINPUTHEADER)) != 0) return;
+    if (inputSize > sizeof(input)) return;
+
     UINT size = GetRawInputData((HRAWINPUT)lparam, RID_INPUT, &input, &inputSize, sizeof(RAWINPUTHEADER));
 
     if (size == (UINT)-1) TRACELOG(LOG_ERROR, "WIN32: Failed to get raw input data [ERROR: %lu]", GetLastError());
@@ -2210,7 +2222,7 @@ static unsigned SanitizeFlags(int mode, unsigned flags)
 //
 // This design takes care of many odd corner cases. For example, in case of restoring
 // a window that was previously maximized AND minimized and those two flags need to be removed,
-// ShowWindow with SW_RESTORE twice need to bee actually calleed. Another example is
+// ShowWindow with SW_RESTORE twice need to be actually calleed. Another example is
 // wheen having a maximized window, if the undecorated flag is modified then the window style
 // needs to be updated, but updating the style would mean the window size would change
 // causing the window to lose its Maximized state which would mean the window size

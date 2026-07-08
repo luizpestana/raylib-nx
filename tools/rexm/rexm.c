@@ -675,13 +675,12 @@ int main(int argc, char *argv[])
             // WARNING 2: raylib.a and raylib.web.a must be available when compiling locally
 #if defined(_WIN32)
             LOG("INFO: [%s] Building example for PLATFORM_WEB (Host: Win32)\n", GetFileNameWithoutExt(inFileName));
-            //putenv("RAYLIB_DIR=C:\\GitHub\\raylib");
             _putenv("PATH=%PATH%;C:\\raylib\\w64devkit\\bin");
-            system(TextFormat("mingw32-make -C %s -f Makefile.Web %s/%s PLATFORM=PLATFORM_WEB -B", exBasePath, exCategory, exName));
 #else
             LOG("INFO: [%s] Building example for PLATFORM_WEB (Host: POSIX)\n", GetFileNameWithoutExt(inFileName));
-            system(TextFormat("make -C %s -f Makefile.Web %s/%s PLATFORM=PLATFORM_WEB -B", exBasePath, exCategory, exName));
 #endif
+            system(TextFormat("make -C %s -f Makefile.Web %s/%s PLATFORM=PLATFORM_WEB -B", exBasePath, exCategory, exName));
+
             // Update generated .html metadata
             LOG("INFO: [%s] Updating HTML Metadata...\n", TextFormat("%s.html", exName));
             UpdateWebMetadata(TextFormat("%s/%s/%s.html", exBasePath, exCategory, exName),
@@ -778,10 +777,9 @@ int main(int argc, char *argv[])
             // WARNING: EMSDK_PATH must be set to proper location when calling from GitHub Actions
 #if defined(_WIN32)
             _putenv("PATH=%PATH%;C:\\raylib\\w64devkit\\bin");
-            system(TextFormat("mingw32-make -C %s -f Makefile.Web %s/%s PLATFORM=PLATFORM_WEB -B", exBasePath, exRecategory, exRename));
-#else
-            system(TextFormat("make -C %s -f Makefile.Web %s/%s PLATFORM=PLATFORM_WEB -B", exBasePath, exRecategory, exRename));
 #endif
+            system(TextFormat("make -C %s -f Makefile.Web %s/%s PLATFORM=PLATFORM_WEB -B", exBasePath, exRecategory, exRename));
+
             // Update generated .html metadata
             UpdateWebMetadata(TextFormat("%s/%s/%s.html", exBasePath, exCategory, exRename),
                 TextFormat("%s/%s/%s.c", exBasePath, exCategory, exRename));
@@ -917,7 +915,7 @@ int main(int argc, char *argv[])
             // Set required environment variables
             //putenv(TextFormat("RAYLIB_DIR=%s\\..", exBasePath));
             _putenv("PATH=%PATH%;C:\\raylib\\w64devkit\\bin");
-            //putenv("MAKE=mingw32-make");
+            //putenv("MAKE=make");
             //ChangeDirectory(exBasePath);
 #endif
             for (int i = 0; i < exBuildListCount; i++)
@@ -933,7 +931,7 @@ int main(int argc, char *argv[])
                 // Build example for PLATFORM_DESKTOP
 #if defined(_WIN32)
                 LOG("INFO: [%s] Building example for PLATFORM_DESKTOP (Host: Win32)\n", exName);
-                system(TextFormat("mingw32-make -C %s %s/%s PLATFORM=PLATFORM_DESKTOP -B", exBasePath, exCategory, exName));
+                system(TextFormat("make -C %s %s/%s PLATFORM=PLATFORM_DESKTOP -B", exBasePath, exCategory, exName));
 #elif defined(PLATFORM_DRM)
                 LOG("INFO: [%s] Building example for PLATFORM_DRM (Host: POSIX)\n", exName);
                 system(TextFormat("make -C %s %s/%s PLATFORM=PLATFORM_DRM -B > %s/%s/logs/%s.build.log 2>&1",
@@ -949,13 +947,9 @@ int main(int argc, char *argv[])
                 // Build: raylib.com/examples/<category>/<category>_example_name.data
                 // Build: raylib.com/examples/<category>/<category>_example_name.wasm
                 // Build: raylib.com/examples/<category>/<category>_example_name.js
-    #if defined(_WIN32)
-                LOG("INFO: [%s] Building example for PLATFORM_WEB (Host: Win32)\n", exName);
-                system(TextFormat("mingw32-make -C %s -f Makefile.Web %s/%s PLATFORM=PLATFORM_WEB -B", exBasePath, exCategory, exName));
-    #else
-                LOG("INFO: [%s] Building example for PLATFORM_WEB (Host: POSIX)\n", exName);
+                LOG("INFO: [%s] Building example for PLATFORM_WEB\n", exName);
                 system(TextFormat("make -C %s -f Makefile.Web %s/%s PLATFORM=PLATFORM_WEB -B", exBasePath, exCategory, exName));
-    #endif
+
                 // Update generated .html metadata
                 LOG("INFO: [%s] Updating HTML Metadata...\n", TextFormat("%s.html", exName));
                 UpdateWebMetadata(TextFormat("%s/%s/%s.html", exBasePath, exCategory, exName),
@@ -1268,8 +1262,7 @@ int main(int argc, char *argv[])
 
                         // NOTE: Some examples should be excluded from VS2022 solution because
                         // they have specific platform/linkage requirements:
-                        if ((strcmp(exInfo->name, "web_basic_window") == 0) ||
-                            (strcmp(exInfo->name, "raylib_opengl_interop") == 0)) continue;
+                        if (strcmp(exInfo->name, "raylib_opengl_interop") == 0) continue;
 
                         // Review: Add: raylib/projects/VS2022/examples/<category>_example_name.vcxproj
                         // Review: Add: raylib/projects/VS2022/raylib.sln
@@ -1313,11 +1306,10 @@ int main(int argc, char *argv[])
                         #if defined(_WIN32)
                             LOG("INFO: [%s] Building example for PLATFORM_WEB (Host: Win32)\n", exInfo->name);
                             _putenv("PATH=%PATH%;C:\\raylib\\w64devkit\\bin");
-                            system(TextFormat("mingw32-make -C %s -f Makefile.Web %s/%s PLATFORM=PLATFORM_WEB -B", exBasePath, exInfo->category, exInfo->name));
                         #else
                             LOG("INFO: [%s] Building example for PLATFORM_WEB (Host: POSIX)\n", exInfo->name);
-                            system(TextFormat("make -C %s -f Makefile.Web %s/%s PLATFORM=PLATFORM_WEB -B", exBasePath, exInfo->category, exInfo->name));
                         #endif
+                            system(TextFormat("make -C %s -f Makefile.Web %s/%s PLATFORM=PLATFORM_WEB -B", exBasePath, exInfo->category, exInfo->name));
 
                             // Update generated .html metadata
                             LOG("INFO: [%s.html] Updating HTML Metadata...\n", exInfo->name);
@@ -1496,7 +1488,7 @@ int main(int argc, char *argv[])
             // Set required environment variables
             //putenv(TextFormat("RAYLIB_DIR=%s\\..", exBasePath));
             //_putenv("PATH=%PATH%;C:\\raylib\\w64devkit\\bin");
-            //putenv("MAKE=mingw32-make");
+            //putenv("MAKE=make");
             //ChangeDirectory(exBasePath);
             //_putenv("MAKE_PATH=C:\\raylib\\w64devkit\\bin");
             //_putenv("EMSDK_PATH = C:\\raylib\\emsdk");
@@ -1593,7 +1585,7 @@ int main(int argc, char *argv[])
                 // Build: raylib.com/examples/<category>/<category>_example_name.js
     #if defined(_WIN32)
                 LOG("INFO: [%s] Building example for PLATFORM_WEB (Host: Win32)\n", exName);
-                system(TextFormat("mingw32-make -C %s -f Makefile.Web %s/%s PLATFORM=PLATFORM_WEB -B > %s/%s/logs/%s.build.log 2>&1",
+                system(TextFormat("make -C %s -f Makefile.Web %s/%s PLATFORM=PLATFORM_WEB -B > %s/%s/logs/%s.build.log 2>&1",
                     exBasePath, exCategory, exName, exBasePath, exCategory, exName));
     #else
                 LOG("INFO: [%s] Building example for PLATFORM_WEB (Host: POSIX)\n", exName);
@@ -1642,13 +1634,13 @@ int main(int argc, char *argv[])
                 // Set required environment variables
                 //putenv(TextFormat("RAYLIB_DIR=%s\\..", exBasePath));
                 _putenv("PATH=%PATH%;C:\\raylib\\w64devkit\\bin");
-                //putenv("MAKE=mingw32-make");
+                //putenv("MAKE=make");
                 //ChangeDirectory(exBasePath);
     #endif
                 // Build example for PLATFORM_DESKTOP
     #if defined(_WIN32)
                 LOG("INFO: [%s] Building example for PLATFORM_DESKTOP (Host: Win32)\n", exName);
-                system(TextFormat("mingw32-make -C %s %s/%s PLATFORM=PLATFORM_DESKTOP -B > %s/%s/logs/%s.build.log 2>&1",
+                system(TextFormat("make -C %s %s/%s PLATFORM=PLATFORM_DESKTOP -B > %s/%s/logs/%s.build.log 2>&1",
                     exBasePath, exCategory, exName, exBasePath, exCategory, exName));
     #elif defined(PLATFORM_DRM)
                 LOG("INFO: [%s] Building example for PLATFORM_DRM (Host: POSIX)\n", exName);
@@ -1894,9 +1886,11 @@ int main(int argc, char *argv[])
             printf("    test <example_name>           : Build and Test example for Desktop and Web platforms\n");
             printf("    validate                      : Validate examples collection, generates report\n");
             printf("    update                        : Validate and update examples collection, generates report\n\n");
+
             printf("OPTIONS:\n\n");
             printf("    -h, --help                    : Show tool version and command line usage help\n");
             printf("    -v, --verbose                 : Verbose mode, show additional logs on processes\n");
+
             printf("\nEXAMPLES:\n\n");
             printf("    > rexm add shapes_custom_stars\n");
             printf("        Add and updates new example provided <shapes_custom_stars>\n\n");
@@ -2337,7 +2331,7 @@ static rlExampleInfo *LoadExampleInfo(const char *exFileName)
         // Example found in collection
         exInfo = (rlExampleInfo *)RL_CALLOC(1, sizeof(rlExampleInfo));
 
-        strncpy(exInfo->name, GetFileNameWithoutExt(exFileName), 128 - 1);
+        snprintf(exInfo->name, 128, "%s", GetFileNameWithoutExt(exFileName));
         strncpy(exInfo->category, exInfo->name, TextFindIndex(exInfo->name, "_"));
 
         char *exText = LoadFileText(exFileName);
@@ -2383,7 +2377,7 @@ static rlExampleInfo *LoadExampleInfo(const char *exFileName)
         int copyrightIndex = TextFindIndex(exText, "Copyright (c) ");
         int yearStartIndex = copyrightIndex + 14;
         char yearText[5] = { 0 };
-        strncpy(yearText, exText + yearStartIndex, 4);
+        snprintf(yearText, 5, "%s", exText + yearStartIndex);
         exInfo->yearCreated = TextToInteger(yearText);
         // Check for review year included (or just use creation year)
         if (exText[yearStartIndex + 4] == '-') strncpy(yearText, exText + yearStartIndex + 5, 4);
@@ -2431,7 +2425,7 @@ static int ParseExampleInfoLine(const char *line, rlExampleInfo *entry)
     #define MAX_EXAMPLE_INFO_LINE_LEN   512
 
     char temp[MAX_EXAMPLE_INFO_LINE_LEN] = { 0 };
-    strncpy(temp, line, MAX_EXAMPLE_INFO_LINE_LEN);
+    snprintf(temp, MAX_EXAMPLE_INFO_LINE_LEN, "%s", line);
     temp[MAX_EXAMPLE_INFO_LINE_LEN - 1] = '\0'; // Ensure null termination
 
     int tokenCount = 0;
@@ -2908,7 +2902,7 @@ static void UpdateWebMetadata(const char *exHtmlPath, const char *exFilePath)
         char exTitle[64] = { 0 };           // Example title: fileName without extension, replacing underscores by spaces
 
         // Get example name: replace underscore by spaces
-        strncpy(exName, GetFileNameWithoutExt(exHtmlPathCopy), 64 - 1);
+        snprintf(exName, 64, "%s", GetFileNameWithoutExt(exHtmlPathCopy));
         strcpy(exTitle, exName);
         for (int i = 0; (i < 64) && (exTitle[i] != '\0'); i++) { if (exTitle[i] == '_') exTitle[i] = ' '; }
 

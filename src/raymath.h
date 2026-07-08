@@ -1,6 +1,6 @@
 /**********************************************************************************************
 *
-*   raymath v2.0 - Math functions to work with Vector2, Vector3, Matrix and Quaternions
+*   raymath v2.0 - Math functions to work with Vector2, Vector3, Vector4, Matrix and Quaternions
 *
 *   CONVENTIONS:
 *     - Matrix structure is defined as row-major (memory layout) but parameters naming AND all
@@ -2714,13 +2714,13 @@ RMAPI void MatrixDecompose(Matrix mat, Vector3 *translation, Quaternion *rotatio
         stabilizer = fmaxf(stabilizer, fabsf(matColumns[i].y));
         stabilizer = fmaxf(stabilizer, fabsf(matColumns[i].z));
     }
-    matColumns[0] = Vector3Scale(matColumns[0], 1.0f / stabilizer);
-    matColumns[1] = Vector3Scale(matColumns[1], 1.0f / stabilizer);
-    matColumns[2] = Vector3Scale(matColumns[2], 1.0f / stabilizer);
+    matColumns[0] = Vector3Scale(matColumns[0], 1.0f/stabilizer);
+    matColumns[1] = Vector3Scale(matColumns[1], 1.0f/stabilizer);
+    matColumns[2] = Vector3Scale(matColumns[2], 1.0f/stabilizer);
 
     // X Scale
     scl.x = Vector3Length(matColumns[0]);
-    if (scl.x > eps) matColumns[0] = Vector3Scale(matColumns[0], 1.0f / scl.x);
+    if (scl.x > eps) matColumns[0] = Vector3Scale(matColumns[0], 1.0f/scl.x);
 
     // Compute XY shear and make col2 orthogonal
     shear[0] = Vector3DotProduct(matColumns[0], matColumns[1]);
@@ -2730,7 +2730,7 @@ RMAPI void MatrixDecompose(Matrix mat, Vector3 *translation, Quaternion *rotatio
     scl.y = Vector3Length(matColumns[1]);
     if (scl.y > eps)
     {
-        matColumns[1] = Vector3Scale(matColumns[1], 1.0f / scl.y);
+        matColumns[1] = Vector3Scale(matColumns[1], 1.0f/scl.y);
         shear[0] /= scl.y; // Correct XY shear
     }
 
@@ -2744,7 +2744,7 @@ RMAPI void MatrixDecompose(Matrix mat, Vector3 *translation, Quaternion *rotatio
     scl.z = Vector3Length(matColumns[2]);
     if (scl.z > eps)
     {
-        matColumns[2] = Vector3Scale(matColumns[2], 1.0f / scl.z);
+        matColumns[2] = Vector3Scale(matColumns[2], 1.0f/scl.z);
         shear[1] /= scl.z; // Correct XZ shear
         shear[2] /= scl.z; // Correct YZ shear
     }
@@ -2800,6 +2800,11 @@ inline const Vector2& operator -= (Vector2& lhs, const Vector2& rhs)
 {
     lhs = Vector2Subtract(lhs, rhs);
     return lhs;
+}
+
+inline Vector2 operator * (const float& lhs, const Vector2& rhs)
+{
+    return Vector2Scale(rhs, lhs);
 }
 
 inline Vector2 operator * (const Vector2& lhs, const float& rhs)
@@ -2896,6 +2901,11 @@ inline const Vector3& operator -= (Vector3& lhs, const Vector3& rhs)
     return lhs;
 }
 
+inline Vector3 operator * (const float& lhs, const Vector3& rhs)
+{
+    return Vector3Scale(rhs, lhs);
+}
+
 inline Vector3 operator * (const Vector3& lhs, const float& rhs)
 {
     return Vector3Scale(lhs, rhs);
@@ -2989,6 +2999,11 @@ inline const Vector4& operator -= (Vector4& lhs, const Vector4& rhs)
 {
     lhs = Vector4Subtract(lhs, rhs);
     return lhs;
+}
+
+inline Vector4 operator * (const float& lhs, const Vector4& rhs)
+{
+    return Vector4Scale(rhs, lhs);
 }
 
 inline Vector4 operator * (const Vector4& lhs, const float& rhs)

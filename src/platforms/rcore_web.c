@@ -76,7 +76,6 @@ typedef struct {
 
     char canvasId[64];                  // Keep current canvas id where wasm app is running
                                         // NOTE: Useful when trying to run multiple wasms in different canvases in same webpage
-
 #if defined(GRAPHICS_API_OPENGL_SOFTWARE)
     unsigned int *pixels;               // Pointer to pixel data buffer (RGBA 32bit format)
 #endif
@@ -913,7 +912,7 @@ void ShowCursor(void)
     }
 }
 
-// Hides mouse cursor
+// Hide mouse cursor
 void HideCursor(void)
 {
     if (!CORE.Input.Mouse.cursorHidden)
@@ -924,7 +923,7 @@ void HideCursor(void)
     }
 }
 
-// Enables cursor (unlock cursor)
+// Enable cursor (unlock cursor)
 void EnableCursor(void)
 {
     emscripten_exit_pointerlock();
@@ -935,7 +934,7 @@ void EnableCursor(void)
     // NOTE: CORE.Input.Mouse.cursorLocked handled by EmscriptenPointerlockCallback()
 }
 
-// Disables cursor (lock cursor)
+// Disable cursor (lock cursor)
 void DisableCursor(void)
 {
     emscripten_request_pointerlock(platform.canvasId, 1);
@@ -1580,7 +1579,7 @@ static void WindowDropCallback(GLFWwindow *window, int count, const char **paths
         for (unsigned int i = 0; i < CORE.Window.dropFileCount; i++)
         {
             CORE.Window.dropFilepaths[i] = (char *)RL_CALLOC(MAX_FILEPATH_LENGTH, sizeof(char));
-            strncpy(CORE.Window.dropFilepaths[i], paths[i], MAX_FILEPATH_LENGTH - 1);
+            snprintf(CORE.Window.dropFilepaths[i], MAX_FILEPATH_LENGTH, "%s", paths[i]);
         }
     }
 }

@@ -153,7 +153,7 @@
     #define SW_MAX_TEXTURES                 128
 #endif
 
-// Enables the use of a lookup table for uint8_t to float conversion
+// Enable the use of a lookup table for uint8_t to float conversion
 // Requires an additional 1KB of global memory
 // Disabled when SIMD intrinsics are enabled
 #ifndef SW_USE_COLOR_LUT
@@ -163,6 +163,11 @@
         #define SW_USE_COLOR_LUT            true
     #endif
 #endif
+
+// Full NPOT texture support (enabled by default)
+// When disabled, SW_REPEAT requires POT on its axis (fast bitmask wrap)
+// SW_CLAMP remains supported for any dimension, per-axis
+#define SW_SUPPORT_NPOT_TEXTURE true
 
 //----------------------------------------------------------------------------------
 // OpenGL Compatibility Types
@@ -200,6 +205,7 @@ typedef double              GLclampd;
 #define GL_RENDERER                         0x1F01
 #define GL_VERSION                          0x1F02
 #define GL_EXTENSIONS                       0x1F03
+#define GL_SHADING_LANGUAGE_VERSION         0x8B8C
 
 //#define GL_ATTRIB_STACK_DEPTH             0x0BB0
 //#define GL_CLIENT_ATTRIB_STACK_DEPTH      0x0BB1
@@ -507,6 +513,7 @@ typedef enum {
     SW_RENDERER = GL_RENDERER,
     SW_VERSION = GL_VERSION,
     SW_EXTENSIONS = GL_EXTENSIONS,
+    SW_SHADING_LANGUAGE_VERSION = GL_SHADING_LANGUAGE_VERSION,
     SW_COLOR_CLEAR_VALUE = GL_COLOR_CLEAR_VALUE,
     SW_DEPTH_CLEAR_VALUE = GL_DEPTH_CLEAR_VALUE,
     SW_CURRENT_COLOR = GL_CURRENT_COLOR,
@@ -844,6 +851,15 @@ SWAPI void swGetFramebufferAttachmentParameteriv(SWattachment attachment, SWatta
     #endif
 #endif
 
+// ESP-DSP acceleration: ESP-IDF ships an optimized math library that includes
+// `dspm_mult_4x4x4_f32` (4x4 matrix multiply) and `dspm_mult_4x4x1_f32` (matrix * vector)
+// These are S3-tuned hand-vectorized kernels that beat the scalar versions for both throughput and code-size
+// Detection is opt-in to keep the dependency optional: define SW_USE_ESP_DSP from your build system
+#if defined(ESP_PLATFORM) && defined(SW_USE_ESP_DSP)
+    #define SW_HAS_ESP_DSP
+    #include "dspm_mult.h"
+#endif
+
 #ifdef __cplusplus
     #define SW_CURLY_INIT(name) name
 #else
@@ -858,41 +874,41 @@ SWAPI void swGetFramebufferAttachmentParameteriv(SWattachment attachment, SWatta
 #define SW_DEG2RAD  (SW_PI/180.0f)
 #define SW_RAD2DEG  (180.0f/SW_PI)
 
-// When clipping a convex polygon against a plane, at most one vertex is added.
+// When clipping a convex polygon against a plane, at most one vertex is added
 // Starting from a quadrilateral (4 vertices), clipped sequentially against
 // the frustum (6 planes) then the scissor rectangle (4 planes):
-// 4 + 6 + 4 = 14 vertices maximum.
-#define SW_MAX_CLIPPED_POLYGON_VERTICES 14
-#define SW_CLIP_EPSILON                 1e-4f
+// 4 + 6 + 4 = 14 vertices maximum
+#define SW_MAX_CLIPPED_POLYGON_VERTICES     14
+#define SW_CLIP_EPSILON                     1e-4f
 
-#define SW_HANDLE_NULL          0u
-#define SW_POOL_SLOT_LIVE       0x80u   // bit7 of the generation byte
-#define SW_POOL_SLOT_VER_MASK   0x7Fu   // bits6:0 = anti-ABA counter
+#define SW_HANDLE_NULL                      0u
+#define SW_POOL_SLOT_LIVE                   0x80u   // bit7 of the generation byte
+#define SW_POOL_SLOT_VER_MASK               0x7Fu   // bits6:0 = anti-ABA counter
 
-#define SW_CONCAT(a, b) a##b
-#define SW_CONCATX(a, b) SW_CONCAT(a, b)
+#define SW_CONCAT(a, b)                     a##b
+#define SW_CONCATX(a, b)                    SW_CONCAT(a, b)
 
-#define SW_FRAMEBUFFER_COLOR8_GET(c,p,o) SW_CONCATX(sw_pixel_read_color8_, SW_FRAMEBUFFER_COLOR_TYPE)((c),(p),(o))
-#define SW_FRAMEBUFFER_COLOR_GET(c,p,o) SW_CONCATX(sw_pixel_read_color_, SW_FRAMEBUFFER_COLOR_TYPE)((c),(p),(o))
-#define SW_FRAMEBUFFER_COLOR_SET(p,c,o) SW_CONCATX(sw_pixel_write_color_, SW_FRAMEBUFFER_COLOR_TYPE)((p),(c),(o))
+#define SW_FRAMEBUFFER_COLOR8_GET(c,p,o)    SW_CONCATX(sw_pixel_read_color8_, SW_FRAMEBUFFER_COLOR_TYPE)((c),(p),(o))
+#define SW_FRAMEBUFFER_COLOR_GET(c,p,o)     SW_CONCATX(sw_pixel_read_color_, SW_FRAMEBUFFER_COLOR_TYPE)((c),(p),(o))
+#define SW_FRAMEBUFFER_COLOR_SET(p,c,o)     SW_CONCATX(sw_pixel_write_color_, SW_FRAMEBUFFER_COLOR_TYPE)((p),(c),(o))
 
-#define SW_FRAMEBUFFER_DEPTH_GET(p,o) SW_CONCATX(sw_pixel_read_depth_, SW_FRAMEBUFFER_DEPTH_TYPE)((p),(o))
-#define SW_FRAMEBUFFER_DEPTH_SET(p,d,o) SW_CONCATX(sw_pixel_write_depth_, SW_FRAMEBUFFER_DEPTH_TYPE)((p),(d),(o))
+#define SW_FRAMEBUFFER_DEPTH_GET(p,o)       SW_CONCATX(sw_pixel_read_depth_, SW_FRAMEBUFFER_DEPTH_TYPE)((p),(o))
+#define SW_FRAMEBUFFER_DEPTH_SET(p,d,o)     SW_CONCATX(sw_pixel_write_depth_, SW_FRAMEBUFFER_DEPTH_TYPE)((p),(d),(o))
 
-#define SW_FRAMEBUFFER_COLOR_FORMAT SW_CONCATX(SW_PIXELFORMAT_COLOR_, SW_FRAMEBUFFER_COLOR_TYPE)
-#define SW_FRAMEBUFFER_DEPTH_FORMAT SW_CONCATX(SW_PIXELFORMAT_DEPTH_, SW_FRAMEBUFFER_DEPTH_TYPE)
+#define SW_FRAMEBUFFER_COLOR_FORMAT         SW_CONCATX(SW_PIXELFORMAT_COLOR_, SW_FRAMEBUFFER_COLOR_TYPE)
+#define SW_FRAMEBUFFER_DEPTH_FORMAT         SW_CONCATX(SW_PIXELFORMAT_DEPTH_, SW_FRAMEBUFFER_DEPTH_TYPE)
 
-#define SW_FRAMEBUFFER_COLOR_SIZE SW_PIXELFORMAT_SIZE[SW_FRAMEBUFFER_COLOR_FORMAT]
-#define SW_FRAMEBUFFER_DEPTH_SIZE SW_PIXELFORMAT_SIZE[SW_FRAMEBUFFER_DEPTH_FORMAT]
+#define SW_FRAMEBUFFER_COLOR_SIZE           SW_PIXELFORMAT_SIZE[SW_FRAMEBUFFER_COLOR_FORMAT]
+#define SW_FRAMEBUFFER_DEPTH_SIZE           SW_PIXELFORMAT_SIZE[SW_FRAMEBUFFER_DEPTH_FORMAT]
 
-#define SW_STATE_SCISSOR_TEST   (1 << 0)
-#define SW_STATE_TEXTURE_2D     (1 << 1)
-#define SW_STATE_DEPTH_TEST     (1 << 2)
-#define SW_STATE_CULL_FACE      (1 << 3)
-#define SW_STATE_BLEND          (1 << 4)
+#define SW_STATE_SCISSOR_TEST               (1 << 0)
+#define SW_STATE_TEXTURE_2D                 (1 << 1)
+#define SW_STATE_DEPTH_TEST                 (1 << 2)
+#define SW_STATE_CULL_FACE                  (1 << 3)
+#define SW_STATE_BLEND                      (1 << 4)
 
-#define SW_BLEND_FLAG_NOOP          (1 << 0)
-#define SW_BLEND_FLAG_NEEDS_ALPHA   (1 << 1)
+#define SW_BLEND_FLAG_NOOP                  (1 << 0)
+#define SW_BLEND_FLAG_NEEDS_ALPHA           (1 << 1)
 
 //----------------------------------------------------------------------------------
 // Module Types and Structures Definition
@@ -1038,6 +1054,9 @@ typedef struct {
     SWmatrix currentMatrixMode;                                 // Current matrix mode (e.g., sw_MODELVIEW, sw_PROJECTION)
     sw_matrix_t *currentMatrix;                                 // Pointer to the currently used matrix according to the mode
     sw_matrix_t matMVP;                                         // Model view projection matrix, calculated and used internally
+#ifdef SW_HAS_ESP_DSP
+    float matMVP_rm[16];                                        // Row-major MVP, kept in sync for esp-dsp dspm_mult_4x4x1_f32 vertex transform
+#endif
     bool isDirtyMVP;                                            // Indicates if the MVP matrix should be rebuilt
 
     sw_handle_t boundFramebufferId;                             // Framebuffer currently bound
@@ -1141,6 +1160,14 @@ static inline void sw_matrix_id(sw_matrix_t dst)
 
 static inline void sw_matrix_mul_rst(float *SW_RESTRICT dst, const float *SW_RESTRICT left, const float *SW_RESTRICT right)
 {
+#ifdef SW_HAS_ESP_DSP
+    // dspm_mult_4x4x4_f32 treats its operands as row-major. rlsw stores matrices
+    // column-major, so passing them flat is equivalent to passing transposes:
+    // dspm_mult(L^T, R^T) computes (L^T)*(R^T) = (R*L)^T, written back into a
+    // flat array gives the same bit pattern as the column-major product (R*L)
+    // -- exactly the semantic the scalar fallback below has
+    dspm_mult_4x4x4_f32(left, right, dst);
+#else
     float l00 = left[0],  l01 = left[1],  l02 = left[2],  l03 = left[3];
     float l10 = left[4],  l11 = left[5],  l12 = left[6],  l13 = left[7];
     float l20 = left[8],  l21 = left[9],  l22 = left[10], l23 = left[11];
@@ -1165,6 +1192,7 @@ static inline void sw_matrix_mul_rst(float *SW_RESTRICT dst, const float *SW_RES
     dst[7]  = l10*right[3] + l11*right[7] + l12*right[11] + l13*right[15];
     dst[11] = l20*right[3] + l21*right[7] + l22*right[11] + l23*right[15];
     dst[15] = l30*right[3] + l31*right[7] + l32*right[11] + l33*right[15];
+#endif
 }
 
 static inline void sw_matrix_mul(sw_matrix_t dst, const sw_matrix_t left, const sw_matrix_t right)
@@ -1209,6 +1237,33 @@ static inline float sw_fract(float x)
 {
     return (x - floorf(x));
 }
+
+// Xtensa architecture optimization
+// Fast reciprocal: 1-ULP accurate in ~7 instructions using the
+// hardware `recip0.s` seed + two Newton-Raphson refinement steps
+// All work stays in FPU registers — no `__divsf3` software call
+// Hot-path divisions in the rasterizer (span/triangle setup, perspective divide, etc.) call this
+// On non-Xtensa targets it transparently expands to `1.0f / x`, so generated code is identical to before
+#if defined(__XTENSA__)
+__attribute__((always_inline))
+static inline float sw_rcp(float x)
+{
+    float result, temp;
+    __asm__(
+        "recip0.s %0, %2\n"
+        "const.s  %1, 1\n"
+        "msub.s   %1, %2, %0\n"
+        "madd.s   %0, %0, %1\n"
+        "const.s  %1, 1\n"
+        "msub.s   %1, %2, %0\n"
+        "maddn.s  %0, %0, %1\n"
+        : "=&f"(result), "=&f"(temp) : "f"(x)
+    );
+    return result;
+}
+#else
+static inline float sw_rcp(float x) { return 1.0f/x; }
+#endif
 
 static inline uint8_t sw_luminance8(const uint8_t *color)
 {
@@ -2344,6 +2399,14 @@ static inline bool sw_texture_alloc(sw_texture_t *texture, const void *data, int
     int bpp = SW_PIXELFORMAT_SIZE[format];
     int newSize = w*h*bpp;
 
+    if (texture->pixels == NULL)
+    {
+        texture->minFilter = SW_NEAREST;
+        texture->magFilter = SW_NEAREST;
+        texture->sWrap = SW_CLAMP;
+        texture->tWrap = SW_CLAMP;
+    }
+
     if (newSize > texture->allocSz)
     {
         void *ptr = SW_REALLOC(texture->pixels, newSize);
@@ -2406,20 +2469,27 @@ static inline void sw_texture_free(sw_texture_t *texture)
 
 static inline void sw_texture_sample_nearest(float *SW_RESTRICT color, const sw_texture_t *SW_RESTRICT tex, float u, float v)
 {
-    u = (tex->sWrap == SW_REPEAT)? sw_fract(u) : sw_saturate(u);
-    v = (tex->tWrap == SW_REPEAT)? sw_fract(v) : sw_saturate(v);
+    int x, y;
 
-    int x = u*tex->width;
-    int y = v*tex->height;
+#if SW_SUPPORT_NPOT_TEXTURE
+    if (tex->sWrap == SW_REPEAT) x = (int)(sw_fract(u)*tex->width);
+    else x = (int)(sw_saturate(u)*tex->width);
+
+    if (tex->tWrap == SW_REPEAT) y = (int)(sw_fract(v)*tex->height);
+    else y = (int)(sw_saturate(v)*tex->height);
+#else
+    if (tex->sWrap == SW_REPEAT) x = (int)(u*tex->width) & tex->wMinus1;
+    else x = (int)(sw_saturate(u)*tex->width);
+
+    if (tex->tWrap == SW_REPEAT) y = (int)(v*tex->height) & tex->hMinus1;
+    else y = (int)(sw_saturate(v)*tex->height);
+#endif
 
     tex->readColor(color, tex->pixels, y*tex->width + x);
 }
 
 static inline void sw_texture_sample_linear(float *SW_RESTRICT color, const sw_texture_t *SW_RESTRICT tex, float u, float v)
 {
-    // TODO: With a bit more cleverness the number of operations can
-    // be clearly reduced, but for now it works fine
-
     float xf = (u*tex->width) - 0.5f;
     float yf = (v*tex->height) - 0.5f;
 
@@ -2432,28 +2502,36 @@ static inline void sw_texture_sample_linear(float *SW_RESTRICT color, const sw_t
     int x1 = x0 + 1;
     int y1 = y0 + 1;
 
-    // NOTE: If the textures are POT, avoid the division for SW_REPEAT
-
-    if (tex->sWrap == SW_CLAMP)
+    if (tex->sWrap == SW_REPEAT)
     {
-        x0 = (x0 > tex->wMinus1)? tex->wMinus1 : x0;
-        x1 = (x1 > tex->wMinus1)? tex->wMinus1 : x1;
-    }
-    else
-    {
+    #if SW_SUPPORT_NPOT_TEXTURE
         x0 = (x0%tex->width + tex->width)%tex->width;
         x1 = (x1%tex->width + tex->width)%tex->width;
-    }
-
-    if (tex->tWrap == SW_CLAMP)
-    {
-        y0 = (y0 > tex->hMinus1)? tex->hMinus1 : y0;
-        y1 = (y1 > tex->hMinus1)? tex->hMinus1 : y1;
+    #else
+        x0 = x0 & tex->wMinus1;
+        x1 = x1 & tex->wMinus1;
+    #endif
     }
     else
     {
+        x0 = sw_clamp_int(x0, 0, tex->wMinus1);
+        x1 = sw_clamp_int(x1, 0, tex->wMinus1);
+    }
+
+    if (tex->tWrap == SW_REPEAT)
+    {
+    #if SW_SUPPORT_NPOT_TEXTURE
         y0 = (y0%tex->height + tex->height)%tex->height;
         y1 = (y1%tex->height + tex->height)%tex->height;
+    #else
+        y0 = y0 & tex->hMinus1;
+        y1 = y1 & tex->hMinus1;
+    #endif
+    }
+    else
+    {
+        y0 = sw_clamp_int(y0, 0, tex->hMinus1);
+        y1 = sw_clamp_int(y1, 0, tex->hMinus1);
     }
 
     float c00[4], c10[4], c01[4], c11[4];
@@ -3366,7 +3444,7 @@ static void sw_triangle_clip_and_project(void)
 
             // Calculation of the reciprocal of W for normalization
             // as well as perspective-correct attributes
-            const float wRcp = 1.0f/v->position[3];
+            const float wRcp = sw_rcp(v->position[3]);
 
             // Division of XYZ coordinates by weight
             v->position[0] *= wRcp;
@@ -3460,8 +3538,8 @@ static inline bool sw_quad_face_culling(void)
     // winding in the projected space when all w > 0
     // A value of 0 for sgnArea means P0, P1, P2 are collinear in (x, y, w)
     // space, which corresponds to a degenerate triangle projection
-    // Such quads might also be degenerate or non-planar. They are typically
-    // not culled by this test (0 < 0 is false, 0 > 0 is false)
+    // Such quads might also be degenerate or non-planar
+    // They are typically not culled by this test (0 < 0 is false, 0 > 0 is false)
     // and should be handled by the clipper if necessary
 
     return (RLSW.cullFace == SW_FRONT)? (sgnArea < 0.0f) : (sgnArea > 0.0f); // Cull if winding is "clockwise" : "counter-clockwise"
@@ -3481,7 +3559,7 @@ static void sw_quad_clip_and_project(void)
 
             // Calculation of the reciprocal of W for normalization
             // as well as perspective-correct attributes
-            const float wRcp = 1.0f/v->position[3];
+            const float wRcp = sw_rcp(v->position[3]);
 
             // Division of XYZ coordinates by weight
             v->position[0] *= wRcp;
@@ -3659,8 +3737,8 @@ static bool sw_line_clip_and_project(sw_vertex_t *v0, sw_vertex_t *v1)
     if (!sw_line_clip(v0, v1)) return false;
 
     // Convert clip coordinates to NDC
-    v0->position[3] = 1.0f/v0->position[3];
-    v1->position[3] = 1.0f/v1->position[3];
+    v0->position[3] = sw_rcp(v0->position[3]);
+    v1->position[3] = sw_rcp(v1->position[3]);
     for (int i = 0; i < 3; i++)
     {
         v0->position[i] *= v0->position[3];
@@ -3709,7 +3787,7 @@ static bool sw_point_clip_and_project(sw_vertex_t *v)
             if ((v->position[i] < -v->position[3]) || (v->position[i] > v->position[3])) return false;
         }
 
-        v->position[3] = 1.0f/v->position[3];
+        v->position[3] = sw_rcp(v->position[3]);
         v->position[0] *= v->position[3];
         v->position[1] *= v->position[3];
         v->position[2] *= v->position[3];
@@ -3781,8 +3859,7 @@ static inline void sw_poly_fill_render(uint32_t state)
 //-------------------------------------------------------------------------------------------
 static void sw_immediate_begin(SWdraw mode)
 {
-    // NOTE: Any checks to ensure command recording can start
-    //       must be performed before calling this function.
+    // NOTE: Any checks to ensure command recording can start must be performed before calling this function
 
     // Recalculate the MVP if this is needed
     if (RLSW.isDirtyMVP)
@@ -3790,6 +3867,19 @@ static void sw_immediate_begin(SWdraw mode)
         sw_matrix_mul_rst(RLSW.matMVP,
             RLSW.stackModelview[RLSW.stackModelviewCounter - 1],
             RLSW.stackProjection[RLSW.stackProjectionCounter - 1]);
+
+#ifdef SW_HAS_ESP_DSP
+        // Pre-transpose to row-major so dspm_mult_4x4x1_f32(matMVP_rm, v, out)
+        // computes M*v directly in the per-vertex hot path; 16 scalar copies
+        // per MVP update vs saving ~20 cycles per vertex transform
+        for (int i = 0; i < 4; i++)
+        {
+            for (int j = 0; j < 4; j++)
+            {
+                RLSW.matMVP_rm[4*i + j] = RLSW.matMVP[4*j + i];
+            }
+        }
+#endif
 
         RLSW.isDirtyMVP = false;
     }
@@ -3842,11 +3932,17 @@ static void sw_immediate_push_vertex(const float position[4])
     sw_vertex_t *vertex = &RLSW.primitive.buffer[RLSW.primitive.vertexCount++];
 
     // Calculate clip coordinates
+#ifdef SW_HAS_ESP_DSP
+    // dspm_mult_4x4x1_f32 declares its inputs non-const; rlsw treats them as
+    // read-only and the cast is safe (the kernel only loads from B)
+    dspm_mult_4x4x1_f32(RLSW.matMVP_rm, (float *)position, vertex->position);
+#else
     const float *m = RLSW.matMVP;
     vertex->position[0] = m[0]*position[0] + m[4]*position[1] + m[8]*position[2] + m[12]*position[3];
     vertex->position[1] = m[1]*position[0] + m[5]*position[1] + m[9]*position[2] + m[13]*position[3];
     vertex->position[2] = m[2]*position[0] + m[6]*position[1] + m[10]*position[2] + m[14]*position[3];
     vertex->position[3] = m[3]*position[0] + m[7]*position[1] + m[11]*position[2] + m[15]*position[3];
+#endif
 
     // Copy the attributes in the current vertex
     for (int i = 0; i < 4; i++) vertex->color[i] = RLSW.primitive.color[i];
@@ -4164,6 +4260,7 @@ const char *swGetString(SWget name)
         case SW_RENDERER: result = "RLSW OpenGL Software Renderer"; break;
         case SW_VERSION: result = RLSW_VERSION; break;
         case SW_EXTENSIONS: result = "None"; break;
+        case SW_SHADING_LANGUAGE_VERSION: result = "Not supported"; break;
         default: RLSW.errCode = SW_INVALID_ENUM; break;
     }
 
@@ -5073,11 +5170,25 @@ void swTexParameteri(int param, int value)
         case SW_TEXTURE_WRAP_S:
         {
             if (!sw_is_texture_wrap_valid(value)) { RLSW.errCode = SW_INVALID_ENUM; return; }
+        #if !SW_SUPPORT_NPOT_TEXTURE
+            if (value == SW_REPEAT && (RLSW.boundTexture->width & RLSW.boundTexture->wMinus1) != 0)
+            {
+                RLSW.errCode = SW_INVALID_OPERATION;
+                return;
+            }
+        #endif
             RLSW.boundTexture->sWrap = (SWwrap)value;
         } break;
         case SW_TEXTURE_WRAP_T:
         {
             if (!sw_is_texture_wrap_valid(value)) { RLSW.errCode = SW_INVALID_ENUM; return; }
+        #if !SW_SUPPORT_NPOT_TEXTURE
+            if (value == SW_REPEAT && (RLSW.boundTexture->height & RLSW.boundTexture->hMinus1) != 0)
+            {
+                RLSW.errCode = SW_INVALID_OPERATION;
+                return;
+            }
+        #endif
             RLSW.boundTexture->tWrap = (SWwrap)value;
         } break;
         default: RLSW.errCode = SW_INVALID_ENUM; break;
@@ -5271,8 +5382,18 @@ static void SW_RASTER_TRIANGLE_SPAN(const sw_vertex_t *start, const sw_vertex_t 
     int xEnd = (int)end->position[0];
     if (xStart == xEnd) return;
 
+    // Intercept the span bounds to ensure to not write before the framebuffer
+    int xLoopStart = (xStart >= 0)? xStart : 0;
+    int xLoopEnd = (xEnd <= RLSW.colorBuffer->width)? xEnd : RLSW.colorBuffer->width;
+    if (xLoopStart >= xLoopEnd) return; // Nothing to draw
+
+    // Get the current row and skip if outside the framebuffer
+    // Maybe this check is better suited elsewhere?
+    int y = (int)start->position[1];
+    if (y < 0 || y >= RLSW.colorBuffer->height) return;
+
     // Compute the inverse horizontal distance along the X axis
-    float dxRcp = 1.0f/(end->position[0] - start->position[0]);
+    float dxRcp = sw_rcp(end->position[0] - start->position[0]);
 
     // Compute the interpolation steps along the X axis
     float dWdx = (end->position[3] - start->position[3])*dxRcp;
@@ -5291,27 +5412,29 @@ static void SW_RASTER_TRIANGLE_SPAN(const sw_vertex_t *start, const sw_vertex_t 
 #endif
 
     // Compute the subpixel distance to traverse before the first pixel
+    // Also step further into them to move away from the colorbuffer edge
     float xSubstep = 1.0f - sw_fract(start->position[0]);
+    float dxStart = (float)(xLoopStart - xStart);
+    float xOffset = xSubstep + dxStart;
 
     // Initializing the interpolation starting values
-    float w = start->position[3] + dWdx*xSubstep;
+    float w = start->position[3] + dWdx*xOffset;
     float color[4] = {
-        start->color[0] + dCdx[0]*xSubstep,
-        start->color[1] + dCdx[1]*xSubstep,
-        start->color[2] + dCdx[2]*xSubstep,
-        start->color[3] + dCdx[3]*xSubstep
+        start->color[0] + dCdx[0]*xOffset,
+        start->color[1] + dCdx[1]*xOffset,
+        start->color[2] + dCdx[2]*xOffset,
+        start->color[3] + dCdx[3]*xOffset
     };
 #ifdef SW_ENABLE_DEPTH_TEST
-    float z = start->position[2] + dZdx*xSubstep;
+    float z = start->position[2] + dZdx*xOffset;
 #endif
 #ifdef SW_ENABLE_TEXTURE
-    float u = start->texcoord[0] + dUdx*xSubstep;
-    float v = start->texcoord[1] + dVdx*xSubstep;
+    float u = start->texcoord[0] + dUdx*xOffset;
+    float v = start->texcoord[1] + dVdx*xOffset;
 #endif
 
     // Pre-calculate the starting pointers for the framebuffer row
-    int y = (int)start->position[1];
-    int baseOffset = y*RLSW.colorBuffer->width + xStart;
+    int baseOffset = y*RLSW.colorBuffer->width + xLoopStart;
     uint8_t *cPtr = (uint8_t *)(RLSW.colorBuffer->pixels) + baseOffset*SW_FRAMEBUFFER_COLOR_SIZE;
 #ifdef SW_ENABLE_DEPTH_TEST
     uint8_t *dPtr = (uint8_t *)(RLSW.depthBuffer->pixels) + baseOffset*SW_FRAMEBUFFER_DEPTH_SIZE;
@@ -5319,19 +5442,19 @@ static void SW_RASTER_TRIANGLE_SPAN(const sw_vertex_t *start, const sw_vertex_t 
 
 #define SW_AFFINE_BLOCK 16
 
-    int x = xStart;
-    while (x < xEnd)
+    int x = xLoopStart;
+    while (x < xLoopEnd)
     {
         // Clamp last block to remaining pixels
         int blockEnd = x + SW_AFFINE_BLOCK;
-        if (blockEnd > xEnd) blockEnd = xEnd;
+        if (blockEnd > xLoopEnd) blockEnd = xLoopEnd;
         float blockLenF = (float)(blockEnd - x);
-        float blockLenRcp = 1.0f/blockLenF;
+        float blockLenRcp = sw_rcp(blockLenF);
 
         // Only 2 '1/w' here; none inside the pixel loop
-        float wRcpA = 1.0f/w;
+        float wRcpA = sw_rcp(w);
         float wB = w + dWdx*blockLenF;
-        float wRcpB = 1.0f/wB;
+        float wRcpB = sw_rcp(wB);
 
         // Perspective-correct color at both block endpoints, then affine gradient
         float srcColor[4] = {
@@ -5402,7 +5525,9 @@ static void SW_RASTER_TRIANGLE_SPAN(const sw_vertex_t *start, const sw_vertex_t 
             }
             #endif
 
+        #ifdef SW_ENABLE_DEPTH_TEST
         discard:
+        #endif
             srcColor[0] += dSrcColordx[0];
             srcColor[1] += dSrcColordx[1];
             srcColor[2] += dSrcColordx[2];
@@ -5446,10 +5571,10 @@ static void SW_RASTER_TRIANGLE(const sw_vertex_t *v0, const sw_vertex_t *v1, con
     if (v1->position[1] > v2->position[1]) { const sw_vertex_t *tmp = v1; v1 = v2; v2 = tmp; }
     if (v0->position[1] > v1->position[1]) { const sw_vertex_t *tmp = v0; v0 = v1; v1 = tmp; }
 
-    // Extracting coordinates from the sorted vertices
-    float x0 = v0->position[0], y0 = v0->position[1];
-    float x1 = v1->position[0], y1 = v1->position[1];
-    float x2 = v2->position[0], y2 = v2->position[1];
+    // Extracting Y coordinates from the sorted vertices
+    float y0 = v0->position[1];
+    float y1 = v1->position[1];
+    float y2 = v2->position[1];
 
     // Compute height differences
     float h02 = y2 - y0;
@@ -5459,9 +5584,9 @@ static void SW_RASTER_TRIANGLE(const sw_vertex_t *v0, const sw_vertex_t *v1, con
     if (h02 < 1e-6f) return;
 
     // Inverse edge dy for per-edge dV/dy (scanline interpolation)
-    float h02Rcp = 1.0f/h02;
-    float h01Rcp = (h01 > 1e-6f)? 1.0f/h01 : 0.0f;
-    float h12Rcp = (h12 > 1e-6f)? 1.0f/h12 : 0.0f;
+    float h02Rcp = sw_rcp(h02);
+    float h01Rcp = (h01 > 1e-6f)? sw_rcp(h01) : 0.0f;
+    float h12Rcp = (h12 > 1e-6f)? sw_rcp(h12) : 0.0f;
 
     // Compute gradients for each side of the triangle
     sw_vertex_t dVXdy02, dVXdy01, dVXdy12;
@@ -5556,12 +5681,20 @@ static void SW_RASTER_QUAD(const sw_vertex_t *a, const sw_vertex_t *b,
     int xMax = (int)br->position[0];
     int yMax = (int)br->position[1];
 
+    // Exit early if no pixels to draw.  Use these later for loop boundaries
+    int yLoopMin = (yMin >= 0)? yMin : 0;
+    int xLoopMin = (xMin >= 0)? xMin : 0;
+    int yLoopMax = (yMax <= RLSW.colorBuffer->height)? yMax : RLSW.colorBuffer->height;
+    int xLoopMax = (xMax <= RLSW.colorBuffer->width)?  xMax : RLSW.colorBuffer->width;
+
+    if (yLoopMin >= yLoopMax || xLoopMin >= xLoopMax) return;
+
     float w = (float)(xMax - xMin);
     float h = (float)(yMax - yMin);
     if ((w <= 0) || (h <= 0)) return;
 
-    float wRcp = 1.0f/w;
-    float hRcp = 1.0f/h;
+    float wRcp = sw_rcp(w);
+    float hRcp = sw_rcp(h);
 
     // Subpixel corrections
     float xSubstep = 1.0f - sw_fract(tl->position[0]);
@@ -5609,21 +5742,44 @@ static void SW_RASTER_QUAD(const sw_vertex_t *a, const sw_vertex_t *b,
     uint8_t *dPixels = RLSW.depthBuffer->pixels;
 #endif
 
-    for (int y = yMin; y < yMax; y++)
+    // Calculate the distance the in-bounds boundary is from the quad's edges, only on the left and top
+    float dxMin = (float)(xLoopMin - xMin);
+    float dyMin = (float)(yLoopMin - yMin);
+
+    // Correct our start by how far it's clipped outside the framebuffer
+    cRow[0] += dCdx[0]*dxMin + dCdy[0]*dyMin;
+    cRow[1] += dCdx[1]*dxMin + dCdy[1]*dyMin;
+    cRow[2] += dCdx[2]*dxMin + dCdy[2]*dyMin;
+    cRow[3] += dCdx[3]*dxMin + dCdy[3]*dyMin;
+    #ifdef SW_ENABLE_DEPTH_TEST
+    zRow += dZdy*dyMin + dZdx*dxMin;
+    #endif
+    #ifdef SW_ENABLE_TEXTURE
+    uRow += dUdy*dyMin + dUdx*dxMin;
+    vRow += dVdy*dyMin + dVdx*dxMin;
+    #endif
+
+    for (int y = yLoopMin; y < yLoopMax; y++)
     {
-        int baseOffset = y*stride + xMin;
+        int baseOffset = y*stride + xLoopMin;
         uint8_t *cPtr = cPixels + baseOffset*SW_FRAMEBUFFER_COLOR_SIZE;
     #ifdef SW_ENABLE_DEPTH_TEST
         uint8_t *dPtr = dPixels + baseOffset*SW_FRAMEBUFFER_DEPTH_SIZE;
+        // Copy the cursors without destroying the offset maths
         float z = zRow;
     #endif
     #ifdef SW_ENABLE_TEXTURE
         float u = uRow;
         float v = vRow;
     #endif
-        float color[4] = { cRow[0], cRow[1], cRow[2], cRow[3] };
+        float color[4] = {
+            cRow[0],
+            cRow[1],
+            cRow[2],
+            cRow[3]
+        };
 
-        for (int x = xMin; x < xMax; x++)
+        for (int x = xLoopMin; x < xLoopMax; x++)
         {
             float srcColor[4] = { color[0], color[1], color[2], color[3] };
 
@@ -5659,7 +5815,10 @@ static void SW_RASTER_QUAD(const sw_vertex_t *a, const sw_vertex_t *b,
             }
             #endif
 
+        #ifdef SW_ENABLE_DEPTH_TEST
         discard:
+        #endif
+            // Move one pixel over without touching the original "start offset"
             color[0] += dCdx[0];
             color[1] += dCdx[1];
             color[2] += dCdx[2];
@@ -5682,6 +5841,9 @@ static void SW_RASTER_QUAD(const sw_vertex_t *a, const sw_vertex_t *b,
             cPtr += SW_FRAMEBUFFER_COLOR_SIZE;
         }
 
+        // The for loop is clamped to the right side of the screen
+        // However, these cursor start vars are still on the left
+        // That's fine, advancing to the next row
         cRow[0] += dCdy[0];
         cRow[1] += dCdy[1];
         cRow[2] += dCdy[2];
@@ -5746,7 +5908,7 @@ static void SW_RASTER_LINE(const sw_vertex_t *v0, const sw_vertex_t *v1)
     // Compute per pixel increments
     float xInc = dx/steps;
     float yInc = dy/steps;
-    float stepRcp = 1.0f/steps;
+    float stepRcp = sw_rcp(steps);
 #ifdef SW_ENABLE_DEPTH_TEST
     float zInc = (v1->position[2] - v0->position[2])*stepRcp;
 #endif
@@ -5812,7 +5974,9 @@ static void SW_RASTER_LINE(const sw_vertex_t *v0, const sw_vertex_t *v1)
         }
         #endif
 
+    #ifdef SW_ENABLE_DEPTH_TEST
     discard:
+    #endif
         x += xInc;
         y += yInc;
         #ifdef SW_ENABLE_DEPTH_TEST
