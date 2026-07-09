@@ -1,11 +1,37 @@
-raylib's Nintendo Switch (LibNX) Port
---------
-This is the repository of the Nintendo Switch port of the raylib using LibNX running over the Atmosphere CFW (others CFW should work too), although it's still fully compatible with all the others platforms, i recommend you to get it from the [main repository](https://github.com/raysan5/raylib) if you are looking to build it for other platforms.
+# raylib-nx: The Original Nintendo Switch (LibNX) Port
+
+[**raylib-nx**](https://github.com/luizpestana/raylib-nx) is a custom, open-source community port of the popular [raylib](https://github.com/raysan5/raylib) C/C++ game development library, built specifically for Nintendo Switch homebrew development.
+
+This repository is the original upstream port designed to interface directly with **libnx**, allowing you to compile and run raylib games on modified Nintendo Switch consoles running Custom Firmware (CFW) like Atmosphere.
+
+![raylib-nx demo](https://github.com/user-attachments/assets/601838da-09d1-44bf-94c2-2db8494e8817)
+
+## 🌟 Why Use raylib-nx?
+
+While raylib is heavily cross-platform, the official Nintendo Switch backend is closed-source and restricted by Nintendo's NDA. This fork bridges this gap for the homebrew community, students, and indie developers who want to tinker with hardware without needing an official devkit.
+
+| Feature | Supported |
+| :--- | :--- |
+| **Target Platforms** | raylib supported + **Nintendo Switch (Homebrew)** |
+| **Input Handling** | raylib supported + **Joy-Cons and Switch Pro Controller** |
+| **Play Modes** | raylib supported + **Native Docked & Undocked (Handheld)** |
+| **Rendering** | raylib supported + **EGL / OpenGL ES for Switch** |
+
+## 🚀 Building the Library
 
 Please, follow the wiki page in order to install and use it:
 
- - [Working on Switch](https://github.com/lucaskyer/raylib-nx/wiki/Working-on-Switch)
+ - [Working on Switch](https://github.com/luizpestana/raylib-nx/wiki/Working-on-Switch)
 
+## 🤝 Credits and Acknowledgments
+
+* **Ramon Santamaria (@raysan5):** For creating the incredible original raylib framework.
+* **devkitPro Team:** For maintaining the toolchains that make Switch homebrew possible.
+* **Switchbrew Community:** For the extensive documentation and development of libnx.
+* **Atmosphère Team:** For maintaining the custom firmware.
+
+
+🎮 From the raylib Repository
 ---
 
 <img align="left" style="width:260px" src="https://github.com/raysan5/raylib/blob/master/logo/raylib_logo_animation.gif" width="288px">
