@@ -425,7 +425,7 @@ void SetMouseCursor(int cursor)
 // Register all input events
 void PollInputEvents(void)
 {
-#if defined(SUPPORT_GESTURES_SYSTEM)
+#if SUPPORT_GESTURES_SYSTEM
     // NOTE: Gestures update must be called every frame to reset gestures correctly
     // because ProcessGestureEvent() is just called on an event, not every frame
     UpdateGestures();
@@ -442,7 +442,11 @@ void PollInputEvents(void)
     CORE.Input.Gamepad.lastButtonPressed = 0; // GAMEPAD_BUTTON_UNKNOWN
 
     // Register previous touch states
-    for (int i = 0; i < MAX_TOUCH_POINTS; i++) CORE.Input.Touch.previousTouchState[i] = CORE.Input.Touch.currentTouchState[i];
+    for (int i = 0; i < MAX_TOUCH_POINTS; i++)
+    {
+        CORE.Input.Touch.previousTouchState[i] = CORE.Input.Touch.currentTouchState[i];
+        CORE.Input.Touch.previousPosition[i] = CORE.Input.Touch.position[i];
+    }
 
     // Reset touch positions
     //for (int i = 0; i < MAX_TOUCH_POINTS; i++) CORE.Input.Touch.position[i] = (Vector2){ 0, 0 };
@@ -454,22 +458,74 @@ void PollInputEvents(void)
         CORE.Input.Keyboard.keyRepeatInFrame[i] = 0;
     }
 
-    HidTouchScreenState state = {0};
+    HidTouchScreenState state = { 0 };
     if (hidGetTouchScreenStates(&state, 1))
     {
-        if (state.count != platform.prevTouchCount)
+        int touchCount = (state.count < MAX_TOUCH_POINTS)? state.count : MAX_TOUCH_POINTS;
+        int previousTouchCount = platform.prevTouchCount;
+
+        CORE.Input.Touch.pointCount = touchCount;
+
+        for (int i = 0; i < touchCount; i++)
         {
-            platform.prevTouchCount = state.count;
-        }
-        for(int i = 0; i < state.count; i++)
-        {
-            CORE.Input.Touch.position[i].x = state.touches[i].x;
-            CORE.Input.Touch.position[i].y = state.touches[i].y;
+            CORE.Input.Touch.position[i].x = (float)state.touches[i].x;
+            CORE.Input.Touch.position[i].y = (float)state.touches[i].y;
             CORE.Input.Touch.pointId[i] = state.touches[i].finger_id;
+            CORE.Input.Touch.currentTouchState[i] = 1;
 
             platform.touchDeltaTime[i] = state.touches[i].delta_time;
         }
-        CORE.Input.Touch.pointCount = state.count;
+
+        for (int i = touchCount; i < MAX_TOUCH_POINTS; i++)
+        {
+            CORE.Input.Touch.currentTouchState[i] = 0;
+            CORE.Input.Touch.pointId[i] = -1;
+            CORE.Input.Touch.position[i] = (Vector2){ 0.0f, 0.0f };
+            platform.touchDeltaTime[i] = 0;
+        }
+
+        CORE.Input.Mouse.previousButtonState[MOUSE_BUTTON_LEFT] = CORE.Input.Mouse.currentButtonState[MOUSE_BUTTON_LEFT];
+        CORE.Input.Mouse.currentButtonState[MOUSE_BUTTON_LEFT] = (touchCount > 0);
+
+        if (touchCount > 0)
+        {
+            if (platform.prevTouchCount > 0) CORE.Input.Mouse.previousPosition = CORE.Input.Mouse.currentPosition;
+            else CORE.Input.Mouse.previousPosition = CORE.Input.Touch.position[0];
+
+            CORE.Input.Mouse.currentPosition = CORE.Input.Touch.position[0];
+        }
+
+#if SUPPORT_GESTURES_SYSTEM
+        int touchAction = -1;
+        int gesturePointCount = touchCount;
+
+        if (touchCount > previousTouchCount) touchAction = TOUCH_ACTION_DOWN;
+        else if (touchCount < previousTouchCount)
+        {
+            touchAction = TOUCH_ACTION_UP;
+            gesturePointCount = previousTouchCount;
+        }
+        else if (touchCount > 0) touchAction = TOUCH_ACTION_MOVE;
+
+        if (touchAction >= 0)
+        {
+            GestureEvent gestureEvent = { 0 };
+
+            gestureEvent.touchAction = touchAction;
+            gestureEvent.pointCount = (gesturePointCount < MAX_TOUCH_POINTS)? gesturePointCount : MAX_TOUCH_POINTS;
+
+            for (int i = 0; i < gestureEvent.pointCount; i++)
+            {
+                gestureEvent.pointId[i] = (touchAction == TOUCH_ACTION_UP)? i : CORE.Input.Touch.pointId[i];
+                gestureEvent.position[i] = (touchAction == TOUCH_ACTION_UP)? CORE.Input.Touch.previousPosition[i] : CORE.Input.Touch.position[i];
+                gestureEvent.position[i].x /= (float)GetScreenWidth();
+                gestureEvent.position[i].y /= (float)GetScreenHeight();
+            }
+
+            ProcessGestureEvent(gestureEvent);
+        }
+#endif
+        platform.prevTouchCount = touchCount;
     }
 
     for (int i = 0; i < MAX_GAMEPADS; i++)

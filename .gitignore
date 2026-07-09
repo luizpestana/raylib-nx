@@ -77,12 +77,13 @@ examples/**/*.html
 examples/**/logs/*
 
 # Ignore switch files
-examples/*/*.d
-examples/*/*.elf
-examples/*/*.lst
-examples/*/*.map
-examples/*/*.nacp
-examples/*/*.nro
+*.d
+*.o
+*.elf
+*.lst
+*.map
+*.nacp
+*.nro
 
 # Ignore files build by xcode
 *.mode*v*

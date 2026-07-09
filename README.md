@@ -16,6 +16,7 @@ While raylib is heavily cross-platform, the official Nintendo Switch backend is 
 | **Input Handling** | raylib supported + **Joy-Cons and Switch Pro Controller** |
 | **Play Modes** | raylib supported + **Native Docked & Undocked (Handheld)** |
 | **Rendering** | raylib supported + **EGL / OpenGL ES for Switch** |
+| **GUI Support** | Includes a modified version of [raygui](https://github.com/raysan5/raygui) with Switch native keyboard support in `projects/switch-nx`; the demo can be downloaded from the [releases page](https://github.com/luizpestana/raylib-nx/releases) |
 
 ## 🚀 Building the Library
 
