@@ -139,6 +139,7 @@ pub fn linkMacOS(b: *std.Build, mod: *std.Build.Module) void {
     mod.linkFramework("CoreGraphics", .{});
     mod.linkFramework("AppKit", .{});
     mod.linkFramework("IOKit", .{});
+    mod.linkFramework("QuartzCore", .{});
 }
 
 fn compileRaylib(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, options: Options) !*std.Build.Step.Compile {
@@ -719,7 +720,6 @@ fn addExamples(
                 .shell_file_path = b.path("src/shell.html"),
                 .install_dir = install_dir,
             });
-            b.getInstallStep().dependOn(emcc_step);
 
             const html_filename = try std.fmt.allocPrint(b.allocator, "{s}.html", .{wasm.name});
             const emrun_step = emsdk.emrunStep(

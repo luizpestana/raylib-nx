@@ -70,6 +70,7 @@
 #include <string.h>             // Required for: strlen() [Used in ImageTextEx()], strcmp() [Used in LoadImageFromMemory()/LoadImageAnimFromMemory()/ExportImageToMemory()]
 #include <math.h>               // Required for: fabsf() [Used in DrawTextureRec()]
 #include <stdio.h>              // Required for: sprintf() [Used in ExportImageAsCode()]
+#include <limits.h>             // Required for: INT_MAX
 
 // Support only desired texture formats on stb_image
 #if !SUPPORT_FILEFORMAT_BMP
@@ -314,7 +315,7 @@ Image LoadImageRaw(const char *fileName, int width, int height, int format, int 
         unsigned char *dataPtr = fileData;
         int size = GetPixelDataSize(width, height, format);
 
-        if (size <= dataSize)   // Security check
+        if (size <= dataSize) // Security check
         {
             // Offset file data to expected raw image by header size
             if ((headerSize > 0) && ((headerSize + size) <= dataSize)) dataPtr += headerSize;
@@ -843,9 +844,10 @@ bool ExportImageAsCode(Image image, const char *fileName)
 // Generate image: plain color
 Image GenImageColor(int width, int height, Color color)
 {
-    Color *pixels = (Color *)RL_CALLOC(width*height, sizeof(Color));
+    int dataSize = GetPixelDataSize(width, height, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
+    Color *pixels = (Color *)RL_CALLOC(dataSize, 1);
 
-    for (int i = 0; i < width*height; i++) pixels[i] = color;
+    for (int i = 0; (pixels != NULL) && (i < width*height); i++) pixels[i] = color;
 
     Image image = {
         .data = pixels,
@@ -1228,18 +1230,34 @@ Image ImageFromImage(Image image, Rectangle rec)
 {
     Image result = { 0 };
 
-    int bytesPerPixel = GetPixelDataSize(1, 1, image.format);
+    // Security check to avoid program crash
+    if ((image.data == NULL) || (image.width == 0) || (image.height == 0)) return result;
 
-    result.width = (int)rec.width;
-    result.height = (int)rec.height;
-    result.data = RL_CALLOC((int)rec.width*(int)rec.height*bytesPerPixel, 1);
-    result.format = image.format;
-    result.mipmaps = 1;
+    if (image.format < PIXELFORMAT_COMPRESSED_DXT1_RGB)
+	{
+        // Basic rectangle validation: size smaller than image size
+        if ((rec.x >= 0) && (rec.y >= 0) && (rec.width > 0) && (rec.height > 0) &&
+            (((int)rec.x + (int)rec.width) <= image.width) &&
+            (((int)rec.y + (int)rec.height) <= image.height))
+        {
+            int bytesPerPixel = GetPixelDataSize(1, 1, image.format);
 
-    for (int y = 0; y < (int)rec.height; y++)
-    {
-        memcpy(((unsigned char *)result.data) + y*(int)rec.width*bytesPerPixel, ((unsigned char *)image.data) + ((y + (int)rec.y)*image.width + (int)rec.x)*bytesPerPixel, (int)rec.width*bytesPerPixel);
-    }
+            result.width = (int)rec.width;
+            result.height = (int)rec.height;
+            result.data = RL_CALLOC((int)rec.width*(int)rec.height*bytesPerPixel, 1);
+            result.format = image.format;
+            result.mipmaps = 1;
+
+            for (int y = 0; y < (int)rec.height; y++)
+            {
+                memcpy(((unsigned char *)result.data) + y*(int)rec.width*bytesPerPixel,
+                    ((unsigned char *)image.data) + ((y + (int)rec.y)*image.width + (int)rec.x)*bytesPerPixel,
+                    (int)rec.width*bytesPerPixel);
+            }
+        }
+        else TRACELOG(LOG_WARNING, "IMAGE: ImageToImage(), rectangle provided not valid");
+	}
+    else TRACELOG(LOG_WARNING, "IMAGE: Image manipulation not supported for compressed formats");
 
     return result;
 }
@@ -2684,45 +2702,49 @@ void ImageRotate(Image *image, int degrees)
         int width = (int)(fabsf(image->width*cosRadius) + fabsf(image->height*sinRadius));
         int height = (int)(fabsf(image->height*cosRadius) + fabsf(image->width*sinRadius));
 
+        int dataSize = GetPixelDataSize(width, height, image->format);
         int bytesPerPixel = GetPixelDataSize(1, 1, image->format);
-        unsigned char *rotatedData = (unsigned char *)RL_CALLOC(width*height, bytesPerPixel);
+        unsigned char *rotatedData = (unsigned char *)RL_CALLOC(dataSize, 1);
 
-        for (int y = 0; y < height; y++)
+        if (rotatedData != NULL)
         {
-            for (int x = 0; x < width; x++)
+            for (int y = 0; y < height; y++)
             {
-                float oldX = ((x - width/2.0f)*cosRadius + (y - height/2.0f)*sinRadius) + image->width/2.0f;
-                float oldY = ((y - height/2.0f)*cosRadius - (x - width/2.0f)*sinRadius) + image->height/2.0f;
-
-                if ((oldX >= 0) && (oldX < image->width) && (oldY >= 0) && (oldY < image->height))
+                for (int x = 0; x < width; x++)
                 {
-                    int x1 = (int)floorf(oldX);
-                    int y1 = (int)floorf(oldY);
-                    int x2 = MIN(x1 + 1, image->width - 1);
-                    int y2 = MIN(y1 + 1, image->height - 1);
+                    float oldX = ((x - width/2.0f)*cosRadius + (y - height/2.0f)*sinRadius) + image->width/2.0f;
+                    float oldY = ((y - height/2.0f)*cosRadius - (x - width/2.0f)*sinRadius) + image->height/2.0f;
 
-                    float px = oldX - x1;
-                    float py = oldY - y1;
-
-                    for (int i = 0; i < bytesPerPixel; i++)
+                    if ((oldX >= 0) && (oldX < image->width) && (oldY >= 0) && (oldY < image->height))
                     {
-                        float f1 = ((unsigned char *)image->data)[(y1*image->width + x1)*bytesPerPixel + i];
-                        float f2 = ((unsigned char *)image->data)[(y1*image->width + x2)*bytesPerPixel + i];
-                        float f3 = ((unsigned char *)image->data)[(y2*image->width + x1)*bytesPerPixel + i];
-                        float f4 = ((unsigned char *)image->data)[(y2*image->width + x2)*bytesPerPixel + i];
+                        int x1 = (int)floorf(oldX);
+                        int y1 = (int)floorf(oldY);
+                        int x2 = MIN(x1 + 1, image->width - 1);
+                        int y2 = MIN(y1 + 1, image->height - 1);
 
-                        float val = f1*(1 - px)*(1 - py) + f2*px*(1 - py) + f3*(1 - px)*py + f4*px*py;
+                        float px = oldX - x1;
+                        float py = oldY - y1;
 
-                        rotatedData[(y*width + x)*bytesPerPixel + i] = (unsigned char)val;
+                        for (int i = 0; i < bytesPerPixel; i++)
+                        {
+                            float f1 = ((unsigned char *)image->data)[(y1*image->width + x1)*bytesPerPixel + i];
+                            float f2 = ((unsigned char *)image->data)[(y1*image->width + x2)*bytesPerPixel + i];
+                            float f3 = ((unsigned char *)image->data)[(y2*image->width + x1)*bytesPerPixel + i];
+                            float f4 = ((unsigned char *)image->data)[(y2*image->width + x2)*bytesPerPixel + i];
+
+                            float val = f1*(1 - px)*(1 - py) + f2*px*(1 - py) + f3*(1 - px)*py + f4*px*py;
+
+                            rotatedData[(y*width + x)*bytesPerPixel + i] = (unsigned char)val;
+                        }
                     }
                 }
             }
-        }
 
-        RL_FREE(image->data);
-        image->data = rotatedData;
-        image->width = width;
-        image->height = height;
+            RL_FREE(image->data);
+            image->data = rotatedData;
+            image->width = width;
+            image->height = height;
+        }
     }
 }
 
@@ -3955,10 +3977,10 @@ void ImageDrawCircle(Image *dst, int centerX, int centerY, int radius, Color col
 
     while (y >= x)
     {
-        ImageDrawRectangle(dst, centerX - x, centerY + y, x*2, 1, color);
-        ImageDrawRectangle(dst, centerX - x, centerY - y, x*2, 1, color);
-        ImageDrawRectangle(dst, centerX - y, centerY + x, y*2, 1, color);
-        ImageDrawRectangle(dst, centerX - y, centerY - x, y*2, 1, color);
+        ImageDrawRectangle(dst, centerX - x, centerY + y, x*2 + 1, 1, color);
+        ImageDrawRectangle(dst, centerX - x, centerY - y, x*2 + 1, 1, color);
+        ImageDrawRectangle(dst, centerX - y, centerY + x, y*2 + 1, 1, color);
+        ImageDrawRectangle(dst, centerX - y, centerY - x, y*2 + 1, 1, color);
         x++;
 
         if (decesionParameter > 0)
@@ -4266,7 +4288,7 @@ TextureCubemap LoadTextureCubemap(Image image, int layout)
 {
     TextureCubemap cubemap = { 0 };
 
-    if (layout == CUBEMAP_LAYOUT_AUTO_DETECT)      // Try to automatically guess layout type
+    if (layout == CUBEMAP_LAYOUT_AUTO_DETECT) // Try to automatically guess layout type
     {
         // Check image width/height to determine the type of cubemap provided
         if (image.width > image.height)
@@ -4366,11 +4388,23 @@ TextureCubemap LoadTextureCubemap(Image image, int layout)
     return cubemap;
 }
 
-// Load texture for rendering (framebuffer)
-// NOTE: Render texture is loaded by default with RGBA color attachment and depth RenderBuffer
+// Load RGBA texture for rendering (framebuffer)
 RenderTexture2D LoadRenderTexture(int width, int height)
 {
+    return LoadRenderTextureEx(width, height, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
+}
+
+// Load texture for rendering (framebuffer), with specific format
+// NOTE: Render texture is loaded by default with RGBA color attachment and depth RenderBuffer
+RLAPI RenderTexture2D LoadRenderTextureEx(int width, int height, int format)
+{
     RenderTexture2D target = { 0 };
+
+    if (format >= PIXELFORMAT_COMPRESSED_DXT1_RGB)
+    {
+        TRACELOG(LOG_WARNING, "FBO: Render texture format not supported");
+        return target;
+    }
 
     target.id = rlLoadFramebuffer(); // Load an empty framebuffer
 
@@ -4379,10 +4413,10 @@ RenderTexture2D LoadRenderTexture(int width, int height)
         rlEnableFramebuffer(target.id);
 
         // Create color texture (default to RGBA)
-        target.texture.id = rlLoadTexture(NULL, width, height, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, 1);
+        target.texture.id = rlLoadTexture(NULL, width, height, format, 1);
         target.texture.width = width;
         target.texture.height = height;
-        target.texture.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
+        target.texture.format = format;
         target.texture.mipmaps = 1;
 
         // Create depth renderbuffer/texture
@@ -4411,7 +4445,7 @@ bool IsTextureValid(Texture2D texture)
 {
     bool result = false;
 
-    if ((texture.id > 0) &&         // Validate OpenGL id (texture uplaoded to GPU)
+    if ((texture.id > 0) &&         // Validate OpenGL id (texture uploaded to GPU)
         (texture.width > 0) &&      // Validate texture width
         (texture.height > 0) &&     // Validate texture height
         (texture.format > 0) &&     // Validate texture pixel format
@@ -5311,7 +5345,7 @@ Color GetPixelColor(const void *srcPtr, int format)
         {
             color.r = (unsigned char)((((unsigned short *)srcPtr)[0] >> 11)*255/31);
             color.g = (unsigned char)(((((unsigned short *)srcPtr)[0] >> 6) & 0b0000000000011111)*255/31);
-            color.b = (unsigned char)((((unsigned short *)srcPtr)[0] & 0b0000000000011111)*255/31);
+            color.b = (unsigned char)(((((unsigned short *)srcPtr)[0] >> 1) & 0b0000000000011111)*255/31);
             color.a = (((unsigned short *)srcPtr)[0] & 0b0000000000000001)? 255 : 0;
 
         } break;
@@ -5502,16 +5536,23 @@ int GetPixelDataSize(int width, int height, int format)
         default: break;
     }
 
-    double bytesPerPixel = (double)bpp/8.0;
-    dataSize = (int)(bytesPerPixel*width*height); // Total data size in bytes
+    unsigned long long dataSizeBytes = ((unsigned long long)width*height*bpp) >> 3;  // Get size in bytes (dividing by 8)
 
-    // Most compressed formats works on 4x4 blocks,
-    // if texture is smaller, minimum dataSize is 8 or 16
-    if ((width < 4) && (height < 4))
+    if (dataSizeBytes < INT_MAX)
     {
-        if ((format >= PIXELFORMAT_COMPRESSED_DXT1_RGB) && (format < PIXELFORMAT_COMPRESSED_DXT3_RGBA)) dataSize = 8;
-        else if ((format >= PIXELFORMAT_COMPRESSED_DXT3_RGBA) && (format < PIXELFORMAT_COMPRESSED_ASTC_8x8_RGBA)) dataSize = 16;
+        dataSize = (int)dataSizeBytes;
+
+        // Most compressed formats works on 4x4 blocks,
+        // if texture is smaller, minimum dataSize is 8 or 16
+        if ((width < 4) && (height < 4))
+        {
+            if ((format >= PIXELFORMAT_COMPRESSED_DXT1_RGB) && (format < PIXELFORMAT_COMPRESSED_DXT3_RGBA)) dataSize = 8;
+            else if ((format >= PIXELFORMAT_COMPRESSED_DXT3_RGBA) && (format < PIXELFORMAT_COMPRESSED_ASTC_8x8_RGBA)) dataSize = 16;
+        }
     }
+
+    // NOTE: In case required image data larger than 2GB, no memory allocated at all (NULL)
+    if (dataSize == 0) TRACELOG(LOG_WARNING, "Requested image size is larger than 2GB, it can not be allocated");
 
     return dataSize;
 }

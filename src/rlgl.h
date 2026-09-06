@@ -847,11 +847,11 @@ RLAPI void rlLoadDrawQuad(void);     // Load and draw a quad
         #define SW_CALLOC(n,sz) RL_CALLOC(n, sz)
         #define SW_REALLOC(ptr, newSz) RL_REALLOC(ptr, newSz)
         #define SW_FREE(ptr) RL_FREE(ptr)
-        #include "external/rlsw.h"          // OpenGL 1.1 software implementation
+        #include "external/rlsw.h"      // OpenGL 1.1 software implementation
     #else
         #if defined(__APPLE__)
-            #include <OpenGL/gl.h>          // OpenGL 1.1 library for OSX
-            #include <OpenGL/glext.h>       // OpenGL extensions library
+            #include <OpenGL/gl.h>      // OpenGL 1.1 library for OSX
+            #include <OpenGL/glext.h>   // OpenGL extensions library
         #else
             // APIENTRY for OpenGL function pointer declarations is required
             #if !defined(APIENTRY)
@@ -866,7 +866,7 @@ RLAPI void rlLoadDrawQuad(void);     // Load and draw a quad
                 #define WINGDIAPI __declspec(dllimport)
             #endif
 
-            #include <GL/gl.h>              // OpenGL 1.1 library
+            #include <GL/gl.h>          // OpenGL 1.1 library
         #endif
     #endif
 #endif
@@ -907,9 +907,10 @@ RLAPI void rlLoadDrawQuad(void);     // Load and draw a quad
     #endif
 #endif
 
-#include <stdlib.h>                     // Required for: calloc(), free()
-#include <string.h>                     // Required for: strcmp(), strlen() [Used in rlglInit(), on extensions loading]
-#include <math.h>                       // Required for: sqrtf(), sinf(), cosf(), floor(), log()
+#include <stdlib.h>             // Required for: calloc(), free()
+#include <string.h>             // Required for: strcmp(), strlen() [Used in rlglInit(), on extensions loading]
+#include <math.h>               // Required for: sqrtf(), sinf(), cosf(), floor(), log()
+#include <limits.h>             // Required for: INT_MAX
 
 //----------------------------------------------------------------------------------
 // Defines and Macros
@@ -993,6 +994,7 @@ RLAPI void rlLoadDrawQuad(void);     // Load and draw a quad
     #if !defined(GRAPHICS_API_OPENGL_ES3)
         #define GL_READ_FRAMEBUFFER         GL_FRAMEBUFFER
         #define GL_DRAW_FRAMEBUFFER         GL_FRAMEBUFFER
+        #define GL_DRAW_FRAMEBUFFER_BINDING GL_FRAMEBUFFER_BINDING
     #endif
 #endif
 
@@ -1846,7 +1848,7 @@ void rlEnableFramebuffer(unsigned int id)
 unsigned int rlGetActiveFramebuffer(void)
 {
     GLint fboId = 0;
-#if (defined(GRAPHICS_API_OPENGL_33) || defined(GRAPHICS_API_OPENGL_ES3) || defined(GRAPHICS_API_OPENGL_SOFTWARE))
+#if (defined(GRAPHICS_API_OPENGL_33) || defined(GRAPHICS_API_OPENGL_ES2) || defined(GRAPHICS_API_OPENGL_SOFTWARE))
     glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &fboId);
 #endif
     return fboId;
@@ -2376,7 +2378,7 @@ void rlglClose(void)
 // NOTE: External loader function must be provided
 void rlLoadExtensions(void *loader)
 {
-#if defined(GRAPHICS_API_OPENGL_33)     // Also defined for GRAPHICS_API_OPENGL_21
+#if defined(GRAPHICS_API_OPENGL_33) // Also defined for GRAPHICS_API_OPENGL_21
     // NOTE: glad is generated and contains only required OpenGL 3.3 Core extensions (and lower versions)
     if (gladLoadGL((GLADloadfunc)loader) == 0) TRACELOG(RL_LOG_WARNING, "GLAD: Cannot load OpenGL extensions");
     else TRACELOG(RL_LOG_INFO, "GLAD: OpenGL extensions loaded successfully");
@@ -2507,7 +2509,7 @@ void rlLoadExtensions(void *loader)
         }
 
         // Check instanced rendering support
-        if (strstr(extList[i], (const char *)"instanced_arrays") != NULL)   // Broad check for instanced_arrays
+        if (strstr(extList[i], (const char *)"instanced_arrays") != NULL) // Broad check for instanced_arrays
         {
             // Specific check
             if (strcmp(extList[i], (const char *)"GL_ANGLE_instanced_arrays") == 0)      // ANGLE
@@ -3754,7 +3756,7 @@ void *rlReadTexturePixels(unsigned int id, int width, int height, int format)
     glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 #else
     // Reading data as original texture format, in some platforms (RPI, Wasm) it works
-    pixels = (unsigned char *)RL_MALLOC(GetPixelDataSize(width, height, format));
+    pixels = (unsigned char *)RL_MALLOC(rlGetPixelDataSize(width, height, format));
     unsigned int glInternalFormat = 0, glFormat = 0, glType = 0;
     rlGetGlTextureFormats(format, &glInternalFormat, &glFormat, &glType);
     glReadPixels(0, 0, width, height, glFormat, glType, pixels);
@@ -3791,6 +3793,10 @@ void rlResizeFramebuffer(int width, int height)
 unsigned char *rlReadScreenPixels(int width, int height)
 {
     unsigned char *imgData = (unsigned char *)RL_CALLOC(width*height*4, sizeof(unsigned char));
+
+    // NOTE: Buffer retrieved is GL_FRONT in single-buffered configurations
+    // and GL_BACK in double-buffered configurations, make sure to call it at the end of frame
+    //glReadBuffer(GL_BACK);
 
     // NOTE: glReadPixels() returns image flipped vertically -> (0,0) is the bottom left corner of the framebuffer
     // WARNING: Getting alpha channel! Be careful, it can be transparent if not cleared properly!
@@ -5236,7 +5242,9 @@ static int rlGetPixelDataSize(int width, int height, int format)
         {
             int blockWidth = (width + 3)/4;
             int blockHeight = (height + 3)/4;
-            dataSize = blockWidth*blockHeight*8;
+            unsigned long long dataSizeBytes = (unsigned long long)blockWidth*blockHeight*8;
+            if (dataSizeBytes < INT_MAX) dataSize = (int)dataSizeBytes;
+
         } break;
         case RL_PIXELFORMAT_COMPRESSED_DXT3_RGBA:
         case RL_PIXELFORMAT_COMPRESSED_DXT5_RGBA:
@@ -5245,13 +5253,17 @@ static int rlGetPixelDataSize(int width, int height, int format)
         {
             int blockWidth = (width + 3)/4;
             int blockHeight = (height + 3)/4;
-            dataSize = blockWidth*blockHeight*16;
+            unsigned long long dataSizeBytes = (unsigned long long)blockWidth*blockHeight*16;
+            if (dataSizeBytes < INT_MAX) dataSize = (int)dataSizeBytes;
+
         } break;
         case RL_PIXELFORMAT_COMPRESSED_ASTC_8x8_RGBA: // 4 bytes per each 4x4 block
         {
             int blockWidth = (width + 3)/4;
             int blockHeight = (height + 3)/4;
-            dataSize = blockWidth*blockHeight*4;
+            unsigned long long dataSizeBytes = (unsigned long long)blockWidth*blockHeight*4;
+            if (dataSizeBytes < INT_MAX) dataSize = (int)dataSizeBytes;
+
         } break;
         default: break;
     }
@@ -5260,9 +5272,11 @@ static int rlGetPixelDataSize(int width, int height, int format)
     if ((format >= RL_PIXELFORMAT_UNCOMPRESSED_GRAYSCALE) &&
         (format <= RL_PIXELFORMAT_UNCOMPRESSED_R16G16B16A16))
     {
-        double bytesPerPixel = (double)bpp/8.0;
-        dataSize = (int)(bytesPerPixel*width*height); // Total data size in bytes
+        unsigned long long dataSizeBytes = ((unsigned long long)width*height*bpp) >> 3;  // Get size in bytes (dividing by 8)
+        if (dataSizeBytes < INT_MAX) dataSize = (int)dataSizeBytes;
     }
+
+    if (dataSize == 0) TRACELOG(LOG_WARNING, "Requested image size is larger than 2GB, it can not be allocated");
 
     return dataSize;
 }

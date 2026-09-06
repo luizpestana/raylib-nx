@@ -420,7 +420,6 @@ void SetGamepadVibration(int gamepad, float leftMotor, float rightMotor, float d
 void SetMousePosition(int x, int y)
 {
     CORE.Input.Mouse.currentPosition = (Vector2){ (float)x, (float)y };
-    CORE.Input.Mouse.previousPosition = CORE.Input.Mouse.currentPosition;
 }
 
 // Set mouse cursor
@@ -478,7 +477,7 @@ void PollInputEvents(void)
     if (kbhit())
     {
         int key = getch();
-        if (key == 27) CORE.Window.shouldClose = true; // KEY_SCAPE
+        if (key == 27) CORE.Window.shouldClose = true; // KEY_ESCAPE
     }
 }
 

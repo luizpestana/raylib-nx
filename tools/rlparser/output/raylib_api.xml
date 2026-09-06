@@ -303,7 +303,7 @@
         <Alias type="TextureCubemap" name="Texture" desc="TextureCubemap, same as Texture" />
         <Alias type="RenderTexture2D" name="RenderTexture" desc="RenderTexture2D, same as RenderTexture" />
         <Alias type="Camera" name="Camera3D" desc="Camera type fallback, defaults to Camera3D" />
-        <Alias type="*ModelAnimPose" name="Transform" desc="Anim pose, an array of Transform[]" />
+        <Alias type="ModelAnimPose" name="Transform *" desc="Anim pose, an array of Transform[]" />
     </Aliases>
     <Enums count="21">
         <Enum name="ConfigFlags" valueCount="16" desc="System/Window config flags">
@@ -681,7 +681,7 @@
             <Param type="unsigned int" name="frames" desc="" />
         </Callback>
     </Callbacks>
-    <Functions count="612">
+    <Functions count="619">
         <Function name="InitWindow" retType="void" paramCount="3" desc="Initialize window and OpenGL context">
             <Param type="int" name="width" desc="" />
             <Param type="int" name="height" desc="" />
@@ -1084,6 +1084,9 @@
             <Param type="const char *" name="fileName" desc="" />
             <Param type="const char *" name="ext" desc="" />
         </Function>
+        <Function name="IsFileHidden" retType="bool" paramCount="1" desc="Check if file path (file or directory) is hidden by OS">
+            <Param type="const char *" name="filePath" desc="" />
+        </Function>
         <Function name="GetFileLength" retType="int" paramCount="1" desc="Get file length in bytes (NOTE: GetFileSize() conflicts with windows.h)">
             <Param type="const char *" name="fileName" desc="" />
         </Function>
@@ -1099,10 +1102,10 @@
         <Function name="GetFileNameWithoutExt" retType="const char *" paramCount="1" desc="Get filename string without extension (uses static string)">
             <Param type="const char *" name="filePath" desc="" />
         </Function>
-        <Function name="GetDirectoryPath" retType="const char *" paramCount="1" desc="Get full path for a given fileName with path (uses static string)">
+        <Function name="GetDirectoryPath" retType="const char *" paramCount="1" desc="Get full path for a provided fileName with path (uses static string)">
             <Param type="const char *" name="filePath" desc="" />
         </Function>
-        <Function name="GetPrevDirectoryPath" retType="const char *" paramCount="1" desc="Get previous directory path for a given path (uses static string)">
+        <Function name="GetPrevDirectoryPath" retType="const char *" paramCount="1" desc="Get previous directory path for a provided path (uses static string)">
             <Param type="const char *" name="dirPath" desc="" />
         </Function>
         <Function name="GetWorkingDirectory" retType="const char *" paramCount="0" desc="Get current working directory (uses static string)">
@@ -1115,10 +1118,13 @@
         <Function name="ChangeDirectory" retType="int" paramCount="1" desc="Change working directory, returns 0 on success">
             <Param type="const char *" name="dirPath" desc="" />
         </Function>
-        <Function name="IsPathFile" retType="bool" paramCount="1" desc="Check if given path points to a file">
+        <Function name="IsPathFile" retType="bool" paramCount="1" desc="Check if provided path points to a file">
             <Param type="const char *" name="path" desc="" />
         </Function>
-        <Function name="IsPathDirectory" retType="bool" paramCount="1" desc="Check if given path points to a directory">
+        <Function name="IsPathDirectory" retType="bool" paramCount="1" desc="Check if provided path points to a directory">
+            <Param type="const char *" name="path" desc="" />
+        </Function>
+        <Function name="IsPathAbsolute" retType="bool" paramCount="1" desc="Check if provided path is an absolute path">
             <Param type="const char *" name="path" desc="" />
         </Function>
         <Function name="IsFileNameValid" retType="bool" paramCount="1" desc="Check if fileName is valid for the platform/OS">
@@ -1319,7 +1325,7 @@
         <Function name="GetTouchPosition" retType="Vector2" paramCount="1" desc="Get touch position XY for a touch point index (relative to screen size)">
             <Param type="int" name="index" desc="" />
         </Function>
-        <Function name="GetTouchPointId" retType="int" paramCount="1" desc="Get touch point identifier for given index">
+        <Function name="GetTouchPointId" retType="int" paramCount="1" desc="Get touch point identifier for provided index">
             <Param type="int" name="index" desc="" />
         </Function>
         <Function name="GetTouchPointCount" retType="int" paramCount="0" desc="Get number of touch points">
@@ -1423,6 +1429,13 @@
             <Param type="Vector2" name="v1" desc="" />
             <Param type="Vector2" name="v2" desc="" />
             <Param type="Vector2" name="v3" desc="" />
+            <Param type="Color" name="color" desc="" />
+        </Function>
+        <Function name="DrawTriangleLinesEx" retType="void" paramCount="5" desc="Draw triangle outline with line thickness, counter-clockwise vertex order">
+            <Param type="Vector2" name="v1" desc="" />
+            <Param type="Vector2" name="v2" desc="" />
+            <Param type="Vector2" name="v3" desc="" />
+            <Param type="float" name="thick" desc="" />
             <Param type="Color" name="color" desc="" />
         </Function>
         <Function name="DrawTriangleFan" retType="void" paramCount="3" desc="Draw a triangle fan defined by points (first vertex is the center)">
@@ -1566,6 +1579,15 @@
             <Param type="int" name="segments" desc="" />
             <Param type="Color" name="color" desc="" />
         </Function>
+        <Function name="DrawCircleSectorLinesEx" retType="void" paramCount="7" desc="Draw circle sector outline with thickness">
+            <Param type="Vector2" name="center" desc="" />
+            <Param type="float" name="radius" desc="" />
+            <Param type="float" name="startAngle" desc="" />
+            <Param type="float" name="endAngle" desc="" />
+            <Param type="int" name="segments" desc="" />
+            <Param type="float" name="thick" desc="" />
+            <Param type="Color" name="color" desc="" />
+        </Function>
         <Function name="DrawCircleLines" retType="void" paramCount="4" desc="Draw circle outline">
             <Param type="int" name="centerX" desc="" />
             <Param type="int" name="centerY" desc="" />
@@ -1609,6 +1631,13 @@
             <Param type="float" name="radiusV" desc="" />
             <Param type="Color" name="color" desc="" />
         </Function>
+        <Function name="DrawEllipseLinesEx" retType="void" paramCount="5" desc="Draw ellipse outline with line thickness">
+            <Param type="Vector2" name="center" desc="" />
+            <Param type="float" name="radiusH" desc="" />
+            <Param type="float" name="radiusV" desc="" />
+            <Param type="float" name="thick" desc="" />
+            <Param type="Color" name="color" desc="" />
+        </Function>
         <Function name="DrawRing" retType="void" paramCount="7" desc="Draw ring">
             <Param type="Vector2" name="center" desc="" />
             <Param type="float" name="innerRadius" desc="" />
@@ -1625,6 +1654,16 @@
             <Param type="float" name="startAngle" desc="" />
             <Param type="float" name="endAngle" desc="" />
             <Param type="int" name="segments" desc="" />
+            <Param type="Color" name="color" desc="" />
+        </Function>
+        <Function name="DrawRingLinesEx" retType="void" paramCount="8" desc="Draw ring outline with line thickness">
+            <Param type="Vector2" name="center" desc="" />
+            <Param type="float" name="innerRadius" desc="" />
+            <Param type="float" name="outerRadius" desc="" />
+            <Param type="float" name="startAngle" desc="" />
+            <Param type="float" name="endAngle" desc="" />
+            <Param type="int" name="segments" desc="" />
+            <Param type="float" name="thick" desc="" />
             <Param type="Color" name="color" desc="" />
         </Function>
         <Function name="DrawSplineLinear" retType="void" paramCount="4" desc="Draw spline: Linear, minimum 2 points">
@@ -2039,7 +2078,7 @@
             <Param type="int" name="x" desc="" />
             <Param type="int" name="y" desc="" />
         </Function>
-        <Function name="ImageClearBackground" retType="void" paramCount="2" desc="Clear image background with given color">
+        <Function name="ImageClearBackground" retType="void" paramCount="2" desc="Clear image background with provided color">
             <Param type="Image *" name="dst" desc="" />
             <Param type="Color" name="color" desc="" />
         </Function>
@@ -2269,6 +2308,11 @@
         <Function name="LoadRenderTexture" retType="RenderTexture2D" paramCount="2" desc="Load texture for rendering (framebuffer)">
             <Param type="int" name="width" desc="" />
             <Param type="int" name="height" desc="" />
+        </Function>
+        <Function name="LoadRenderTextureEx" retType="RenderTexture2D" paramCount="3" desc="Load texture for rendering (framebuffer), with specific format">
+            <Param type="int" name="width" desc="" />
+            <Param type="int" name="height" desc="" />
+            <Param type="int" name="format" desc="" />
         </Function>
         <Function name="IsTextureValid" retType="bool" paramCount="1" desc="Check if texture is valid (loaded in GPU)">
             <Param type="Texture2D" name="texture" desc="" />

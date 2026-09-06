@@ -411,7 +411,7 @@ ifeq ($(TARGET_PLATFORM),PLATFORM_DESKTOP_GLFW)
     ifeq ($(PLATFORM_OS),OSX)
         # Libraries for OSX 10.9 desktop compiling
         # NOTE: Required packages: libopenal-dev libegl1-mesa-dev
-        LDLIBS = -lraylib -framework OpenGL -framework Cocoa -framework IOKit -framework CoreAudio -framework CoreVideo
+        LDLIBS = -lraylib -framework OpenGL -framework Cocoa -framework IOKit -framework CoreAudio -framework CoreVideo -framework QuartzCore
     endif
     ifeq ($(PLATFORM_OS),BSD)
         # Libraries for FreeBSD, OpenBSD, NetBSD, DragonFly desktop compiling
@@ -480,7 +480,7 @@ ifeq ($(TARGET_PLATFORM),PLATFORM_DESKTOP_RGFW)
         # NOTE: Required packages: libegl1-mesa-dev
         LDFLAGS += -L../src
         LDLIBS = -lraylib -lm
-        LDLIBS += -framework Foundation -framework AppKit -framework IOKit -framework OpenGL -framework CoreVideo
+        LDLIBS += -framework Foundation -framework AppKit -framework IOKit -framework OpenGL -framework CoreVideo -framework QuartzCore
     endif
 endif
 ifeq ($(TARGET_PLATFORM),PLATFORM_DRM)

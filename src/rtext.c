@@ -417,9 +417,6 @@ Font LoadFontFromImage(Image image, Color key, int firstChar)
     int charSpacing = 0;
     int lineSpacing = 0;
 
-    int x = 0;
-    int y = 0;
-
     // Allocate a temporal arrays for glyphs data measures,
     // once the actual number of glyphs is obtained, copy data to a sized array
     int tempCharValues[MAX_GLYPHS_FROM_IMAGE] = { 0 };
@@ -428,6 +425,8 @@ Font LoadFontFromImage(Image image, Color key, int firstChar)
     Color *pixels = LoadImageColors(image);
 
     // Parse image data to get charSpacing and lineSpacing
+    int x = 0;
+    int y = 0;
     for (y = 0; y < image.height; y++)
     {
         for (x = 0; x < image.width; x++)
@@ -438,7 +437,12 @@ Font LoadFontFromImage(Image image, Color key, int firstChar)
         if (!COLOR_EQUAL(pixels[y*image.width + x], key)) break;
     }
 
-    if ((x == 0) || (y == 0)) return font; // Security check
+    // Security check
+    if ((x == 0) || (y == 0))
+    {
+        UnloadImageColors(pixels);
+        return font;
+    }
 
     charSpacing = x;
     lineSpacing = y;
@@ -713,7 +717,7 @@ GlyphInfo *LoadFontData(const unsigned char *fileData, int dataSize, int fontSiz
                         default: break;
                     }
 
-                    if (glyphs[k].image.data != NULL)    // Glyph data has been found in the font
+                    if (glyphs[k].image.data != NULL) // Glyph data has been found in the font
                     {
                         stbtt_GetCodepointHMetrics(&fontInfo, cp, &glyphs[k].advanceX, NULL);
                         glyphs[k].advanceX = (int)((float)glyphs[k].advanceX*scaleFactor);
@@ -845,7 +849,7 @@ Image GenImageFontAtlas(const GlyphInfo *glyphs, Rectangle **glyphRecs, int glyp
     // DEBUG: View padding in the generated image setting a gray background...
     //for (int i = 0; i < atlas.width*atlas.height; i++) ((unsigned char *)atlas.data)[i] = 100;
 
-    if (packMethod == 0)   // Use basic packing algorithm
+    if (packMethod == 0) // Use basic packing algorithm
     {
         int offsetX = padding;
         int offsetY = padding;
@@ -907,7 +911,7 @@ Image GenImageFontAtlas(const GlyphInfo *glyphs, Rectangle **glyphRecs, int glyp
             offsetX += (glyphs[i].image.width + 2*padding);
         }
     }
-    else if (packMethod == 1)  // Use Skyline rect packing algorithm (stb_pack_rect)
+    else if (packMethod == 1) // Use Skyline rect packing algorithm (stb_pack_rect)
     {
         stbrp_context *context = (stbrp_context *)RL_MALLOC(sizeof(*context));
         stbrp_node *nodes = (stbrp_node *)RL_MALLOC(glyphCount*sizeof(*nodes));
@@ -1699,7 +1703,7 @@ const char *TextSubtext(const char *text, int position, int length)
     static char buffer[MAX_TEXT_BUFFER_LENGTH] = { 0 };
     memset(buffer, 0, MAX_TEXT_BUFFER_LENGTH);
 
-    if (text != NULL)
+    if ((text != NULL) && (position >= 0) && (length > 0))
     {
         int textLength = TextLength(text);
 
@@ -1860,7 +1864,7 @@ char *TextReplaceAlloc(const char *text, const char *search, const char *replace
         int tempLen = textLen + (replaceLen - searchLen)*count + 1;
         temp = result = (char *)RL_CALLOC(tempLen, sizeof(char));
 
-        if (result != NULL)   // Memory was allocated
+        if (result != NULL) // Memory was allocated
         {
             // First time through the loop, all the variable are set correctly from here on,
             //  - 'temp' points to the end of the result string
@@ -1975,10 +1979,11 @@ char *TextInsert(const char *text, const char *insert, int position)
 {
     static char buffer[MAX_TEXT_BUFFER_LENGTH] = { 0 };
     memset(buffer, 0, MAX_TEXT_BUFFER_LENGTH);
+    int textLen = TextLength(text);
 
-    if ((text != NULL) && (insert != NULL))
+    if ((text != NULL) && (insert != NULL) && (position >= 0))
     {
-        int textLen = TextLength(text);
+        if (position > textLen) position = textLen; // End of text string
         int insertLen = TextLength(insert);
 
         if ((textLen + insertLen) < (MAX_TEXT_BUFFER_LENGTH - 1))
@@ -1986,8 +1991,8 @@ char *TextInsert(const char *text, const char *insert, int position)
             // TODO: Allow copying data inserted up to maximum buffer size and stop
 
             for (int i = 0; i < position; i++) buffer[i] = text[i];
-            for (int i = position; i < insertLen + position; i++) buffer[i] = insert[i - position];
-            for (int i = (insertLen + position); i < (textLen + insertLen); i++) buffer[i] = text[i];
+            for (int i = 0; i < insertLen; i++) buffer[i+position] = insert[i];
+            for (int i = position; i < textLen; i++) buffer[i+insertLen] = text[i];
 
             buffer[textLen + insertLen] = '\0'; // Add EOL
         }
@@ -2002,17 +2007,18 @@ char *TextInsert(const char *text, const char *insert, int position)
 char *TextInsertAlloc(const char *text, const char *insert, int position)
 {
     char *result = NULL;
+    int textLen = TextLength(text);
 
-    if ((text != NULL) && (insert != NULL))
+    if ((text != NULL) && (insert != NULL) && (position >= 0))
     {
-        int textLen = TextLength(text);
+        if (position > textLen) position = textLen; // End of text string
         int insertLen = TextLength(insert);
 
         result = (char *)RL_MALLOC(textLen + insertLen + 1);
 
         for (int i = 0; i < position; i++) result[i] = text[i];
-        for (int i = position; i < insertLen + position; i++) result[i] = insert[i - position];
-        for (int i = (insertLen + position); i < (textLen + insertLen); i++) result[i] = text[i];
+        for (int i = 0; i < insertLen; i++) result[i+position] = insert[i];
+        for (int i = position; i < textLen; i++) result[i+insertLen] = text[i];
 
         result[textLen + insertLen] = '\0'; // Add EOL
     }
@@ -2036,7 +2042,7 @@ char *TextJoin(char **textList, int count, const char *delimiter)
         int textLength = TextLength(textList[i]);
 
         // Make sure joined text could fit inside MAX_TEXT_BUFFER_LENGTH
-        if ((totalLength + textLength) < MAX_TEXT_BUFFER_LENGTH)
+        if ((totalLength + textLength + delimiterLen) < MAX_TEXT_BUFFER_LENGTH)
         {
             memcpy(textPtr, textList[i], textLength);
             totalLength += textLength;
@@ -2734,7 +2740,7 @@ static Font LoadBMFont(const char *fileName)
                        &charId, &charX, &charY, &charWidth, &charHeight, &charOffsetX, &charOffsetY, &charAdvanceX, &pageID);
         fileTextPtr += (readBytes + 1);
 
-        if (readVars == 9)  // Make sure all char data has been properly read
+        if (readVars == 9) // Make sure all char data has been properly read
         {
             // Get character rectangle in the font atlas texture
             font.recs[i] = (Rectangle){ (float)charX, (float)charY + (float)imHeight*pageID, (float)charWidth, (float)charHeight };

@@ -726,7 +726,6 @@ void SetGamepadVibration(int gamepad, float leftMotor, float rightMotor, float d
 void SetMousePosition(int x, int y)
 {
     CORE.Input.Mouse.currentPosition = (Vector2){ (float)x, (float)y };
-    CORE.Input.Mouse.previousPosition = CORE.Input.Mouse.currentPosition;
 }
 
 // Set mouse cursor
@@ -758,12 +757,12 @@ void PollInputEvents(void)
     for (int i = 0; i < MAX_KEYBOARD_KEYS; i++) CORE.Input.Keyboard.keyRepeatInFrame[i] = 0;
 
     // Reset last gamepad button/axis registered state
-    CORE.Input.Gamepad.lastButtonPressed = 0;       // GAMEPAD_BUTTON_UNKNOWN
+    CORE.Input.Gamepad.lastButtonPressed = 0; // GAMEPAD_BUTTON_UNKNOWN
     //CORE.Input.Gamepad.axisCount = 0;
 
     for (int i = 0; i < MAX_GAMEPADS; i++)
     {
-        if (CORE.Input.Gamepad.ready[i])     // Check if gamepad is available
+        if (CORE.Input.Gamepad.ready[i]) // Check if gamepad is available
         {
             // Register previous gamepad states
             for (int k = 0; k < MAX_GAMEPAD_BUTTONS; k++)
@@ -802,6 +801,7 @@ void PollInputEvents(void)
         if (platform.app->destroyRequested != 0)
         {
             CORE.Window.shouldClose = true;
+            break;
         }
     }
 }

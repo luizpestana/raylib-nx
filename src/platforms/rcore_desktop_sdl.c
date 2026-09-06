@@ -56,7 +56,13 @@
     #include "SDL3/SDL.h"
 #elif defined(USING_SDL2_PROJECT)
     #include "SDL2/SDL.h"
+
+    // WARNING: On Linux, this header includes Xlib.h, which defines Font
+    // To prevent a conflict with raylib's own Font type, we temporarily
+    // rename it to FontX11
+    #define Font FontX11
     #include "SDL2/SDL_syswm.h"     // Required to get window handlers
+    #undef Font
 #else
     #include "SDL.h"
 #endif
@@ -464,12 +470,11 @@ bool WindowShouldClose(void)
 void ToggleFullscreen(void)
 {
     const int monitor = SDL_GetWindowDisplayIndex(platform.window);
-    const int monitorCount = SDL_GetNumVideoDisplays();
 
 #if defined(USING_VERSION_SDL3) // SDL3 Migration: Monitor is an id instead of index now, returns 0 on failure
     if (SDL_GetDisplayProperties(monitor) != 0) // Returns 0 on failure, so a value other than zero indicates that the monitor id is valid
 #else
-    if ((monitor >= 0) && (monitor < monitorCount))
+    if ((monitor >= 0) && (monitor < SDL_GetNumVideoDisplays()))
 #endif
     {
         if (FLAG_IS_SET(CORE.Window.flags, FLAG_FULLSCREEN_MODE))
@@ -490,12 +495,11 @@ void ToggleFullscreen(void)
 void ToggleBorderlessWindowed(void)
 {
     const int monitor = SDL_GetWindowDisplayIndex(platform.window);
-    const int monitorCount = SDL_GetNumVideoDisplays();
 
 #if defined(USING_VERSION_SDL3) // SDL3 Migration: Monitor is an id instead of index now, returns 0 on failure
     if (SDL_GetDisplayProperties(monitor) != 0) // Returns 0 on failure, so a value other than zero indicates that the monitor id is valid
 #else
-    if ((monitor >= 0) && (monitor < monitorCount))
+    if ((monitor >= 0) && (monitor < SDL_GetNumVideoDisplays()))
 #endif
     {
         if (FLAG_IS_SET(CORE.Window.flags, FLAG_BORDERLESS_WINDOWED_MODE))
@@ -547,12 +551,11 @@ void SetWindowState(unsigned int flags)
     if (FLAG_IS_SET(flags, FLAG_FULLSCREEN_MODE))
     {
         const int monitor = SDL_GetWindowDisplayIndex(platform.window);
-        const int monitorCount = SDL_GetNumVideoDisplays();
 
     #if defined(USING_VERSION_SDL3) // SDL3 Migration: Monitor is an id instead of index now, returns 0 on failure
         if (SDL_GetDisplayProperties(monitor) != 0) // Returns 0 on failure, so a value other than zero indicates that the monitor id is valid
     #else
-        if ((monitor >= 0) && (monitor < monitorCount))
+        if ((monitor >= 0) && (monitor < SDL_GetNumVideoDisplays()))
     #endif
         {
             SDL_SetWindowFullscreen(platform.window, SDL_WINDOW_FULLSCREEN);
@@ -609,12 +612,11 @@ void SetWindowState(unsigned int flags)
     if (FLAG_IS_SET(flags, FLAG_BORDERLESS_WINDOWED_MODE))
     {
         const int monitor = SDL_GetWindowDisplayIndex(platform.window);
-        const int monitorCount = SDL_GetNumVideoDisplays();
 
     #if defined(USING_VERSION_SDL3) // SDL3 Migration: Monitor is an id instead of index now, returns 0 on failure
         if (SDL_GetDisplayProperties(monitor) != 0) // Returns 0 on failure, so a value other than zero indicates that the monitor id is valid
     #else
-        if ((monitor >= 0) && (monitor < monitorCount))
+        if ((monitor >= 0) && (monitor < SDL_GetNumVideoDisplays()))
     #endif
         {
             SDL_SetWindowFullscreen(platform.window, SDL_WINDOW_FULLSCREEN_DESKTOP);
@@ -831,11 +833,10 @@ void SetWindowPosition(int x, int y)
 // Set monitor for the current window
 void SetWindowMonitor(int monitor)
 {
-    const int monitorCount = SDL_GetNumVideoDisplays();
 #if defined(USING_VERSION_SDL3) // SDL3 Migration: Monitor is an id instead of index now, returns 0 on failure
     if (SDL_GetDisplayProperties(monitor) != 0) // Returns 0 on failure, so a value other than zero indicates that the monitor id is valid
 #else
-    if ((monitor >= 0) && (monitor < monitorCount))
+    if ((monitor >= 0) && (monitor < SDL_GetNumVideoDisplays()))
 #endif
     {
         // NOTE 1: SDL started supporting moving exclusive fullscreen windows between displays on SDL3,
@@ -987,32 +988,23 @@ void *GetWindowHandle(void)
 // Get number of monitors
 int GetMonitorCount(void)
 {
-    int monitorCount = 0;
-
-    monitorCount = SDL_GetNumVideoDisplays();
-
-    return monitorCount;
+    return SDL_GetNumVideoDisplays();
 }
 
 // Get current monitor where window is placed
 int GetCurrentMonitor(void)
 {
-    int currentMonitor = 0;
-
     // Be aware that this returns an ID in SDL3 and a Index in SDL2
-    currentMonitor = SDL_GetWindowDisplayIndex(platform.window);
-
-    return currentMonitor;
+    return SDL_GetWindowDisplayIndex(platform.window);
 }
 
 // Get selected monitor position
 Vector2 GetMonitorPosition(int monitor)
 {
-    const int monitorCount = SDL_GetNumVideoDisplays();
 #if defined(USING_VERSION_SDL3) // SDL3 Migration: Monitor is an id instead of index now, returns 0 on failure
     if (SDL_GetDisplayProperties(monitor) != 0) // Returns 0 on failure, so a value other than zero indicates that the monitor id is valid
 #else
-    if ((monitor >= 0) && (monitor < monitorCount))
+    if ((monitor >= 0) && (monitor < SDL_GetNumVideoDisplays()))
 #endif
     {
         SDL_Rect displayBounds;
@@ -1036,11 +1028,10 @@ int GetMonitorWidth(int monitor)
 {
     int width = 0;
 
-    const int monitorCount = SDL_GetNumVideoDisplays();
 #if defined(USING_VERSION_SDL3) // SDL3 Migration: Monitor is an id instead of index now, returns 0 on failure
     if (SDL_GetDisplayProperties(monitor) != 0) // Returns 0 on failure, so a value other than zero indicates that the monitor id is valid
 #else
-    if ((monitor >= 0) && (monitor < monitorCount))
+    if ((monitor >= 0) && (monitor < SDL_GetNumVideoDisplays()))
 #endif
     {
         SDL_DisplayMode mode;
@@ -1057,11 +1048,10 @@ int GetMonitorHeight(int monitor)
 {
     int height = 0;
 
-    const int monitorCount = SDL_GetNumVideoDisplays();
 #if defined(USING_VERSION_SDL3) // SDL3 Migration: Monitor is an id instead of index now, returns 0 on failure
     if (SDL_GetDisplayProperties(monitor) != 0) // Returns 0 on failure, so a value other than zero indicates that the monitor id is valid
 #else
-    if ((monitor >= 0) && (monitor < monitorCount))
+    if ((monitor >= 0) && (monitor < SDL_GetNumVideoDisplays()))
 #endif
     {
         SDL_DisplayMode mode;
@@ -1078,11 +1068,10 @@ int GetMonitorPhysicalWidth(int monitor)
 {
     int width = 0;
 
-    const int monitorCount = SDL_GetNumVideoDisplays();
 #if defined(USING_VERSION_SDL3) // SDL3 Migration: Monitor is an id instead of index now, returns 0 on failure
     if (SDL_GetDisplayProperties(monitor) != 0) // Returns 0 on failure, so a value other than zero indicates that the monitor id is valid
 #else
-    if ((monitor >= 0) && (monitor < monitorCount))
+    if ((monitor >= 0) && (monitor < SDL_GetNumVideoDisplays()))
 #endif
     {
         float ddpi = 0.0f;
@@ -1102,11 +1091,10 @@ int GetMonitorPhysicalHeight(int monitor)
 {
     int height = 0;
 
-    const int monitorCount = SDL_GetNumVideoDisplays();
 #if defined(USING_VERSION_SDL3) // SDL3 Migration: Monitor is an id instead of index now, returns 0 on failure
     if (SDL_GetDisplayProperties(monitor) != 0) // Returns 0 on failure, so a value other than zero indicates that the monitor id is valid
 #else
-    if ((monitor >= 0) && (monitor < monitorCount))
+    if ((monitor >= 0) && (monitor < SDL_GetNumVideoDisplays()))
 #endif
     {
         float ddpi = 0.0f;
@@ -1126,11 +1114,10 @@ int GetMonitorRefreshRate(int monitor)
 {
     int refresh = 0;
 
-    const int monitorCount = SDL_GetNumVideoDisplays();
 #if defined(USING_VERSION_SDL3) // SDL3 Migration: Monitor is an id instead of index now, returns 0 on failure
     if (SDL_GetDisplayProperties(monitor) != 0) // Returns 0 on failure, so a value other than zero indicates that the monitor id is valid
 #else
-    if ((monitor >= 0) && (monitor < monitorCount))
+    if ((monitor >= 0) && (monitor < SDL_GetNumVideoDisplays()))
 #endif
     {
         SDL_DisplayMode mode;
@@ -1145,12 +1132,10 @@ int GetMonitorRefreshRate(int monitor)
 // Get the human-readable, UTF-8 encoded name of the selected monitor
 const char *GetMonitorName(int monitor)
 {
-    const int monitorCount = SDL_GetNumVideoDisplays();
-
 #if defined(USING_VERSION_SDL3) // SDL3 Migration: Monitor is an id instead of index now, returns 0 on failure
     if (SDL_GetDisplayProperties(monitor) != 0) // Returns 0 on failure, so a value other than zero indicates that the monitor id is valid
 #else
-    if ((monitor >= 0) && (monitor < monitorCount))
+    if ((monitor >= 0) && (monitor < SDL_GetNumVideoDisplays()))
 #endif
     {
         return SDL_GetDisplayName(monitor);
@@ -1255,12 +1240,14 @@ Image GetClipboardImage(void)
 
     for (int i = 0; i < SDL_arraysize(imageFormats); i++)
     {
-        // NOTE: This pointer should be free with SDL_free() at some point
         fileData = SDL_GetClipboardData(imageFormats[i], &dataSize);
 
         if (fileData)
         {
             image = LoadImageFromMemory(imageExtensions[i], fileData, (int)dataSize);
+
+            SDL_free(fileData);
+
             if (IsImageValid(image))
             {
                 TRACELOG(LOG_INFO, "Clipboard: Got image from clipboard successfully: %s", imageExtensions[i]);
@@ -1409,7 +1396,6 @@ void SetMousePosition(int x, int y)
     SDL_WarpMouseInWindow(platform.window, x, y);
 
     CORE.Input.Mouse.currentPosition = (Vector2){ (float)x, (float)y };
-    CORE.Input.Mouse.previousPosition = CORE.Input.Mouse.currentPosition;
 }
 
 // Set mouse cursor
@@ -1651,7 +1637,7 @@ void PollInputEvents(void)
             } break;
             #endif
 
-            // Keyboard events
+            // Check keyboard events
             case SDL_KEYDOWN:
             {
             #if defined(USING_VERSION_SDL3)
@@ -1679,10 +1665,8 @@ void PollInputEvents(void)
                 if (CORE.Input.Keyboard.currentKeyState[CORE.Input.Keyboard.exitKey]) CORE.Window.shouldClose = true;
 
             } break;
-
             case SDL_KEYUP:
             {
-
             #if defined(USING_VERSION_SDL3)
                 KeyboardKey key = ConvertScancodeToKey(event.key.scancode);
             #else
@@ -1690,7 +1674,6 @@ void PollInputEvents(void)
             #endif
                 if (key != KEY_NULL) CORE.Input.Keyboard.currentKeyState[key] = 0;
             } break;
-
             case SDL_TEXTINPUT:
             {
                 // NOTE: event.text.text data comes an UTF-8 text sequence but register codepoints (int)
@@ -1699,7 +1682,6 @@ void PollInputEvents(void)
                 if (CORE.Input.Keyboard.charPressedQueueCount < MAX_CHAR_PRESSED_QUEUE)
                 {
                     // Add character (codepoint) to the queue
-
                 #if defined(USING_VERSION_SDL3)
                     size_t textLen = strlen(event.text.text);
                     unsigned int codepoint = (unsigned int)SDL_StepUTF8(&event.text.text, &textLen);
@@ -1768,6 +1750,7 @@ void PollInputEvents(void)
                 touchAction = 2;
             } break;
 
+            // Check Touch events
             case SDL_FINGERDOWN:
             {
                 UpdateTouchPointsSDL(event.tfinger);
@@ -1787,24 +1770,21 @@ void PollInputEvents(void)
                 realTouch = true;
             } break;
 
-            // Check gamepad events
+            // Check Gamepad events
             case SDL_JOYDEVICEADDED:
             {
                 int jid = event.jdevice.which; // Joystick device index
 
-                // check if already added at InitPlatform
+                // Check if already added at InitPlatform
                 for (int i = 0; i < MAX_GAMEPADS; i++)
                 {
-                    if (jid == platform.gamepadId[i])
-                    {
-                        return;
-                    }
+                    if (jid == platform.gamepadId[i]) return;
                 }
 
                 int nextAvailableSlot = 0;
                 while (nextAvailableSlot < MAX_GAMEPADS && CORE.Input.Gamepad.ready[nextAvailableSlot])
                 {
-                    ++nextAvailableSlot;
+                    nextAvailableSlot++;
                 }
 
                 if ((nextAvailableSlot < MAX_GAMEPADS) && !CORE.Input.Gamepad.ready[nextAvailableSlot])

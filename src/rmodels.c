@@ -488,7 +488,7 @@ void DrawSphereEx(Vector3 centerPos, float radius, int rings, int slices, Color 
         rlBegin(RL_TRIANGLES);
             rlColor4ub(color.r, color.g, color.b, color.a);
 
-            float ringangle = DEG2RAD*(180.0f/(rings + 1)); // Angle between latitudinal parallels
+            float ringangle = DEG2RAD*(180.0f/rings); // Angle between latitudinal parallels
             float sliceangle = DEG2RAD*(360.0f/slices); // Angle between longitudinal meridians
 
             float cosring = cosf(ringangle);
@@ -500,7 +500,7 @@ void DrawSphereEx(Vector3 centerPos, float radius, int rings, int slices, Color 
             vertices[2] = (Vector3){ 0, 1, 0 };
             vertices[3] = (Vector3){ sinring, cosring, 0 };
 
-            for (int i = 0; i < rings + 1; i++)
+            for (int i = 0; i < rings; i++)
             {
                 for (int j = 0; j < slices; j++)
                 {
@@ -542,31 +542,42 @@ void DrawSphereWires(Vector3 centerPos, float radius, int rings, int slices, Col
         rlBegin(RL_LINES);
             rlColor4ub(color.r, color.g, color.b, color.a);
 
-            for (int i = 0; i < (rings + 2); i++)
+            float ringangle = DEG2RAD*(180.0f/rings); // Angle between latitudinal parallels
+            float sliceangle = DEG2RAD*(360.0f/slices); // Angle between longitudinal meridians
+
+            float cosring = cosf(ringangle);
+            float sinring = sinf(ringangle);
+            float cosslice = cosf(sliceangle);
+            float sinslice = sinf(sliceangle);
+
+            Vector3 vertices[4] = { 0 }; // Required to store face vertices
+            vertices[2] = (Vector3){ 0, 1, 0 };
+            vertices[3] = (Vector3){ sinring, cosring, 0 };
+
+            for (int i = 0; i < rings; i++)
             {
                 for (int j = 0; j < slices; j++)
                 {
-                    rlVertex3f(cosf(DEG2RAD*(270 + (180.0f/(rings + 1))*i))*sinf(DEG2RAD*(360.0f*j/slices)),
-                               sinf(DEG2RAD*(270 + (180.0f/(rings + 1))*i)),
-                               cosf(DEG2RAD*(270 + (180.0f/(rings + 1))*i))*cosf(DEG2RAD*(360.0f*j/slices)));
-                    rlVertex3f(cosf(DEG2RAD*(270 + (180.0f/(rings + 1))*(i + 1)))*sinf(DEG2RAD*(360.0f*(j + 1)/slices)),
-                               sinf(DEG2RAD*(270 + (180.0f/(rings + 1))*(i + 1))),
-                               cosf(DEG2RAD*(270 + (180.0f/(rings + 1))*(i + 1)))*cosf(DEG2RAD*(360.0f*(j + 1)/slices)));
+                    vertices[0] = vertices[2]; // Rotate around y axis to set up vertices for next face
+                    vertices[1] = vertices[3];
+                    vertices[2] = (Vector3){ cosslice*vertices[2].x - sinslice*vertices[2].z, vertices[2].y, sinslice*vertices[2].x + cosslice*vertices[2].z }; // Rotation matrix around y axis
+                    vertices[3] = (Vector3){ cosslice*vertices[3].x - sinslice*vertices[3].z, vertices[3].y, sinslice*vertices[3].x + cosslice*vertices[3].z };
 
-                    rlVertex3f(cosf(DEG2RAD*(270 + (180.0f/(rings + 1))*(i + 1)))*sinf(DEG2RAD*(360.0f*(j + 1)/slices)),
-                               sinf(DEG2RAD*(270 + (180.0f/(rings + 1))*(i + 1))),
-                               cosf(DEG2RAD*(270 + (180.0f/(rings + 1))*(i + 1)))*cosf(DEG2RAD*(360.0f*(j + 1)/slices)));
-                    rlVertex3f(cosf(DEG2RAD*(270 + (180.0f/(rings + 1))*(i + 1)))*sinf(DEG2RAD*(360.0f*j/slices)),
-                               sinf(DEG2RAD*(270 + (180.0f/(rings + 1))*(i + 1))),
-                               cosf(DEG2RAD*(270 + (180.0f/(rings + 1))*(i + 1)))*cosf(DEG2RAD*(360.0f*j/slices)));
+                    // Longitude Lines
+                    rlVertex3f(vertices[0].x, vertices[0].y, vertices[0].z);
+                    rlVertex3f(vertices[1].x, vertices[1].y, vertices[1].z);
 
-                    rlVertex3f(cosf(DEG2RAD*(270 + (180.0f/(rings + 1))*(i + 1)))*sinf(DEG2RAD*(360.0f*j/slices)),
-                               sinf(DEG2RAD*(270 + (180.0f/(rings + 1))*(i + 1))),
-                               cosf(DEG2RAD*(270 + (180.0f/(rings + 1))*(i + 1)))*cosf(DEG2RAD*(360.0f*j/slices)));
-                    rlVertex3f(cosf(DEG2RAD*(270 + (180.0f/(rings + 1))*i))*sinf(DEG2RAD*(360.0f*j/slices)),
-                               sinf(DEG2RAD*(270 + (180.0f/(rings + 1))*i)),
-                               cosf(DEG2RAD*(270 + (180.0f/(rings + 1))*i))*cosf(DEG2RAD*(360.0f*j/slices)));
+                    // Latitude Lines
+                    rlVertex3f(vertices[0].x, vertices[0].y, vertices[0].z);
+                    rlVertex3f(vertices[2].x, vertices[2].y, vertices[2].z);
+
+                    // Diagonal Lines
+                    rlVertex3f(vertices[0].x, vertices[0].y, vertices[0].z);
+                    rlVertex3f(vertices[3].x, vertices[3].y, vertices[3].z);
                 }
+
+                vertices[2] = vertices[3]; // Rotate around z axis to set up  starting vertices for next ring
+                vertices[3] = (Vector3){ cosring*vertices[3].x + sinring*vertices[3].y, -sinring*vertices[3].x + cosring*vertices[3].y, vertices[3].z }; // Rotation matrix around z axis
             }
         rlEnd();
     rlPopMatrix();
@@ -2320,7 +2331,7 @@ void UpdateModelAnimation(Model model, ModelAnimation anim, float frame)
         Matrix currentPoseMatrix = { 0 };
 
         // Update all bones and bone matrices of model
-        for (int boneIndex = 0; boneIndex < model.skeleton.boneCount; boneIndex++)
+        for (unsigned int boneIndex = 0; boneIndex < model.skeleton.boneCount; boneIndex++)
         {
             // Compute interpolated pose between current and next frame
             // NOTE: Storing animation frame data in model.currentPose
@@ -2390,7 +2401,7 @@ void UpdateModelAnimationEx(Model model, ModelAnimation animA, float frameA, Mod
         Matrix bindPoseMatrix = { 0 };
         Matrix currentPoseMatrix = { 0 };
 
-        for (int boneIndex = 0; boneIndex < model.skeleton.boneCount; boneIndex++)
+        for (unsigned int boneIndex = 0; boneIndex < model.skeleton.boneCount; boneIndex++)
         {
             // Get frame-interpolation for first animation
             Vector3 frameATranslation = Vector3Lerp(
@@ -5013,7 +5024,7 @@ static Model LoadIQM(const char *fileName)
     // Initialize runtime animation data: current pose and bone matrices
     model.currentPose = (Transform *)RL_CALLOC(model.skeleton.boneCount, sizeof(Transform));
     model.boneMatrices = (Matrix *)RL_CALLOC(model.skeleton.boneCount, sizeof(Matrix));
-    for (int j = 0; j < model.skeleton.boneCount; j++) model.boneMatrices[j] = MatrixIdentity();
+    for (unsigned int j = 0; j < model.skeleton.boneCount; j++) model.boneMatrices[j] = MatrixIdentity();
 
     UnloadFileData(fileData);
 
@@ -5241,7 +5252,7 @@ static ModelAnimation *LoadModelAnimationsIQM(const char *fileName, int *animCou
         // Build frameposes
         for (unsigned int frame = 0; frame < anim[a].num_frames; frame++)
         {
-            for (int i = 0; i < animations[a].boneCount; i++)
+            for (unsigned int i = 0; i < animations[a].boneCount; i++)
             {
                 if (bones[i].parent >= 0)
                 {
@@ -5316,8 +5327,8 @@ static Image LoadImageFromCgltfImage(cgltf_image *cgltfImage, const char *texPat
             {
                 int base64Size = (int)strlen(cgltfImage->uri + i + 1);
                 while (cgltfImage->uri[i + base64Size] == '=') base64Size--;    // Ignore optional paddings
-                int numberOfEncodedBits = base64Size*6 - (base64Size*6) % 8 ;   // Encoded bits minus extra bits, so it becomes a multiple of 8 bits
-                int outSize = numberOfEncodedBits/8 ;                           // Actual encoded bytes
+                int numberOfEncodedBits = base64Size*6 - (base64Size*6)%8;      // Encoded bits minus extra bits, so it becomes a multiple of 8 bits
+                int outSize = numberOfEncodedBits >> 3;                         // Actual encoded bytes
                 void *data = NULL;
 
                 cgltf_options options = { 0 };
@@ -5337,7 +5348,7 @@ static Image LoadImageFromCgltfImage(cgltf_image *cgltfImage, const char *texPat
             image = LoadImage(TextFormat("%s/%s", texPath, cgltfImage->uri));
         }
     }
-    else if ((cgltfImage->buffer_view != NULL) && (cgltfImage->buffer_view->buffer->data != NULL))    // Check if image is provided as data buffer
+    else if ((cgltfImage->buffer_view != NULL) && (cgltfImage->buffer_view->buffer->data != NULL)) // Check if image is provided as data buffer
     {
         unsigned char *data = (unsigned char *)RL_MALLOC(cgltfImage->buffer_view->size);
         int offset = (int)cgltfImage->buffer_view->offset;
@@ -5371,7 +5382,7 @@ static Image LoadImageFromCgltfImage(cgltf_image *cgltfImage, const char *texPat
 // Load bone info from GLTF skin data
 static BoneInfo *LoadBoneInfoGLTF(cgltf_skin skin, unsigned int *boneCount)
 {
-    *boneCount = skin.joints_count;
+    *boneCount = (unsigned int)skin.joints_count;
     BoneInfo *bones = (BoneInfo *)RL_CALLOC(skin.joints_count, sizeof(BoneInfo));
 
     for (unsigned int i = 0; i < skin.joints_count; i++)
@@ -5765,7 +5776,7 @@ static Model LoadGLTF(const char *fileName)
                             else TRACELOG(LOG_WARNING, "MODEL: [%s] Vertices attribute data format not supported, use vec3 float", fileName);
                         }
                     }
-                    else if (mesh->primitives[p].attributes[j].type == cgltf_attribute_type_normal)   // NORMAL, vec3, float
+                    else if (mesh->primitives[p].attributes[j].type == cgltf_attribute_type_normal) // NORMAL, vec3, float
                     {
                         cgltf_accessor *attribute = mesh->primitives[p].attributes[j].data;
 
@@ -5865,7 +5876,7 @@ static Model LoadGLTF(const char *fileName)
                             else TRACELOG(LOG_WARNING, "MODEL: [%s] Normals attribute data format not supported, use vec3 float", fileName);
                         }
                     }
-                    else if (mesh->primitives[p].attributes[j].type == cgltf_attribute_type_tangent)   // TANGENT, vec4, float, w is tangent basis sign
+                    else if (mesh->primitives[p].attributes[j].type == cgltf_attribute_type_tangent) // TANGENT, vec4, float, w is tangent basis sign
                     {
                         cgltf_accessor *attribute = mesh->primitives[p].attributes[j].data;
 
@@ -5902,7 +5913,7 @@ static Model LoadGLTF(const char *fileName)
 
                         if (attribute->type == cgltf_type_vec2)
                         {
-                            if (attribute->component_type == cgltf_component_type_r_32f)  // vec2, float
+                            if (attribute->component_type == cgltf_component_type_r_32f) // vec2, float
                             {
                                 // Init raylib mesh texcoords to copy glTF attribute data
                                 texcoordPtr = (float *)RL_MALLOC(attribute->count*2*sizeof(float));
@@ -5951,7 +5962,7 @@ static Model LoadGLTF(const char *fileName)
                             if (texcoordPtr != NULL) RL_FREE(texcoordPtr);
                         }
                     }
-                    else if (mesh->primitives[p].attributes[j].type == cgltf_attribute_type_color)    // COLOR_n, vec3/vec4, float/u8n/u16n
+                    else if (mesh->primitives[p].attributes[j].type == cgltf_attribute_type_color) // COLOR_n, vec3/vec4, float/u8n/u16n
                     {
                         cgltf_accessor *attribute = mesh->primitives[p].attributes[j].data;
 
@@ -5960,7 +5971,7 @@ static Model LoadGLTF(const char *fileName)
                         if (model.meshes[meshIndex].colors != NULL) TRACELOG(LOG_WARNING, "MODEL: [%s] Colors attribute data already loaded", fileName);
                         else
                         {
-                            if (attribute->type == cgltf_type_vec3)  // RGB
+                            if (attribute->type == cgltf_type_vec3) // RGB
                             {
                                 if (attribute->component_type == cgltf_component_type_r_8u)
                                 {
@@ -6144,7 +6155,7 @@ static Model LoadGLTF(const char *fileName)
             model.skeleton.bones = LoadBoneInfoGLTF(skin, &model.skeleton.boneCount);
             model.skeleton.bindPose = (Transform *)RL_CALLOC(model.skeleton.boneCount, sizeof(Transform));
 
-            for (int i = 0; i < model.skeleton.boneCount; i++)
+            for (unsigned int i = 0; i < model.skeleton.boneCount; i++)
             {
                 Matrix bindMatrix = { 0 };
                 cgltf_float inverseBindTransform[16] = { 0 };
@@ -6253,7 +6264,7 @@ static Model LoadGLTF(const char *fileName)
                         }
                         else TRACELOG(LOG_WARNING, "MODEL: [%s] Joint attribute data format not supported", fileName);
                     }
-                    else if (mesh->primitives[p].attributes[j].type == cgltf_attribute_type_weights)  // WEIGHTS_n (vec4, u8n/u16n/f32)
+                    else if (mesh->primitives[p].attributes[j].type == cgltf_attribute_type_weights) // WEIGHTS_n (vec4, u8n/u16n/f32)
                     {
                         cgltf_accessor *attribute = mesh->primitives[p].attributes[j].data;
 
@@ -6309,7 +6320,7 @@ static Model LoadGLTF(const char *fileName)
                 if ((data->skins_count > 0) && !hasJoints && (node->parent != NULL) && (node->parent->mesh == NULL))
                 {
                     int parentBoneId = -1;
-                    for (int joint = 0; joint < model.skeleton.boneCount; joint++)
+                    for (unsigned int joint = 0; joint < model.skeleton.boneCount; joint++)
                     {
                         if (data->skins[0].joints[joint] == node->parent)
                         {
@@ -6347,7 +6358,7 @@ static Model LoadGLTF(const char *fileName)
         // Initialize runtime animation data: current pose and bone matrices
         model.currentPose = (Transform *)RL_CALLOC(model.skeleton.boneCount, sizeof(Transform));
         model.boneMatrices = (Matrix *)RL_CALLOC(model.skeleton.boneCount, sizeof(Matrix));
-        for (int j = 0; j < model.skeleton.boneCount; j++) model.boneMatrices[j] = MatrixIdentity();
+        for (unsigned int j = 0; j < model.skeleton.boneCount; j++) model.boneMatrices[j] = MatrixIdentity();
         //----------------------------------------------------------------------------------------------------
 
         // Free unused allocated memory in case of no bones defined
@@ -6379,6 +6390,7 @@ static bool GetPoseAtTimeGLTF(cgltf_interpolation_type interpolationType, cgltf_
     float tstart = 0.0f;
     float tend = 0.0f;
     int keyframe = 0;       // Defaults to first pose
+    bool found = false;
 
     for (int i = 0; i < (int)input->count - 1; i++)
     {
@@ -6391,8 +6403,24 @@ static bool GetPoseAtTimeGLTF(cgltf_interpolation_type interpolationType, cgltf_
         if ((tstart <= time) && (time < tend))
         {
             keyframe = i;
+            found = true;
             break;
         }
+    }
+
+    // No interval contains a time at (or past) the last keyframe, because the
+    // search above requires time < tend: clamp to the edge interval instead of
+    // falling back to keyframe 0, which returns a pose from the start
+    if (!found && ((int)input->count >= 2))
+    {
+        keyframe = (int)input->count - 2;
+
+        float tfirst = 0.0f;
+        if (!cgltf_accessor_read_float(input, 0, &tfirst, 1)) return false;
+        if (time < tfirst) keyframe = 0;
+
+        if (!cgltf_accessor_read_float(input, keyframe, &tstart, 1)) return false;
+        if (!cgltf_accessor_read_float(input, keyframe + 1, &tend, 1)) return false;
     }
 
     // Constant animation, no need to interpolate
@@ -6603,7 +6631,6 @@ static ModelAnimation *LoadModelAnimationsGLTF(const char *fileName, int *animCo
                     cgltf_animation_channel *translate;
                     cgltf_animation_channel *rotate;
                     cgltf_animation_channel *scale;
-                    cgltf_interpolation_type interpolationType;
                 };
 
                 struct Channels *boneChannels = (struct Channels *)RL_CALLOC(animations[a].boneCount, sizeof(struct Channels));
@@ -6624,8 +6651,6 @@ static ModelAnimation *LoadModelAnimationsGLTF(const char *fileName, int *animCo
                     }
 
                     if (boneIndex == -1) continue; // Animation channel for a node not in the skeleton
-
-                    boneChannels[boneIndex].interpolationType = animData.channels[j].sampler->interpolation;
 
                     if (animData.channels[j].sampler->interpolation != cgltf_interpolation_type_max_enum)
                     {
@@ -6670,7 +6695,7 @@ static ModelAnimation *LoadModelAnimationsGLTF(const char *fileName, int *animCo
                     animations[a].keyframePoses[j] = (Transform *)RL_CALLOC(animations[a].boneCount, sizeof(Transform));
                     float time = (float)j / GLTF_FRAMERATE;
 
-                    for (int k = 0; k < animations[a].boneCount; k++)
+                    for (unsigned int k = 0; k < animations[a].boneCount; k++)
                     {
                         Vector3 translation = {skin.joints[k]->translation[0], skin.joints[k]->translation[1], skin.joints[k]->translation[2]};
                         Quaternion rotation = {skin.joints[k]->rotation[0], skin.joints[k]->rotation[1], skin.joints[k]->rotation[2], skin.joints[k]->rotation[3]};
@@ -6678,7 +6703,7 @@ static ModelAnimation *LoadModelAnimationsGLTF(const char *fileName, int *animCo
 
                         if (boneChannels[k].translate)
                         {
-                            if (!GetPoseAtTimeGLTF(boneChannels[k].interpolationType, boneChannels[k].translate->sampler->input, boneChannels[k].translate->sampler->output, time, &translation))
+                            if (!GetPoseAtTimeGLTF(boneChannels[k].translate->sampler->interpolation, boneChannels[k].translate->sampler->input, boneChannels[k].translate->sampler->output, time, &translation))
                             {
                                 TRACELOG(LOG_INFO, "MODEL: [%s] Failed to load translate pose data for bone %s", fileName, bones[k].name);
                             }
@@ -6686,7 +6711,7 @@ static ModelAnimation *LoadModelAnimationsGLTF(const char *fileName, int *animCo
 
                         if (boneChannels[k].rotate)
                         {
-                            if (!GetPoseAtTimeGLTF(boneChannels[k].interpolationType, boneChannels[k].rotate->sampler->input, boneChannels[k].rotate->sampler->output, time, &rotation))
+                            if (!GetPoseAtTimeGLTF(boneChannels[k].rotate->sampler->interpolation, boneChannels[k].rotate->sampler->input, boneChannels[k].rotate->sampler->output, time, &rotation))
                             {
                                 TRACELOG(LOG_INFO, "MODEL: [%s] Failed to load rotate pose data for bone %s", fileName, bones[k].name);
                             }
@@ -6694,7 +6719,7 @@ static ModelAnimation *LoadModelAnimationsGLTF(const char *fileName, int *animCo
 
                         if (boneChannels[k].scale)
                         {
-                            if (!GetPoseAtTimeGLTF(boneChannels[k].interpolationType, boneChannels[k].scale->sampler->input, boneChannels[k].scale->sampler->output, time, &scale))
+                            if (!GetPoseAtTimeGLTF(boneChannels[k].scale->sampler->interpolation, boneChannels[k].scale->sampler->input, boneChannels[k].scale->sampler->output, time, &scale))
                             {
                                 TRACELOG(LOG_INFO, "MODEL: [%s] Failed to load scale pose data for bone %s", fileName, bones[k].name);
                             }
@@ -7204,7 +7229,7 @@ static Model LoadM3D(const char *fileName)
             // Initialize runtime animation data: current pose and bone matrices
             model.currentPose = (Transform *)RL_CALLOC(model.skeleton.boneCount, sizeof(Transform));
             model.boneMatrices = (Matrix *)RL_CALLOC(model.skeleton.boneCount, sizeof(Matrix));
-            for (int j = 0; j < model.skeleton.boneCount; j++) model.boneMatrices[j] = MatrixIdentity();
+            for (unsigned int j = 0; j < model.skeleton.boneCount; j++) model.boneMatrices[j] = MatrixIdentity();
         }
 
         m3d_free(m3d);

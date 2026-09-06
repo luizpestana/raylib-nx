@@ -287,8 +287,14 @@ void ToggleBorderlessWindowed(void)
                 CORE.Window.screen.height = mode->height;
 
                 // Set screen position and size
+            #if defined(_WIN32)
+                // NOTE: To prevent the fullscreen window from always staying on top, don't pass a monitor at this point.
+                glfwSetWindowMonitor(platform.handle, NULL, CORE.Window.position.x, CORE.Window.position.y,
+                    CORE.Window.screen.width, CORE.Window.screen.height, mode->refreshRate);
+            #else
                 glfwSetWindowMonitor(platform.handle, monitors[monitor], CORE.Window.position.x, CORE.Window.position.y,
                     CORE.Window.screen.width, CORE.Window.screen.height, mode->refreshRate);
+            #endif
 
                 // Refocus window
                 glfwFocusWindow(platform.handle);
@@ -1024,6 +1030,8 @@ const char *GetMonitorName(int monitor)
 // Get window position XY on monitor
 Vector2 GetWindowPosition(void)
 {
+    glfwGetWindowPos(platform.handle, &CORE.Window.position.x, &CORE.Window.position.y);
+
     return (Vector2){ (float)CORE.Window.position.x, (float)CORE.Window.position.y };
 }
 
@@ -1065,7 +1073,12 @@ Image GetClipboardImage(void)
     bmpData = (void *)Win32GetClipboardImageData(&width, &height, &dataSize);
 
     if (bmpData == NULL) TRACELOG(LOG_WARNING, "Clipboard image: Couldn't get clipboard data.");
-    else image = LoadImageFromMemory(".bmp", (const unsigned char *)bmpData, (int)dataSize);
+    else
+    {
+        image = LoadImageFromMemory(".bmp", (const unsigned char *)bmpData, (int)dataSize);
+
+        RL_FREE(bmpData);
+    }
 
 #elif defined(__linux__) && defined(_GLFW_X11)
     // REF: https://github.com/ColleagueRiley/Clipboard-Copy-Paste/blob/main/x11.c
@@ -1198,7 +1211,7 @@ void OpenURL(const char *url)
         TRACELOG(LOG_WARNING, "SYSTEM: Provided URL must start with 'http://' or 'https://' protocols");
     }
     else
-    {       
+    {
         char *cmd = (char *)RL_CALLOC(strlen(url) + 16, sizeof(char));
 #if defined(_WIN32)
         sprintf(cmd, "explorer \"%s\"", url);
@@ -1211,7 +1224,7 @@ void OpenURL(const char *url)
 #endif
         // TODO: Replace system() call by custom process
         int result = system(cmd);
-        
+
         if (result == -1) TRACELOG(LOG_WARNING, "OpenURL() child process could not be created");
         RL_FREE(cmd);
     }
@@ -1237,7 +1250,6 @@ void SetGamepadVibration(int gamepad, float leftMotor, float rightMotor, float d
 void SetMousePosition(int x, int y)
 {
     CORE.Input.Mouse.currentPosition = (Vector2){ (float)x, (float)y };
-    CORE.Input.Mouse.previousPosition = CORE.Input.Mouse.currentPosition;
 
     // NOTE: emscripten not implemented
     glfwSetCursorPos(platform.handle, CORE.Input.Mouse.currentPosition.x, CORE.Input.Mouse.currentPosition.y);
@@ -1326,7 +1338,7 @@ void PollInputEvents(void)
             // Register previous gamepad states
             for (int k = 0; k < MAX_GAMEPAD_BUTTONS; k++) CORE.Input.Gamepad.previousButtonState[i][k] = CORE.Input.Gamepad.currentButtonState[i][k];
 
-            // Get current gamepad state
+            // Get current gamepad state using internal GLFW mapping, instead of the immediate joystick API
             // NOTE: There is no callback available, getting it manually
             GLFWgamepadstate state = { 0 };
             int result = glfwGetGamepadState(i, &state); // This remaps all gamepads so they have their buttons mapped like an xbox controller
@@ -1341,7 +1353,7 @@ void PollInputEvents(void)
 
             for (int k = 0; (buttons != NULL) && (k < MAX_GAMEPAD_BUTTONS); k++)
             {
-                int button = -1;        // GamepadButton enum values assigned
+                int button = -1; // GamepadButton enum values assigned
 
                 switch (k)
                 {
@@ -1367,7 +1379,7 @@ void PollInputEvents(void)
                     default: break;
                 }
 
-                if (button != -1)   // Check for valid button
+                if (button != -1) // Check for valid button
                 {
                     if (buttons[k] == GLFW_PRESS)
                     {
@@ -1409,10 +1421,10 @@ void PollInputEvents(void)
     if ((CORE.Window.eventWaiting) ||
         (FLAG_IS_SET(CORE.Window.flags, FLAG_WINDOW_MINIMIZED) && !FLAG_IS_SET(CORE.Window.flags, FLAG_WINDOW_ALWAYS_RUN)))
     {
-        glfwWaitEvents();     // Wait for in input events before continue (drawing is paused)
+        glfwWaitEvents(); // Wait for in input events before continue (drawing is paused)
         CORE.Time.previous = GetTime();
     }
-    else glfwPollEvents();      // Poll input events: keyboard/mouse/window events (callbacks) -> Update keys state
+    else glfwPollEvents(); // Poll input events: keyboard/mouse/window events (callbacks) -> Update keys state
 
     CORE.Window.shouldClose = glfwWindowShouldClose(platform.handle);
 
@@ -1692,6 +1704,14 @@ int InitPlatform(void)
             TRACELOG(LOG_WARNING, "GLFW: Failed to determine Monitor to center Window");
             return -1;
         }
+
+#if defined(__APPLE__)
+        // AppKit can constrain the requested window size to the visible work area during creation
+        int windowWidth = 0;
+        int windowHeight = 0;
+        glfwGetWindowSize(platform.handle, &windowWidth, &windowHeight);
+        if ((windowWidth > 0) && (windowHeight > 0)) CORE.Window.screen = (Size){ windowWidth, windowHeight };
+#endif
 
         // NOTE: Not considering scale factor now, considered below
         CORE.Window.render.width = CORE.Window.screen.width;
@@ -2179,12 +2199,12 @@ static void MouseScrollCallback(GLFWwindow *window, double xoffset, double yoffs
 // GLFW3: Cursor ennter callback, when cursor enters the window
 static void CursorEnterCallback(GLFWwindow *window, int entered)
 {
-    if (entered) 
+    if (entered)
     {
         // NOTE: Mouse position updated by MouseCursorPosCallback()
         CORE.Input.Mouse.cursorOnScreen = true;
     }
-    else 
+    else
     {
         CORE.Input.Mouse.cursorOnScreen = false;
         CORE.Input.Mouse.currentPosition = (Vector2){ 0 };

@@ -1411,8 +1411,8 @@ return {
       description = "Camera type fallback, defaults to Camera3D"
     },
     {
-      type = "Transform",
-      name = "*ModelAnimPose",
+      type = "Transform *",
+      name = "ModelAnimPose",
       description = "Anim pose, an array of Transform[]"
     }
   },
@@ -4094,6 +4094,14 @@ return {
       }
     },
     {
+      name = "IsFileHidden",
+      description = "Check if file path (file or directory) is hidden by OS",
+      returnType = "bool",
+      params = {
+        {type = "const char *", name = "filePath"}
+      }
+    },
+    {
       name = "GetFileLength",
       description = "Get file length in bytes (NOTE: GetFileSize() conflicts with windows.h)",
       returnType = "int",
@@ -4135,7 +4143,7 @@ return {
     },
     {
       name = "GetDirectoryPath",
-      description = "Get full path for a given fileName with path (uses static string)",
+      description = "Get full path for a provided fileName with path (uses static string)",
       returnType = "const char *",
       params = {
         {type = "const char *", name = "filePath"}
@@ -4143,7 +4151,7 @@ return {
     },
     {
       name = "GetPrevDirectoryPath",
-      description = "Get previous directory path for a given path (uses static string)",
+      description = "Get previous directory path for a provided path (uses static string)",
       returnType = "const char *",
       params = {
         {type = "const char *", name = "dirPath"}
@@ -4177,7 +4185,7 @@ return {
     },
     {
       name = "IsPathFile",
-      description = "Check if given path points to a file",
+      description = "Check if provided path points to a file",
       returnType = "bool",
       params = {
         {type = "const char *", name = "path"}
@@ -4185,7 +4193,15 @@ return {
     },
     {
       name = "IsPathDirectory",
-      description = "Check if given path points to a directory",
+      description = "Check if provided path points to a directory",
+      returnType = "bool",
+      params = {
+        {type = "const char *", name = "path"}
+      }
+    },
+    {
+      name = "IsPathAbsolute",
+      description = "Check if provided path is an absolute path",
       returnType = "bool",
       params = {
         {type = "const char *", name = "path"}
@@ -4671,7 +4687,7 @@ return {
     },
     {
       name = "GetTouchPointId",
-      description = "Get touch point identifier for given index",
+      description = "Get touch point identifier for provided index",
       returnType = "int",
       params = {
         {type = "int", name = "index"}
@@ -4884,6 +4900,18 @@ return {
         {type = "Vector2", name = "v1"},
         {type = "Vector2", name = "v2"},
         {type = "Vector2", name = "v3"},
+        {type = "Color", name = "color"}
+      }
+    },
+    {
+      name = "DrawTriangleLinesEx",
+      description = "Draw triangle outline with line thickness, counter-clockwise vertex order",
+      returnType = "void",
+      params = {
+        {type = "Vector2", name = "v1"},
+        {type = "Vector2", name = "v2"},
+        {type = "Vector2", name = "v3"},
+        {type = "float", name = "thick"},
         {type = "Color", name = "color"}
       }
     },
@@ -5139,6 +5167,20 @@ return {
       }
     },
     {
+      name = "DrawCircleSectorLinesEx",
+      description = "Draw circle sector outline with thickness",
+      returnType = "void",
+      params = {
+        {type = "Vector2", name = "center"},
+        {type = "float", name = "radius"},
+        {type = "float", name = "startAngle"},
+        {type = "float", name = "endAngle"},
+        {type = "int", name = "segments"},
+        {type = "float", name = "thick"},
+        {type = "Color", name = "color"}
+      }
+    },
+    {
       name = "DrawCircleLines",
       description = "Draw circle outline",
       returnType = "void",
@@ -5217,6 +5259,18 @@ return {
       }
     },
     {
+      name = "DrawEllipseLinesEx",
+      description = "Draw ellipse outline with line thickness",
+      returnType = "void",
+      params = {
+        {type = "Vector2", name = "center"},
+        {type = "float", name = "radiusH"},
+        {type = "float", name = "radiusV"},
+        {type = "float", name = "thick"},
+        {type = "Color", name = "color"}
+      }
+    },
+    {
       name = "DrawRing",
       description = "Draw ring",
       returnType = "void",
@@ -5241,6 +5295,21 @@ return {
         {type = "float", name = "startAngle"},
         {type = "float", name = "endAngle"},
         {type = "int", name = "segments"},
+        {type = "Color", name = "color"}
+      }
+    },
+    {
+      name = "DrawRingLinesEx",
+      description = "Draw ring outline with line thickness",
+      returnType = "void",
+      params = {
+        {type = "Vector2", name = "center"},
+        {type = "float", name = "innerRadius"},
+        {type = "float", name = "outerRadius"},
+        {type = "float", name = "startAngle"},
+        {type = "float", name = "endAngle"},
+        {type = "int", name = "segments"},
+        {type = "float", name = "thick"},
         {type = "Color", name = "color"}
       }
     },
@@ -6071,7 +6140,7 @@ return {
     },
     {
       name = "ImageClearBackground",
-      description = "Clear image background with given color",
+      description = "Clear image background with provided color",
       returnType = "void",
       params = {
         {type = "Image *", name = "dst"},
@@ -6473,6 +6542,16 @@ return {
       params = {
         {type = "int", name = "width"},
         {type = "int", name = "height"}
+      }
+    },
+    {
+      name = "LoadRenderTextureEx",
+      description = "Load texture for rendering (framebuffer), with specific format",
+      returnType = "RenderTexture2D",
+      params = {
+        {type = "int", name = "width"},
+        {type = "int", name = "height"},
+        {type = "int", name = "format"}
       }
     },
     {

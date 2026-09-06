@@ -1129,12 +1129,37 @@ const char *GetClipboardText(void)
     return NULL;
 }
 
+#if SUPPORT_CLIPBOARD_IMAGE && SUPPORT_MODULE_RTEXTURES
+    #define WIN32_CLIPBOARD_IMPLEMENTATION
+    #define WINUSER_ALREADY_INCLUDED
+    #define WINBASE_ALREADY_INCLUDED
+    #define WINGDI_ALREADY_INCLUDED
+    #include "../external/win32_clipboard.h"
+#endif
+
 // Get clipboard image
 Image GetClipboardImage(void)
 {
     Image image = { 0 };
 
-    TRACELOG(LOG_WARNING, "GetClipboardText not implemented");
+#if SUPPORT_CLIPBOARD_IMAGE && SUPPORT_MODULE_RTEXTURES
+    unsigned int dataSize = 0;
+    void *fileData = NULL;
+    int width = 0;
+    int height = 0;
+
+    fileData = (void *)Win32GetClipboardImageData(&width, &height, &dataSize);
+
+    if (fileData == NULL) TRACELOG(LOG_WARNING, "Clipboard image: Couldn't get clipboard data.");
+    else 
+    {
+        image = LoadImageFromMemory(".bmp", (const unsigned char*)fileData, (int)dataSize);
+
+        RL_FREE(fileData);
+    }
+#else
+    TRACELOG(LOG_WARNING, "Clipboard image: SUPPORT_CLIPBOARD_IMAGE requires SUPPORT_MODULE_RTEXTURES to work properly");
+#endif // SUPPORT_CLIPBOARD_IMAGE
 
     return image;
 }
@@ -1264,11 +1289,11 @@ void OpenURL(const char *url)
         TRACELOG(LOG_WARNING, "SYSTEM: Provided URL must start with 'http://' or 'https://' protocols");
     }
     else
-    {       
+    {
         int len = strlen(url) + 16;
         char *cmd = (char *)RL_CALLOC(len, sizeof(char));
         snprintf(cmd, len, "explorer \"%s\"", url);
-        
+
         int result = system(cmd);
         if (result == -1) TRACELOG(LOG_WARNING, "OpenURL() child process could not be created");
         RL_FREE(cmd);
@@ -1299,8 +1324,8 @@ void SetMousePosition(int x, int y)
     if (!CORE.Input.Mouse.cursorLocked)
     {
         CORE.Input.Mouse.currentPosition = (Vector2){ (float)x, (float)y };
-        CORE.Input.Mouse.previousPosition = CORE.Input.Mouse.currentPosition;
-        TRACELOG(LOG_WARNING, "SetMousePosition not implemented");
+
+        TRACELOG(LOG_WARNING, "SetMousePosition not implemented at platform level");
     }
     else TRACELOG(LOG_WARNING, "INPUT: MOUSE: Cursor not enabled");
 }

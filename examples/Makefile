@@ -18,7 +18,7 @@
 #     > PLATFORM_DESKTOP_RGFW (RGFW backend):
 #         - Windows (Win32, Win64)
 #         - Linux (X11 desktop mode)
-#         - macOS/OSX (x64, arm64 (not tested))
+#         - macOS/OSX (x64, arm64)
 #         - Others (not tested)
 #     > PLATFORM_DESKTOP_WIN32 (native Win32):
 #         - Windows (Win32, Win64)
@@ -340,6 +340,9 @@ ifeq ($(TARGET_PLATFORM),PLATFORM_DESKTOP_GLFW)
     ifeq ($(PLATFORM_OS),BSD)
         LDFLAGS += -Lsrc -L$(RAYLIB_LIB_PATH)
     endif
+	ifeq ($(PLATFORM_OS),OSX)
+		LDFLAGS += -L/opt/homebrew/lib -L$(RAYLIB_LIB_PATH)
+	endif
 endif
 ifeq ($(TARGET_PLATFORM),PLATFORM_DESKTOP_SDL)
     ifeq ($(PLATFORM_OS),WINDOWS)
@@ -448,7 +451,7 @@ ifeq ($(TARGET_PLATFORM),PLATFORM_DESKTOP_GLFW)
     ifeq ($(PLATFORM_OS),OSX)
         # Libraries for OSX 10.9 desktop compiling
         # NOTE: Required packages: libopenal-dev libegl1-mesa-dev
-        LDLIBS = -lraylib -framework OpenGL -framework Cocoa -framework IOKit -framework CoreAudio -framework CoreVideo
+        LDLIBS = -lraylib -framework OpenGL -framework Cocoa -framework IOKit -framework CoreAudio -framework CoreVideo -framework QuartzCore
     endif
     ifeq ($(PLATFORM_OS),BSD)
         # Libraries for FreeBSD, OpenBSD, NetBSD, DragonFly desktop compiling
@@ -526,7 +529,7 @@ ifeq ($(TARGET_PLATFORM),PLATFORM_DESKTOP_RGFW)
         # NOTE: Required packages: libegl1-mesa-dev
         LDFLAGS += -L../src
         LDLIBS = -lraylib -lm
-        LDLIBS += -framework Foundation -framework AppKit -framework IOKit -framework OpenGL -framework CoreVideo
+        LDLIBS += -framework Foundation -framework AppKit -framework IOKit -framework OpenGL -framework CoreVideo -framework QuartzCore
     endif
 endif
 ifeq ($(TARGET_PLATFORM),PLATFORM_DRM)
