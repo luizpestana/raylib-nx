@@ -143,15 +143,20 @@ ROOT = $(shell whoami)
 HOST_PLATFORM_OS ?= WINDOWS
 PLATFORM_OS ?= WINDOWS
 
+# Detect the shell used by make: cmd preserves quotes, while sh removes them.
+ifndef PLATFORM_SHELL
+    PLATFORM_SHELL = sh
+    ifeq ($(shell echo "test"),"test")
+        PLATFORM_SHELL = cmd
+    endif
+endif
+
 # Determine PLATFORM_OS when required
 ifeq ($(TARGET_PLATFORM),$(filter $(TARGET_PLATFORM),PLATFORM_DESKTOP_GLFW PLATFORM_DESKTOP_SDL PLATFORM_DESKTOP_RGFW PLATFORM_DESKTOP_WIN32 PLATFORM_WEB PLATFORM_WEB_RGFW PLATFORM_ANDROID))
     # No uname.exe on MinGW!, but OS=Windows_NT on Windows!
     # ifeq ($(UNAME),Msys) -> Windows
     ifeq ($(OS),Windows_NT)
         PLATFORM_OS = WINDOWS
-        ifndef PLATFORM_SHELL
-            PLATFORM_SHELL = cmd
-        endif
     else
         UNAMEOS = $(shell uname)
         ifeq ($(UNAMEOS),Linux)
@@ -172,9 +177,6 @@ ifeq ($(TARGET_PLATFORM),$(filter $(TARGET_PLATFORM),PLATFORM_DESKTOP_GLFW PLATF
         ifeq ($(UNAMEOS),Darwin)
             PLATFORM_OS = OSX
         endif
-        ifndef PLATFORM_SHELL
-            PLATFORM_SHELL = sh
-        endif
     endif
 endif
 ifeq ($(TARGET_PLATFORM),PLATFORM_DRM)
@@ -182,23 +184,13 @@ ifeq ($(TARGET_PLATFORM),PLATFORM_DRM)
     ifeq ($(UNAMEOS),Linux)
         PLATFORM_OS = LINUX
     endif
-    ifndef PLATFORM_SHELL
-        PLATFORM_SHELL = sh
-    endif
 endif
-ifeq ($(TARGET_PLATFORM),$(filter $(TARGET_PLATFORM),PLATFORM_WEB PLATFORM_WEB_RGFW))
-    ifeq ($(PLATFORM_OS),LINUX)
-        ifndef PLATFORM_SHELL
-            PLATFORM_SHELL = sh
-        endif
 ifeq ($(TARGET_PLATFORM),PLATFORM_NX)
     UNAMEOS = $(shell uname)
     ifeq ($(UNAMEOS),Linux)
         PLATFORM_OS = LINUX
     endif
     RAYLIB_LIBTYPE = STATIC
-endif
-    endif
 endif
 
 ifeq ($(TARGET_PLATFORM),$(filter $(TARGET_PLATFORM),PLATFORM_WEB PLATFORM_WEB_RGFW))
@@ -382,6 +374,16 @@ ifeq ($(TARGET_PLATFORM),PLATFORM_NX)
     include $(DEVKITPRO)/libnx/switch_rules
 endif
 
+# NOTE: Native Linux links against glibc, on glibc >= 2.38, _GNU_SOURCE redirects
+# sscanf(), strtol()... to __isoc23_*(), so the library fails to link with older glibc
+# Web and Android set PLATFORM_OS from the host, but they are not glibc and keep _GNU_SOURCE
+DEFINED_SOURCE_MACRO = _GNU_SOURCE
+ifeq ($(PLATFORM_OS), LINUX)
+    ifeq ($(filter $(TARGET_PLATFORM),PLATFORM_WEB PLATFORM_WEB_RGFW PLATFORM_ANDROID),)
+        DEFINED_SOURCE_MACRO = _DEFAULT_SOURCE
+    endif
+endif
+
 # Define compiler flags: CFLAGS
 #------------------------------------------------------------------------------------------------
 #  -O1                      defines optimization level
@@ -396,7 +398,7 @@ endif
 #  -D_GNU_SOURCE            access to lots of nonstandard GNU/Linux extension functions
 #  -Werror=pointer-arith    catch unportable code that does direct arithmetic on void pointers
 #  -fno-strict-aliasing     jar_xm.h does shady stuff (breaks strict aliasing)
-CFLAGS = -Wall -D_GNU_SOURCE -D$(TARGET_PLATFORM) -D$(GRAPHICS) -Wno-missing-braces -Werror=pointer-arith -fno-strict-aliasing
+CFLAGS = -Wall -D$(DEFINED_SOURCE_MACRO) -D$(TARGET_PLATFORM) -D$(GRAPHICS) -Wno-missing-braces -Werror=pointer-arith -fno-strict-aliasing
 
 ifneq ($(RAYLIB_CONFIG_FLAGS), NONE)
     CFLAGS += -DEXTERNAL_CONFIG_FLAGS $(RAYLIB_CONFIG_FLAGS)
@@ -1029,8 +1031,6 @@ ifeq ($(TARGET_PLATFORM),PLATFORM_ANDROID)
 	rm -fv $(NATIVE_APP_GLUE)/android_native_app_glue.o
 endif
 
-# Set specific target variable
-clean_shell_cmd: SHELL=cmd
 clean_shell_cmd:
 	del *.o /s
 	cd $(RAYLIB_RELEASE_PATH) & \

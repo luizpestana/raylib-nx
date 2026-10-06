@@ -92,8 +92,8 @@ typedef struct {
     HBITMAP hbitmap;        // GDI bitmap handler
     unsigned int *pixels;   // Pointer to pixel data buffer (BGRA format)
 
-    unsigned int appScreenWidth;
-    unsigned int appScreenHeight;
+    int appScreenWidth;
+    int appScreenHeight;
     unsigned int desiredFlags;
 
     LARGE_INTEGER timerFrequency;
@@ -1151,7 +1151,7 @@ Image GetClipboardImage(void)
     fileData = (void *)Win32GetClipboardImageData(&width, &height, &dataSize);
 
     if (fileData == NULL) TRACELOG(LOG_WARNING, "Clipboard image: Couldn't get clipboard data.");
-    else 
+    else
     {
         image = LoadImageFromMemory(".bmp", (const unsigned char*)fileData, (int)dataSize);
 
@@ -1358,6 +1358,9 @@ void PollInputEvents(void)
     // Reset key repeats
     for (int i = 0; i < MAX_KEYBOARD_KEYS; i++) CORE.Input.Keyboard.keyRepeatInFrame[i] = 0;
 
+    // Register previous mouse states
+    for (int i = 0; i < MAX_MOUSE_BUTTONS; i++) CORE.Input.Mouse.previousButtonState[i] = CORE.Input.Mouse.currentButtonState[i];
+
     // Reset last gamepad button/axis registered state
     CORE.Input.Gamepad.lastButtonPressed = 0; // GAMEPAD_BUTTON_UNKNOWN
     //CORE.Input.Gamepad.axisCount = 0;
@@ -1371,7 +1374,6 @@ void PollInputEvents(void)
     //for (int i = 0; i < MAX_TOUCH_POINTS; i++) CORE.Input.Touch.position[i] = (Vector2){ 0, 0 };
 
     memcpy(CORE.Input.Keyboard.previousKeyState, CORE.Input.Keyboard.currentKeyState, sizeof(CORE.Input.Keyboard.previousKeyState));
-    memset(CORE.Input.Keyboard.keyRepeatInFrame, 0, sizeof(CORE.Input.Keyboard.keyRepeatInFrame));
 
     // Register previous mouse wheel state
     CORE.Input.Mouse.previousWheelMove = CORE.Input.Mouse.currentWheelMove;
@@ -1379,6 +1381,8 @@ void PollInputEvents(void)
 
     // Register previous mouse position
     CORE.Input.Mouse.previousPosition = CORE.Input.Mouse.currentPosition;
+
+    CORE.Window.resizedLastFrame = false;
 
     // Process windows messages
     MSG msg = { 0 };
@@ -1673,6 +1677,7 @@ int InitPlatform(void)
     // Update flags (in case of deferred state change required)
     UpdateFlags(platform.hwnd, platform.desiredFlags, platform.appScreenWidth, platform.appScreenHeight);
 
+    CORE.Window.resizedLastFrame = false;
     CORE.Window.render.width = CORE.Window.screen.width;
     CORE.Window.render.height = CORE.Window.screen.height;
     CORE.Window.currentFbo.width = CORE.Window.render.width;
@@ -1952,8 +1957,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpara
         case WM_DPICHANGED:
         {
             // Get current dpi scale factor
-            float scalex = HIWORD(wparam)/96.0f;
-            float scaley = LOWORD(wparam)/96.0f;
+            //float scalex = HIWORD(wparam)/96.0f;
+            //float scaley = LOWORD(wparam)/96.0f;
 
             RECT *suggestedRect = (RECT *)lparam;
 
@@ -1994,7 +1999,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpara
                 EndPaint(hwnd, &ps);
             }
             else DefWindowProc(hwnd, msg, wparam, lparam);
-        }
+        } break;
         case WM_INPUT:
         {
             //HandleRawInput(lparam);
@@ -2068,6 +2073,7 @@ static void HandleKey(WPARAM wparam, LPARAM lparam, char state)
     {
         CORE.Input.Keyboard.currentKeyState[key] = state;
 
+        if (((HIWORD(lparam) & KF_REPEAT) != 0) && (state == 1)) CORE.Input.Keyboard.keyRepeatInFrame[key] = 1;
         if ((key == CORE.Input.Keyboard.exitKey) && (state == 1)) CORE.Window.shouldClose = true;
     }
     else TRACELOG(LOG_WARNING, "INPUT: Unknown (or currently unhandled) virtual keycode %d (0x%x)", wparam, wparam);
@@ -2285,6 +2291,7 @@ static void UpdateFlags(HWND hwnd, unsigned desiredFlags, int width, int height)
         {
             TRACELOG(LOG_ERROR, "WIN32: WINDOW: UpdateFlags() failed after %u attempt(s) wanted 0x%x but is 0x%x (diff=0x%x)",
                 attempt, desiredFlags, CORE.Window.flags, desiredFlags ^ CORE.Window.flags);
+            break;
         }
 
         previousStyle = MakeWindowStyle(CORE.Window.flags);
