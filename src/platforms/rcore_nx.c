@@ -52,6 +52,7 @@ typedef struct {
 
     long int touchDeltaTime[MAX_TOUCH_POINTS];
     s32 prevTouchCount;
+    double lastInputTime;               // Time of the previous input poll for cursor movement
 
     PadState nxPad[MAX_GAMEPADS];
     HidNpadStyleTag nxPadStyle[MAX_GAMEPADS];
@@ -61,6 +62,7 @@ typedef struct {
     EGLSurface surface;                 // Surface to draw on, framebuffers (connected to context)
     EGLContext context;                 // Graphic context, mode in which drawing can be done
     EGLConfig config;                   // Graphic config
+    bool swapFailed;                    // Suppress repeated errors until presentation recovers
 } PlatformData;
 
 //----------------------------------------------------------------------------------
@@ -74,6 +76,7 @@ static PlatformData platform = { 0 };   // Platform specific data
 // Module Internal Functions Declaration
 //----------------------------------------------------------------------------------
 int InitPlatform(void);          // Initialize platform (graphics, inputs and more)
+static bool SetVSync(bool enabled); // Apply the swap interval and update the window flag on success
 
 //----------------------------------------------------------------------------------
 // Module Functions Declaration
@@ -125,13 +128,29 @@ void RestoreWindow(void)
 // Set window configuration state using flags
 void SetWindowState(unsigned int flags)
 {
-    TRACELOG(LOG_WARNING, "SetWindowState() not available on target platform");
+    if (!CORE.Window.ready)
+    {
+        TRACELOG(LOG_WARNING, "WINDOW: Use SetConfigFlags() before window initialization");
+        return;
+    }
+
+    if (FLAG_IS_SET(flags, FLAG_VSYNC_HINT)) SetVSync(true);
+    if (flags & ~(FLAG_VSYNC_HINT | FLAG_FULLSCREEN_MODE))
+        TRACELOG(LOG_WARNING, "WINDOW: Requested flags other than VSync and fullscreen are not supported on NX");
 }
 
 // Clear window configuration state flags
 void ClearWindowState(unsigned int flags)
 {
-    TRACELOG(LOG_WARNING, "ClearWindowState() not available on target platform");
+    if (!CORE.Window.ready)
+    {
+        TRACELOG(LOG_WARNING, "WINDOW: ClearWindowState() requires an initialized window");
+        return;
+    }
+
+    if (FLAG_IS_SET(flags, FLAG_VSYNC_HINT)) SetVSync(false);
+    if (flags & ~FLAG_VSYNC_HINT)
+        TRACELOG(LOG_WARNING, "WINDOW: Only VSync can be cleared on NX (fullscreen is required)");
 }
 
 // Set icon for window
@@ -181,7 +200,7 @@ void SetWindowMaxSize(int width, int height)
 // Set window dimensions
 void SetWindowSize(int width, int height)
 {
-    TRACELOG(LOG_WARNING, "SetWindowSize() not available on target platform");
+    TRACELOG(LOG_WARNING, "WINDOW: NX buffer dimensions must be configured with InitWindow(), runtime resizing is not supported");
 }
 
 // Set window opacity, value opacity is between 0.0 and 1.0
@@ -337,7 +356,16 @@ void DisableCursor(void)
 // Swap back buffer with front buffer (screen drawing)
 void SwapScreenBuffer(void)
 {
-    eglSwapBuffers(platform.device, platform.surface);
+    if (eglSwapBuffers(platform.device, platform.surface) == EGL_FALSE)
+    {
+        EGLint error = eglGetError();
+        if (!platform.swapFailed)
+        {
+            TRACELOG(LOG_WARNING, "DISPLAY: eglSwapBuffers() failed (EGL error: 0x%04x); further errors suppressed until presentation recovers", error);
+        }
+        platform.swapFailed = true;
+    }
+    else platform.swapFailed = false;
 }
 
 //----------------------------------------------------------------------------------
@@ -422,317 +450,291 @@ void SetMouseCursor(int cursor)
     TRACELOG(LOG_WARNING, "SetMouseCursor() not implemented on target platform");
 }
 
+// NX keyboard emulation uses a fixed US QWERTY layout.
+const char *GetKeyName(int key)
+{
+    static const char keyNames[KEY_GRAVE + 1][2] = {
+        [KEY_SPACE] = " ", [KEY_APOSTROPHE] = "'", [KEY_COMMA] = ",",
+        [KEY_MINUS] = "-", [KEY_PERIOD] = ".", [KEY_SLASH] = "/",
+        [KEY_ZERO] = "0", [KEY_ONE] = "1", [KEY_TWO] = "2", [KEY_THREE] = "3",
+        [KEY_FOUR] = "4", [KEY_FIVE] = "5", [KEY_SIX] = "6", [KEY_SEVEN] = "7",
+        [KEY_EIGHT] = "8", [KEY_NINE] = "9", [KEY_SEMICOLON] = ";", [KEY_EQUAL] = "=",
+        [KEY_A] = "a", [KEY_B] = "b", [KEY_C] = "c", [KEY_D] = "d",
+        [KEY_E] = "e", [KEY_F] = "f", [KEY_G] = "g", [KEY_H] = "h",
+        [KEY_I] = "i", [KEY_J] = "j", [KEY_K] = "k", [KEY_L] = "l",
+        [KEY_M] = "m", [KEY_N] = "n", [KEY_O] = "o", [KEY_P] = "p",
+        [KEY_Q] = "q", [KEY_R] = "r", [KEY_S] = "s", [KEY_T] = "t",
+        [KEY_U] = "u", [KEY_V] = "v", [KEY_W] = "w", [KEY_X] = "x",
+        [KEY_Y] = "y", [KEY_Z] = "z", [KEY_LEFT_BRACKET] = "[",
+        [KEY_BACKSLASH] = "\\", [KEY_RIGHT_BRACKET] = "]", [KEY_GRAVE] = "\x60"
+    };
+
+    if ((key >= KEY_KP_0) && (key <= KEY_KP_9)) return keyNames[KEY_ZERO + key - KEY_KP_0];
+    if ((key >= 0) && (key <= KEY_GRAVE) && (keyNames[key][0] != '\0')) return keyNames[key];
+
+    switch (key)
+    {
+        case KEY_KP_DECIMAL: return ".";
+        case KEY_KP_DIVIDE: return "/";
+        case KEY_KP_MULTIPLY: return "*";
+        case KEY_KP_SUBTRACT: return "-";
+        case KEY_KP_ADD: return "+";
+        case KEY_KP_EQUAL: return "=";
+        default: return NULL;
+    }
+}
+
 // Register all input events
 void PollInputEvents(void)
 {
 #if SUPPORT_GESTURES_SYSTEM
-    // NOTE: Gestures update must be called every frame to reset gestures correctly
-    // because ProcessGestureEvent() is just called on an event, not every frame
     UpdateGestures();
+    int previousTouchIds[MAX_TOUCH_POINTS];
 #endif
 
-    // Reset keys/chars pressed registered
     CORE.Input.Keyboard.keyPressedQueueCount = 0;
     CORE.Input.Keyboard.charPressedQueueCount = 0;
+    CORE.Input.Gamepad.lastButtonPressed = GAMEPAD_BUTTON_UNKNOWN;
 
-    // Reset key repeats
-    for (int i = 0; i < MAX_KEYBOARD_KEYS; i++) CORE.Input.Keyboard.keyRepeatInFrame[i] = 0;
+    // Snapshot each input source once, before rebuilding this frame's state.
+    for (int i = 0; i < MAX_KEYBOARD_KEYS; i++)
+    {
+        CORE.Input.Keyboard.previousKeyState[i] = CORE.Input.Keyboard.currentKeyState[i];
+        CORE.Input.Keyboard.currentKeyState[i] = 0;
+        CORE.Input.Keyboard.keyRepeatInFrame[i] = 0;
+    }
 
-    // Reset last gamepad button/axis registered state
-    CORE.Input.Gamepad.lastButtonPressed = 0; // GAMEPAD_BUTTON_UNKNOWN
+    for (int i = 0; i < MAX_MOUSE_BUTTONS; i++)
+    {
+        CORE.Input.Mouse.previousButtonState[i] = CORE.Input.Mouse.currentButtonState[i];
+        CORE.Input.Mouse.currentButtonState[i] = 0;
+    }
+    CORE.Input.Mouse.previousPosition = CORE.Input.Mouse.currentPosition;
+    CORE.Input.Mouse.previousWheelMove = CORE.Input.Mouse.currentWheelMove;
+    CORE.Input.Mouse.currentWheelMove = (Vector2){ 0.0f, 0.0f };
 
-    // Register previous touch states
     for (int i = 0; i < MAX_TOUCH_POINTS; i++)
     {
         CORE.Input.Touch.previousTouchState[i] = CORE.Input.Touch.currentTouchState[i];
         CORE.Input.Touch.previousPosition[i] = CORE.Input.Touch.position[i];
-    }
-
-    // Reset touch positions
-    //for (int i = 0; i < MAX_TOUCH_POINTS; i++) CORE.Input.Touch.position[i] = (Vector2){ 0, 0 };
-
-    // Register previous keys states
-    for (int i = 0; i < 260; i++)
-    {
-        CORE.Input.Keyboard.previousKeyState[i] = CORE.Input.Keyboard.currentKeyState[i];
-        CORE.Input.Keyboard.keyRepeatInFrame[i] = 0;
+#if SUPPORT_GESTURES_SYSTEM
+        previousTouchIds[i] = CORE.Input.Touch.pointId[i];
+#endif
     }
 
     HidTouchScreenState state = { 0 };
-    if (hidGetTouchScreenStates(&state, 1))
+    int touchCount = hidGetTouchScreenStates(&state, 1)? (int)state.count : 0;
+    if (touchCount > MAX_TOUCH_POINTS) touchCount = MAX_TOUCH_POINTS;
+#if SUPPORT_GESTURES_SYSTEM
+    int previousTouchCount = platform.prevTouchCount;
+#endif
+    CORE.Input.Touch.pointCount = touchCount;
+
+    for (int i = 0; i < touchCount; i++)
     {
-        int touchCount = (state.count < MAX_TOUCH_POINTS)? state.count : MAX_TOUCH_POINTS;
-        int previousTouchCount = platform.prevTouchCount;
+        // HID coordinates use the handheld's 1280x720 space, regardless of buffer size.
+        CORE.Input.Touch.position[i].x = (float)state.touches[i].x*CORE.Window.screen.width/1280.0f;
+        CORE.Input.Touch.position[i].y = (float)state.touches[i].y*CORE.Window.screen.height/720.0f;
+        CORE.Input.Touch.pointId[i] = state.touches[i].finger_id;
+        CORE.Input.Touch.currentTouchState[i] = 1;
+        platform.touchDeltaTime[i] = state.touches[i].delta_time;
+    }
 
-        CORE.Input.Touch.pointCount = touchCount;
-
-        for (int i = 0; i < touchCount; i++)
-        {
-            CORE.Input.Touch.position[i].x = (float)state.touches[i].x;
-            CORE.Input.Touch.position[i].y = (float)state.touches[i].y;
-            CORE.Input.Touch.pointId[i] = state.touches[i].finger_id;
-            CORE.Input.Touch.currentTouchState[i] = 1;
-
-            platform.touchDeltaTime[i] = state.touches[i].delta_time;
-        }
-
-        for (int i = touchCount; i < MAX_TOUCH_POINTS; i++)
-        {
-            CORE.Input.Touch.currentTouchState[i] = 0;
-            CORE.Input.Touch.pointId[i] = -1;
-            CORE.Input.Touch.position[i] = (Vector2){ 0.0f, 0.0f };
-            platform.touchDeltaTime[i] = 0;
-        }
-
-        CORE.Input.Mouse.previousButtonState[MOUSE_BUTTON_LEFT] = CORE.Input.Mouse.currentButtonState[MOUSE_BUTTON_LEFT];
-        CORE.Input.Mouse.currentButtonState[MOUSE_BUTTON_LEFT] = (touchCount > 0);
-
-        if (touchCount > 0)
-        {
-            if (platform.prevTouchCount > 0) CORE.Input.Mouse.previousPosition = CORE.Input.Mouse.currentPosition;
-            else CORE.Input.Mouse.previousPosition = CORE.Input.Touch.position[0];
-
-            CORE.Input.Mouse.currentPosition = CORE.Input.Touch.position[0];
-        }
+    for (int i = touchCount; i < MAX_TOUCH_POINTS; i++)
+    {
+        CORE.Input.Touch.currentTouchState[i] = 0;
+        CORE.Input.Touch.pointId[i] = -1;
+        CORE.Input.Touch.position[i] = (Vector2){ 0.0f, 0.0f };
+        platform.touchDeltaTime[i] = 0;
+    }
 
 #if SUPPORT_GESTURES_SYSTEM
-        int touchAction = -1;
-        int gesturePointCount = touchCount;
-
-        if (touchCount > previousTouchCount) touchAction = TOUCH_ACTION_DOWN;
-        else if (touchCount < previousTouchCount)
-        {
-            touchAction = TOUCH_ACTION_UP;
-            gesturePointCount = previousTouchCount;
-        }
-        else if (touchCount > 0) touchAction = TOUCH_ACTION_MOVE;
-
-        if (touchAction >= 0)
-        {
-            GestureEvent gestureEvent = { 0 };
-
-            gestureEvent.touchAction = touchAction;
-            gestureEvent.pointCount = (gesturePointCount < MAX_TOUCH_POINTS)? gesturePointCount : MAX_TOUCH_POINTS;
-
-            for (int i = 0; i < gestureEvent.pointCount; i++)
-            {
-                gestureEvent.pointId[i] = (touchAction == TOUCH_ACTION_UP)? i : CORE.Input.Touch.pointId[i];
-                gestureEvent.position[i] = (touchAction == TOUCH_ACTION_UP)? CORE.Input.Touch.previousPosition[i] : CORE.Input.Touch.position[i];
-                gestureEvent.position[i].x /= (float)GetScreenWidth();
-                gestureEvent.position[i].y /= (float)GetScreenHeight();
-            }
-
-            ProcessGestureEvent(gestureEvent);
-        }
-#endif
-        platform.prevTouchCount = touchCount;
+    int touchAction = -1;
+    int gesturePointCount = touchCount;
+    if (touchCount > previousTouchCount) touchAction = TOUCH_ACTION_DOWN;
+    else if (touchCount < previousTouchCount)
+    {
+        touchAction = TOUCH_ACTION_UP;
+        gesturePointCount = previousTouchCount;
     }
+    else if (touchCount > 0) touchAction = TOUCH_ACTION_MOVE;
+
+    if (touchAction >= 0)
+    {
+        GestureEvent gestureEvent = { 0 };
+        gestureEvent.touchAction = touchAction;
+        gestureEvent.pointCount = gesturePointCount;
+        for (int i = 0; i < gestureEvent.pointCount; i++)
+        {
+            gestureEvent.pointId[i] = (touchAction == TOUCH_ACTION_UP)? previousTouchIds[i] : CORE.Input.Touch.pointId[i];
+            gestureEvent.position[i] = (touchAction == TOUCH_ACTION_UP)? CORE.Input.Touch.previousPosition[i] : CORE.Input.Touch.position[i];
+            gestureEvent.position[i].x /= (float)GetScreenWidth();
+            gestureEvent.position[i].y /= (float)GetScreenHeight();
+        }
+        ProcessGestureEvent(gestureEvent);
+    }
+#endif
+
+#if !defined(NX_DISABLE_GAMEPAD_EMULATION)
+    u64 emulatedButtons = 0;
+    bool escapePressed = false;
+    Vector2 cursorAxis = { 0.0f, 0.0f };
+    double inputTime = GetTime();
+    float cursorDelta = Clamp((float)(inputTime - platform.lastInputTime), 0.0f, 0.1f);
+    platform.lastInputTime = inputTime;
+#endif
 
     for (int i = 0; i < MAX_GAMEPADS; i++)
     {
-        // Scan the gamepad. This should be done once for each frame
+        for (int k = 0; k < MAX_GAMEPAD_BUTTONS; k++)
+        {
+            CORE.Input.Gamepad.previousButtonState[i][k] = CORE.Input.Gamepad.currentButtonState[i][k];
+            CORE.Input.Gamepad.currentButtonState[i][k] = 0;
+        }
+        for (int k = 0; k < MAX_GAMEPAD_AXES; k++) CORE.Input.Gamepad.axisState[i][k] = 0.0f;
+        CORE.Input.Gamepad.axisState[i][GAMEPAD_AXIS_LEFT_TRIGGER] = -1.0f;
+        CORE.Input.Gamepad.axisState[i][GAMEPAD_AXIS_RIGHT_TRIGGER] = -1.0f;
+        CORE.Input.Gamepad.axisCount[i] = 0;
+
         padUpdate(&platform.nxPad[i]);
         CORE.Input.Gamepad.ready[i] = padIsConnected(&platform.nxPad[i]);
-        if (CORE.Input.Gamepad.ready[i]) {
-            // Get the style of the gamepad.
-            HidNpadStyleTag styleTag = padGetStyleSet(&platform.nxPad[i]);
-            if (styleTag != platform.nxPadStyle[i]) {
-                platform.nxPadStyle[i] = styleTag;
-                strcpy(CORE.Input.Gamepad.name[i], GetNxGamePadName(i));
-            }
+        if (!CORE.Input.Gamepad.ready[i]) continue;
 
-            // Set number of axis of the gamepad.
-            CORE.Input.Gamepad.axisCount[i] = 6;
+        HidNpadStyleTag styleTag = padGetStyleSet(&platform.nxPad[i]);
+        if (styleTag != platform.nxPadStyle[i])
+        {
+            platform.nxPadStyle[i] = styleTag;
+            strcpy(CORE.Input.Gamepad.name[i], GetNxGamePadName(i));
+        }
+        CORE.Input.Gamepad.axisCount[i] = 6;
 
-            // Returns the set of buttons that are currently pressed
-            u64 kHeld = padGetButtons(&platform.nxPad[i]);
-            u64 kButton;
-            for (int k = 0; k < MAX_GAMEPAD_BUTTONS; k++)
+        u64 kHeld = padGetButtons(&platform.nxPad[i]);
+        for (int k = 0; k < MAX_GAMEPAD_BUTTONS; k++)
+        {
+            u64 kButton = 0;
+            switch (k)
             {
-                // Register previous gamepad states
-                CORE.Input.Gamepad.previousButtonState[i][k] = CORE.Input.Gamepad.currentButtonState[i][k];
-
-                // Check digital buttons
-                kButton = 0;
-                switch (k)
-                {
-                    case GAMEPAD_BUTTON_LEFT_FACE_UP: kButton = HidNpadButton_Up; break;
-                    case GAMEPAD_BUTTON_LEFT_FACE_RIGHT: kButton = HidNpadButton_Right; break;
-                    case GAMEPAD_BUTTON_LEFT_FACE_DOWN: kButton = HidNpadButton_Down; break;
-                    case GAMEPAD_BUTTON_LEFT_FACE_LEFT: kButton = HidNpadButton_Left; break;
-                    case GAMEPAD_BUTTON_RIGHT_FACE_UP: kButton = HidNpadButton_X; break;
-                    case GAMEPAD_BUTTON_RIGHT_FACE_RIGHT: kButton = HidNpadButton_A; break;
-                    case GAMEPAD_BUTTON_RIGHT_FACE_DOWN: kButton = HidNpadButton_B; break;
-                    case GAMEPAD_BUTTON_RIGHT_FACE_LEFT: kButton = HidNpadButton_Y; break;
-                    case GAMEPAD_BUTTON_LEFT_TRIGGER_1: kButton = HidNpadButton_L; break;
-                    case GAMEPAD_BUTTON_LEFT_TRIGGER_2: kButton = HidNpadButton_ZL; break;
-                    case GAMEPAD_BUTTON_RIGHT_TRIGGER_1: kButton = HidNpadButton_R; break;
-                    case GAMEPAD_BUTTON_RIGHT_TRIGGER_2: kButton = HidNpadButton_ZR; break;
-                    case GAMEPAD_BUTTON_MIDDLE_LEFT: kButton = HidNpadButton_Minus; break;
-                    case GAMEPAD_BUTTON_MIDDLE_RIGHT: kButton = HidNpadButton_Plus; break;
-                    case GAMEPAD_BUTTON_LEFT_THUMB: kButton = HidNpadButton_StickL; break;
-                    case GAMEPAD_BUTTON_RIGHT_THUMB: kButton = HidNpadButton_StickR; break;
-                }
-                if (kHeld & kButton) {
-                    CORE.Input.Gamepad.currentButtonState[i][k] = 1;
-                    CORE.Input.Gamepad.lastButtonPressed = k;
-                } else {
-                    CORE.Input.Gamepad.currentButtonState[i][k] = 0;
-                }
+                case GAMEPAD_BUTTON_LEFT_FACE_UP: kButton = HidNpadButton_Up; break;
+                case GAMEPAD_BUTTON_LEFT_FACE_RIGHT: kButton = HidNpadButton_Right; break;
+                case GAMEPAD_BUTTON_LEFT_FACE_DOWN: kButton = HidNpadButton_Down; break;
+                case GAMEPAD_BUTTON_LEFT_FACE_LEFT: kButton = HidNpadButton_Left; break;
+                case GAMEPAD_BUTTON_RIGHT_FACE_UP: kButton = HidNpadButton_X; break;
+                case GAMEPAD_BUTTON_RIGHT_FACE_RIGHT: kButton = HidNpadButton_A; break;
+                case GAMEPAD_BUTTON_RIGHT_FACE_DOWN: kButton = HidNpadButton_B; break;
+                case GAMEPAD_BUTTON_RIGHT_FACE_LEFT: kButton = HidNpadButton_Y; break;
+                case GAMEPAD_BUTTON_LEFT_TRIGGER_1: kButton = HidNpadButton_L; break;
+                case GAMEPAD_BUTTON_LEFT_TRIGGER_2: kButton = HidNpadButton_ZL; break;
+                case GAMEPAD_BUTTON_RIGHT_TRIGGER_1: kButton = HidNpadButton_R; break;
+                case GAMEPAD_BUTTON_RIGHT_TRIGGER_2: kButton = HidNpadButton_ZR; break;
+                case GAMEPAD_BUTTON_MIDDLE_LEFT: kButton = HidNpadButton_Minus; break;
+                case GAMEPAD_BUTTON_MIDDLE_RIGHT: kButton = HidNpadButton_Plus; break;
+                case GAMEPAD_BUTTON_LEFT_THUMB: kButton = HidNpadButton_StickL; break;
+                case GAMEPAD_BUTTON_RIGHT_THUMB: kButton = HidNpadButton_StickR; break;
+                default: break;
             }
+            if (kHeld & kButton)
+            {
+                CORE.Input.Gamepad.currentButtonState[i][k] = 1;
+                CORE.Input.Gamepad.lastButtonPressed = k;
+            }
+        }
 
-            // Check analogic axis and buttons
-            HidAnalogStickState kAxisL = padGetStickPos(&platform.nxPad[i], 0);
-            HidAnalogStickState kAxisR = padGetStickPos(&platform.nxPad[i], 1);
-
-            CORE.Input.Gamepad.axisState[i][GAMEPAD_AXIS_LEFT_X] = (float)kAxisL.x / 32767.0f;
-            CORE.Input.Gamepad.axisState[i][GAMEPAD_AXIS_LEFT_Y] = (float)kAxisL.y / 32767.0f;
-            CORE.Input.Gamepad.axisState[i][GAMEPAD_AXIS_RIGHT_X] = (float)kAxisR.x / 32767.0f;
-            CORE.Input.Gamepad.axisState[i][GAMEPAD_AXIS_RIGHT_Y] = (float)kAxisR.y / 32767.0f;
-            CORE.Input.Gamepad.axisState[i][GAMEPAD_AXIS_LEFT_TRIGGER] = (kHeld & HidNpadButton_ZL) ? 1.0f : 0.0f;
-            CORE.Input.Gamepad.axisState[i][GAMEPAD_AXIS_RIGHT_TRIGGER] = (kHeld & HidNpadButton_ZR) ? 1.0f : 0.0f;
+        HidAnalogStickState kAxisL = padGetStickPos(&platform.nxPad[i], 0);
+        HidAnalogStickState kAxisR = padGetStickPos(&platform.nxPad[i], 1);
+        CORE.Input.Gamepad.axisState[i][GAMEPAD_AXIS_LEFT_X] = Clamp((float)kAxisL.x/32767.0f, -1.0f, 1.0f);
+        CORE.Input.Gamepad.axisState[i][GAMEPAD_AXIS_LEFT_Y] = Clamp(-(float)kAxisL.y/32767.0f, -1.0f, 1.0f);
+        CORE.Input.Gamepad.axisState[i][GAMEPAD_AXIS_RIGHT_X] = Clamp((float)kAxisR.x/32767.0f, -1.0f, 1.0f);
+        CORE.Input.Gamepad.axisState[i][GAMEPAD_AXIS_RIGHT_Y] = Clamp(-(float)kAxisR.y/32767.0f, -1.0f, 1.0f);
+        CORE.Input.Gamepad.axisState[i][GAMEPAD_AXIS_LEFT_TRIGGER] = (kHeld & HidNpadButton_ZL)? 1.0f : -1.0f;
+        CORE.Input.Gamepad.axisState[i][GAMEPAD_AXIS_RIGHT_TRIGGER] = (kHeld & HidNpadButton_ZR)? 1.0f : -1.0f;
 
 #if !defined(NX_DISABLE_GAMEPAD_EMULATION)
-            CORE.Input.Keyboard.previousKeyState[KEY_RIGHT] = CORE.Input.Keyboard.currentKeyState[KEY_RIGHT];
-            CORE.Input.Keyboard.previousKeyState[KEY_D] = CORE.Input.Keyboard.currentKeyState[KEY_D];
-            if (kHeld & HidNpadButton_Right || kHeld & HidNpadButton_StickLRight) {
-                CORE.Input.Keyboard.currentKeyState[KEY_RIGHT] = 1;
-                CORE.Input.Keyboard.currentKeyState[KEY_D] = 1;
-            } else {
-                CORE.Input.Keyboard.currentKeyState[KEY_RIGHT] = 0;
-                CORE.Input.Keyboard.currentKeyState[KEY_D] = 0;
-            }
-
-            CORE.Input.Keyboard.previousKeyState[KEY_LEFT] = CORE.Input.Keyboard.currentKeyState[KEY_LEFT];
-            CORE.Input.Keyboard.previousKeyState[KEY_A] = CORE.Input.Keyboard.currentKeyState[KEY_A];
-            if (kHeld & HidNpadButton_Left || kHeld & HidNpadButton_StickLLeft) {
-                CORE.Input.Keyboard.currentKeyState[KEY_LEFT] = 1;
-                CORE.Input.Keyboard.currentKeyState[KEY_A] = 1;
-            } else {
-                CORE.Input.Keyboard.currentKeyState[KEY_LEFT] = 0;
-                CORE.Input.Keyboard.currentKeyState[KEY_A] = 0;
-            }
-
-            CORE.Input.Keyboard.previousKeyState[KEY_DOWN] = CORE.Input.Keyboard.currentKeyState[KEY_DOWN];
-            CORE.Input.Keyboard.previousKeyState[KEY_S] = CORE.Input.Keyboard.currentKeyState[KEY_S];
-            if (kHeld & HidNpadButton_Down || kHeld & HidNpadButton_StickLDown) {
-                CORE.Input.Keyboard.currentKeyState[KEY_DOWN] = 1;
-                CORE.Input.Keyboard.currentKeyState[KEY_S] = 1;
-            } else {
-                CORE.Input.Keyboard.currentKeyState[KEY_DOWN] = 0;
-                CORE.Input.Keyboard.currentKeyState[KEY_S] = 0;
-            }
-
-            CORE.Input.Keyboard.previousKeyState[KEY_UP] = CORE.Input.Keyboard.currentKeyState[KEY_UP];
-            CORE.Input.Keyboard.previousKeyState[KEY_W] = CORE.Input.Keyboard.currentKeyState[KEY_W];
-            if (kHeld & HidNpadButton_Up || kHeld & HidNpadButton_StickLUp) {
-                CORE.Input.Keyboard.currentKeyState[KEY_UP] = 1;
-                CORE.Input.Keyboard.currentKeyState[KEY_W] = 1;
-            } else {
-                CORE.Input.Keyboard.currentKeyState[KEY_UP] = 0;
-                CORE.Input.Keyboard.currentKeyState[KEY_W] = 0;
-            }
-
-            CORE.Input.Keyboard.previousKeyState[KEY_Q] = CORE.Input.Keyboard.currentKeyState[KEY_Q];
-            if (kHeld & HidNpadButton_Y) {
-                CORE.Input.Keyboard.currentKeyState[KEY_Q] = 1;
-            } else {
-                CORE.Input.Keyboard.currentKeyState[KEY_Q] = 0;
-            }
-
-            CORE.Input.Keyboard.previousKeyState[KEY_E] = CORE.Input.Keyboard.currentKeyState[KEY_E];
-            if (kHeld & HidNpadButton_A) {
-                CORE.Input.Keyboard.currentKeyState[KEY_E] = 1;
-            } else {
-                CORE.Input.Keyboard.currentKeyState[KEY_E] = 0;
-            }
-
-            CORE.Input.Keyboard.previousKeyState[KEY_R] = CORE.Input.Keyboard.currentKeyState[KEY_R];
-            if (kHeld & HidNpadButton_X) {
-                CORE.Input.Keyboard.currentKeyState[KEY_R] = 1;
-            } else {
-                CORE.Input.Keyboard.currentKeyState[KEY_R] = 0;
-            }
-
-            CORE.Input.Keyboard.previousKeyState[KEY_F] = CORE.Input.Keyboard.currentKeyState[KEY_F];
-            if (kHeld & HidNpadButton_B) {
-                CORE.Input.Keyboard.currentKeyState[KEY_F] = 1;
-            } else {
-                CORE.Input.Keyboard.currentKeyState[KEY_F] = 0;
-            }
-
-            CORE.Input.Keyboard.previousKeyState[KEY_ENTER] = CORE.Input.Keyboard.currentKeyState[KEY_ENTER];
-            CORE.Input.Keyboard.previousKeyState[KEY_SPACE] = CORE.Input.Keyboard.currentKeyState[KEY_SPACE];
-            CORE.Input.Keyboard.previousKeyState[KEY_ESCAPE] = CORE.Input.Keyboard.currentKeyState[KEY_ESCAPE];
-            if (kHeld & HidNpadButton_Plus && kHeld & HidNpadButton_Minus) {
-                CORE.Input.Keyboard.currentKeyState[KEY_ENTER] = 0;
-                CORE.Input.Keyboard.currentKeyState[KEY_SPACE] = 0;
-                CORE.Input.Keyboard.currentKeyState[KEY_ESCAPE] = 1;
-            } else {
-                if (kHeld & HidNpadButton_Plus) {
-                    CORE.Input.Keyboard.currentKeyState[KEY_ENTER] = 1;
-                } else {
-                    CORE.Input.Keyboard.currentKeyState[KEY_ENTER] = 0;
-                }
-                if (kHeld & HidNpadButton_Minus) {
-                    CORE.Input.Keyboard.currentKeyState[KEY_SPACE] = 1;
-                } else {
-                    CORE.Input.Keyboard.currentKeyState[KEY_SPACE] = 0;
-                }
-            }
-
-            CORE.Input.Keyboard.previousKeyState[KEY_LEFT_SHIFT] = CORE.Input.Keyboard.currentKeyState[KEY_LEFT_SHIFT];
-            if (kHeld & GAMEPAD_BUTTON_LEFT_THUMB) {
-                CORE.Input.Keyboard.currentKeyState[KEY_LEFT_SHIFT] = 1;
-            } else {
-                CORE.Input.Keyboard.currentKeyState[KEY_LEFT_SHIFT] = 0;
-            }
-
-            CORE.Input.Mouse.previousButtonState[MOUSE_BUTTON_LEFT] = CORE.Input.Mouse.currentButtonState[MOUSE_BUTTON_LEFT];
-            if (kHeld & HidNpadButton_ZL) {
-                CORE.Input.Mouse.currentButtonState[MOUSE_BUTTON_RIGHT] = 1;
-            } else {
-                CORE.Input.Mouse.currentButtonState[MOUSE_BUTTON_RIGHT] = 0;
-            }
-
-            CORE.Input.Mouse.previousButtonState[MOUSE_BUTTON_MIDDLE] = CORE.Input.Mouse.currentButtonState[MOUSE_BUTTON_MIDDLE];
-            if (kHeld & GAMEPAD_BUTTON_RIGHT_THUMB) {
-                CORE.Input.Mouse.currentButtonState[MOUSE_BUTTON_MIDDLE] = 1;
-            } else {
-                CORE.Input.Mouse.currentButtonState[MOUSE_BUTTON_MIDDLE] = 0;
-            }
-
-            CORE.Input.Mouse.previousButtonState[MOUSE_BUTTON_RIGHT] = CORE.Input.Mouse.currentButtonState[MOUSE_BUTTON_RIGHT];
-            if (kHeld & HidNpadButton_ZR) {
-                CORE.Input.Mouse.currentButtonState[MOUSE_BUTTON_LEFT] = 1;
-            } else {
-                CORE.Input.Mouse.currentButtonState[MOUSE_BUTTON_LEFT] = 0;
-            }
-
-            CORE.Input.Mouse.previousWheelMove = CORE.Input.Mouse.currentWheelMove;
-            if (kHeld & HidNpadButton_L) {
-                CORE.Input.Mouse.currentWheelMove = (Vector2){ 0.0f, -1.0f };
-            } else if (kHeld & HidNpadButton_R) {
-                CORE.Input.Mouse.currentWheelMove = (Vector2){ 0.0f, 1.0f };
-            } else {
-                CORE.Input.Mouse.currentWheelMove = (Vector2){ 0.0f, 0.0f };
-            }
-
-            CORE.Input.Mouse.previousPosition.x = CORE.Input.Mouse.currentPosition.x;
-            CORE.Input.Mouse.previousPosition.y = CORE.Input.Mouse.currentPosition.y;
-
-            CORE.Input.Mouse.currentPosition.x += CORE.Input.Gamepad.axisState[i][GAMEPAD_AXIS_RIGHT_X] * 10;
-            CORE.Input.Mouse.currentPosition.y -= CORE.Input.Gamepad.axisState[i][GAMEPAD_AXIS_RIGHT_Y] * 10;
-
-            if (CORE.Input.Mouse.currentPosition.x < 0) CORE.Input.Mouse.currentPosition.x = 0;
-            else if (CORE.Input.Mouse.currentPosition.x > CORE.Window.screen.width/CORE.Input.Mouse.scale.x) CORE.Input.Mouse.currentPosition.x = CORE.Window.screen.width/CORE.Input.Mouse.scale.x;
-
-            if (CORE.Input.Mouse.currentPosition.y < 0) CORE.Input.Mouse.currentPosition.y = 0;
-            else if (CORE.Input.Mouse.currentPosition.y > CORE.Window.screen.height/CORE.Input.Mouse.scale.y) CORE.Input.Mouse.currentPosition.y = CORE.Window.screen.height/CORE.Input.Mouse.scale.y;
-
-            if (CORE.Input.Keyboard.currentKeyState[CORE.Input.Keyboard.exitKey] == 1) CORE.Window.shouldClose = true;
-#endif
+        // Evaluate the exit chord per controller, then combine the remaining input.
+        if ((kHeld & (HidNpadButton_Plus | HidNpadButton_Minus)) == (HidNpadButton_Plus | HidNpadButton_Minus))
+        {
+            escapePressed = true;
+            emulatedButtons |= kHeld & ~(HidNpadButton_Plus | HidNpadButton_Minus);
         }
+        else emulatedButtons |= kHeld;
+
+        float axisX = CORE.Input.Gamepad.axisState[i][GAMEPAD_AXIS_RIGHT_X];
+        float axisY = CORE.Input.Gamepad.axisState[i][GAMEPAD_AXIS_RIGHT_Y];
+        if (fabsf(axisX) > 0.1f) cursorAxis.x += axisX;
+        if (fabsf(axisY) > 0.1f) cursorAxis.y += axisY;
+#endif
+    }
+
+#if !defined(NX_DISABLE_GAMEPAD_EMULATION)
+    static const struct { int key; u64 buttons; } keyMappings[] = {
+        { KEY_RIGHT, HidNpadButton_Right | HidNpadButton_StickLRight },
+        { KEY_D, HidNpadButton_Right | HidNpadButton_StickLRight },
+        { KEY_LEFT, HidNpadButton_Left | HidNpadButton_StickLLeft },
+        { KEY_A, HidNpadButton_Left | HidNpadButton_StickLLeft },
+        { KEY_DOWN, HidNpadButton_Down | HidNpadButton_StickLDown },
+        { KEY_S, HidNpadButton_Down | HidNpadButton_StickLDown },
+        { KEY_UP, HidNpadButton_Up | HidNpadButton_StickLUp },
+        { KEY_W, HidNpadButton_Up | HidNpadButton_StickLUp },
+        { KEY_Q, HidNpadButton_Y }, { KEY_E, HidNpadButton_A },
+        { KEY_R, HidNpadButton_X }, { KEY_F, HidNpadButton_B },
+        { KEY_ENTER, HidNpadButton_Plus }, { KEY_SPACE, HidNpadButton_Minus },
+        { KEY_LEFT_SHIFT, HidNpadButton_StickL }
+    };
+    for (unsigned int i = 0; i < sizeof(keyMappings)/sizeof(keyMappings[0]); i++)
+    {
+        if (keyMappings[i].key < MAX_KEYBOARD_KEYS)
+            CORE.Input.Keyboard.currentKeyState[keyMappings[i].key] = ((emulatedButtons & keyMappings[i].buttons) != 0);
+    }
+    if (KEY_ESCAPE < MAX_KEYBOARD_KEYS) CORE.Input.Keyboard.currentKeyState[KEY_ESCAPE] = escapePressed;
+
+    CORE.Input.Mouse.currentButtonState[MOUSE_BUTTON_LEFT] = ((emulatedButtons & HidNpadButton_ZR) != 0);
+    CORE.Input.Mouse.currentButtonState[MOUSE_BUTTON_RIGHT] = ((emulatedButtons & HidNpadButton_ZL) != 0);
+    CORE.Input.Mouse.currentButtonState[MOUSE_BUTTON_MIDDLE] = ((emulatedButtons & HidNpadButton_StickR) != 0);
+    CORE.Input.Mouse.currentWheelMove.y = ((emulatedButtons & HidNpadButton_R) != 0) - ((emulatedButtons & HidNpadButton_L) != 0);
+
+    if (touchCount == 0)
+    {
+        CORE.Input.Mouse.currentPosition.x += Clamp(cursorAxis.x, -1.0f, 1.0f)*600.0f*cursorDelta;
+        CORE.Input.Mouse.currentPosition.y += Clamp(cursorAxis.y, -1.0f, 1.0f)*600.0f*cursorDelta;
+
+        // Clamp in mouse coordinates, accounting for the application's offset and scale.
+        if (CORE.Input.Mouse.scale.x != 0.0f)
+        {
+            float start = -CORE.Input.Mouse.offset.x;
+            float end = CORE.Window.screen.width/CORE.Input.Mouse.scale.x - CORE.Input.Mouse.offset.x;
+            CORE.Input.Mouse.currentPosition.x = Clamp(CORE.Input.Mouse.currentPosition.x, fminf(start, end), fmaxf(start, end));
+        }
+        if (CORE.Input.Mouse.scale.y != 0.0f)
+        {
+            float start = -CORE.Input.Mouse.offset.y;
+            float end = CORE.Window.screen.height/CORE.Input.Mouse.scale.y - CORE.Input.Mouse.offset.y;
+            CORE.Input.Mouse.currentPosition.y = Clamp(CORE.Input.Mouse.currentPosition.y, fminf(start, end), fmaxf(start, end));
+        }
+    }
+#endif
+
+    // Touch owns the cursor while active; controller clicks are combined with it.
+    if (touchCount > 0)
+    {
+        CORE.Input.Mouse.currentButtonState[MOUSE_BUTTON_LEFT] = 1;
+        CORE.Input.Mouse.currentPosition = CORE.Input.Touch.position[0];
+        if (platform.prevTouchCount == 0) CORE.Input.Mouse.previousPosition = CORE.Input.Mouse.currentPosition;
+    }
+    platform.prevTouchCount = touchCount;
+
+    for (int i = 1; i < MAX_KEYBOARD_KEYS; i++)
+    {
+        if (CORE.Input.Keyboard.currentKeyState[i] && !CORE.Input.Keyboard.previousKeyState[i] &&
+            (CORE.Input.Keyboard.keyPressedQueueCount < MAX_KEY_PRESSED_QUEUE))
+        {
+            CORE.Input.Keyboard.keyPressedQueue[CORE.Input.Keyboard.keyPressedQueueCount++] = i;
+        }
+    }
+
+    int exitKey = CORE.Input.Keyboard.exitKey;
+    if ((exitKey > KEY_NULL) && (exitKey < MAX_KEYBOARD_KEYS) &&
+        CORE.Input.Keyboard.currentKeyState[exitKey] && !CORE.Input.Keyboard.previousKeyState[exitKey])
+    {
+        CORE.Window.shouldClose = true;
     }
 }
 
@@ -741,22 +743,69 @@ void PollInputEvents(void)
 // Module Internal Functions Definition
 //----------------------------------------------------------------------------------
 
+static bool SetVSync(bool enabled)
+{
+    if (eglSwapInterval(platform.device, enabled? 1 : 0) == EGL_FALSE)
+    {
+        TRACELOG(LOG_WARNING, "DISPLAY: eglSwapInterval() failed (EGL error: 0x%04x)", eglGetError());
+        return false;
+    }
+
+    if (enabled) FLAG_SET(CORE.Window.flags, FLAG_VSYNC_HINT);
+    else FLAG_CLEAR(CORE.Window.flags, FLAG_VSYNC_HINT);
+    return true;
+}
+
 // Initialize platform: graphics, inputs and more
 int InitPlatform(void)
 {
+    bool eglInitialized = false;
+    u32 nativeWidth = 0;
+    u32 nativeHeight = 0;
+    CORE.Window.ready = false;
+    platform.device = EGL_NO_DISPLAY;
+    platform.surface = EGL_NO_SURFACE;
+    platform.context = EGL_NO_CONTEXT;
+    platform.config = NULL;
+
+    platform.swapFailed = false;
+    platform.prevTouchCount = 0;
+
 #if defined(NX_USB_DEBUGGER)
     NxUsbDebuggerInit();
 #endif
     romfsInit();
 
-    CORE.Window.screen.width = 1280;
-    CORE.Window.screen.height = 720;
-    CORE.Window.display.width = CORE.Window.screen.width;
-    CORE.Window.display.height = CORE.Window.screen.height;
+    platform.gbmSurface = nwindowGetDefault();
+    Result nativeResult = nwindowGetDimensions(platform.gbmSurface, &nativeWidth, &nativeHeight);
+    if (R_FAILED(nativeResult) || (nativeWidth == 0) || (nativeHeight == 0))
+    {
+        TRACELOG(LOG_WARNING, "DISPLAY: Failed to get NX window dimensions (result: 0x%08x)", nativeResult);
+        goto eglFailure;
+    }
+
+    CORE.Window.display.width = (int)nativeWidth;
+    CORE.Window.display.height = (int)nativeHeight;
+    if (CORE.Window.screen.width == 0) CORE.Window.screen.width = CORE.Window.display.width;
+    if (CORE.Window.screen.height == 0) CORE.Window.screen.height = CORE.Window.display.height;
+    if ((CORE.Window.screen.width > UINT16_MAX) || (CORE.Window.screen.height > UINT16_MAX))
+    {
+        TRACELOG(LOG_WARNING, "DISPLAY: Requested dimensions exceed the NX framebuffer size range");
+        goto eglFailure;
+    }
+
+    // EGL registers buffers during surface creation; dimensions must be set beforehand.
+    nativeResult = nwindowSetDimensions(platform.gbmSurface, CORE.Window.screen.width, CORE.Window.screen.height);
+    if (R_FAILED(nativeResult))
+    {
+        TRACELOG(LOG_WARNING, "DISPLAY: Failed to set NX buffer dimensions (result: 0x%08x)", nativeResult);
+        goto eglFailure;
+    }
     FLAG_SET(CORE.Window.flags, FLAG_FULLSCREEN_MODE);
 
     const EGLint framebufferAttribs[] =
     {
+        EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
         EGL_RENDERABLE_TYPE, (rlGetVersion() == RL_OPENGL_ES_30)? EGL_OPENGL_ES3_BIT : EGL_OPENGL_ES2_BIT,      // Type of context support
         EGL_RED_SIZE, 8,            // RED color bit depth (alternative: 5)
         EGL_GREEN_SIZE, 8,          // GREEN color bit depth (alternative: 6)
@@ -779,65 +828,74 @@ int InitPlatform(void)
     platform.device = eglGetDisplay(EGL_DEFAULT_DISPLAY);
     if (platform.device == EGL_NO_DISPLAY)
     {
-        TRACELOG(LOG_WARNING, "DISPLAY: Failed to initialize EGL device");
-        return false;
+        TRACELOG(LOG_WARNING, "DISPLAY: eglGetDisplay() failed (EGL error: 0x%04x)", eglGetError());
+        goto eglFailure;
     }
 
     // Initialize the EGL device connection
     if (eglInitialize(platform.device, NULL, NULL) == EGL_FALSE)
     {
-        // If all of the calls to eglInitialize returned EGL_FALSE then an error has occurred.
-        TRACELOG(LOG_WARNING, "DISPLAY: Failed to initialize EGL device");
-        return false;
+        TRACELOG(LOG_WARNING, "DISPLAY: eglInitialize() failed (EGL error: 0x%04x)", eglGetError());
+        goto eglFailure;
     }
+    eglInitialized = true;
 
     // Get an appropriate EGL framebuffer configuration
-    eglChooseConfig(platform.device, framebufferAttribs, &platform.config, 1, &numConfigs);
+    if (eglChooseConfig(platform.device, framebufferAttribs, &platform.config, 1, &numConfigs) == EGL_FALSE)
+    {
+        TRACELOG(LOG_WARNING, "DISPLAY: eglChooseConfig() failed (EGL error: 0x%04x)", eglGetError());
+        goto eglFailure;
+    }
+    if (numConfigs == 0)
+    {
+        TRACELOG(LOG_WARNING, "DISPLAY: No matching EGL window configuration");
+        goto eglFailure;
+    }
 
     // Set rendering API
-    eglBindAPI(EGL_OPENGL_ES_API);
+    if (eglBindAPI(EGL_OPENGL_ES_API) == EGL_FALSE)
+    {
+        TRACELOG(LOG_WARNING, "DISPLAY: eglBindAPI() failed (EGL error: 0x%04x)", eglGetError());
+        goto eglFailure;
+    }
 
     // Create an EGL rendering context
     platform.context = eglCreateContext(platform.device, platform.config, EGL_NO_CONTEXT, contextAttribs);
     if (platform.context == EGL_NO_CONTEXT)
     {
-        TRACELOG(LOG_WARNING, "DISPLAY: Failed to create EGL context");
-        return -1;
+        TRACELOG(LOG_WARNING, "DISPLAY: eglCreateContext() failed (EGL error: 0x%04x)", eglGetError());
+        goto eglFailure;
     }
 
-    platform.gbmSurface = nwindowGetDefault();
     platform.surface = eglCreateWindowSurface(platform.device, platform.config, (EGLNativeWindowType)platform.gbmSurface, NULL);
-
-    // There must be at least one frame displayed before the buffers are swapped
-    eglSwapInterval(platform.device, 1);
-
-    EGLBoolean result = eglMakeCurrent(platform.device, platform.surface, platform.surface, platform.context);
-
-    // Check surface and context activation
-    if (result != EGL_FALSE)
+    if (platform.surface == EGL_NO_SURFACE)
     {
-        CORE.Window.ready = true;
-
-        CORE.Window.render.width = CORE.Window.screen.width;
-        CORE.Window.render.height = CORE.Window.screen.height;
-        CORE.Window.currentFbo.width = CORE.Window.render.width;
-        CORE.Window.currentFbo.height = CORE.Window.render.height;
-
-        TRACELOG(LOG_INFO, "DISPLAY: Device initialized successfully");
-        TRACELOG(LOG_INFO, "    > Display size: %i x %i", CORE.Window.display.width, CORE.Window.display.height);
-        TRACELOG(LOG_INFO, "    > Screen size:  %i x %i", CORE.Window.screen.width, CORE.Window.screen.height);
-        TRACELOG(LOG_INFO, "    > Render size:  %i x %i", CORE.Window.render.width, CORE.Window.render.height);
-        TRACELOG(LOG_INFO, "    > Viewport offsets: %i, %i", CORE.Window.renderOffset.x, CORE.Window.renderOffset.y);
+        TRACELOG(LOG_WARNING, "DISPLAY: eglCreateWindowSurface() failed (EGL error: 0x%04x)", eglGetError());
+        goto eglFailure;
     }
-    else
+    if (eglMakeCurrent(platform.device, platform.surface, platform.surface, platform.context) == EGL_FALSE)
     {
-        TRACELOG(LOG_FATAL, "PLATFORM: Failed to initialize graphics device");
-        return -1;
+        TRACELOG(LOG_WARNING, "DISPLAY: eglMakeCurrent() failed (EGL error: 0x%04x)", eglGetError());
+        goto eglFailure;
     }
 
-    // If everything work as expected, we can continue
-    CORE.Window.render.width = CORE.Window.screen.width;
-    CORE.Window.render.height = CORE.Window.screen.height;
+    // Set the swap interval after the rendering surface is current.
+    if (!SetVSync(FLAG_IS_SET(CORE.Window.flags, FLAG_VSYNC_HINT))) goto eglFailure;
+
+    // Read dimensions from libnx, matching the buffers allocated by Switch Mesa.
+    nativeResult = nwindowGetDimensions(platform.gbmSurface, &nativeWidth, &nativeHeight);
+    if (R_FAILED(nativeResult) || (nativeWidth == 0) || (nativeHeight == 0))
+    {
+        TRACELOG(LOG_WARNING, "DISPLAY: Failed to get NX buffer dimensions (result: 0x%08x)", nativeResult);
+        goto eglFailure;
+    }
+
+    CORE.Window.ready = true;
+    CORE.Window.render.width = (int)nativeWidth;
+    CORE.Window.render.height = (int)nativeHeight;
+    CORE.Window.renderOffset = (Point){ 0, 0 };
+    CORE.Window.screenScale = MatrixScale((float)nativeWidth/CORE.Window.screen.width,
+                                         (float)nativeHeight/CORE.Window.screen.height, 1.0f);
     CORE.Window.currentFbo.width = CORE.Window.render.width;
     CORE.Window.currentFbo.height = CORE.Window.render.height;
 
@@ -872,6 +930,7 @@ int InitPlatform(void)
 
     // Initialize hi-res timer
     InitTimer();
+    platform.lastInputTime = GetTime();
 
     // Initialize storage system
     CORE.Storage.basePath = GetWorkingDirectory();
@@ -879,6 +938,26 @@ int InitPlatform(void)
     TRACELOG(LOG_INFO, "PLATFORM: NX: Initialized successfully");
 
     return 0;
+
+eglFailure:
+    // Only release EGL resources after the display has initialized successfully.
+    if (eglInitialized)
+    {
+        eglMakeCurrent(platform.device, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+        if (platform.surface != EGL_NO_SURFACE) eglDestroySurface(platform.device, platform.surface);
+        if (platform.context != EGL_NO_CONTEXT) eglDestroyContext(platform.device, platform.context);
+        eglTerminate(platform.device);
+    }
+    platform.device = EGL_NO_DISPLAY;
+    platform.surface = EGL_NO_SURFACE;
+    platform.context = EGL_NO_CONTEXT;
+    platform.config = NULL;
+    platform.gbmSurface = NULL;
+    romfsExit();
+#if defined(NX_USB_DEBUGGER)
+    NxUsbDebuggerEnd();
+#endif
+    return -1;
 }
 
 // Close platform
