@@ -1401,7 +1401,23 @@ void PollInputEvents(void)
 // NOTE: Creating a dummy context first to query required extensions
 HGLRC InitOpenGL(HWND hwnd, HDC hdc)
 {
-    // First, create a dummy context to get WGL extensions
+    // Create an invisible window for initial dummy OpenGL context
+    WNDCLASSEXW dummyWindowClass = {
+        .cbSize = sizeof(WNDCLASSEXW),
+        .style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC,
+        .lpfnWndProc = DefWindowProcW,
+        .hInstance = GetModuleHandleW(NULL),
+        .lpszClassName = L"wglDummy"
+    };
+    RegisterClassExW(&dummyWindowClass);
+
+    HWND dummyWindow = CreateWindowExW(
+        0, dummyWindowClass.lpszClassName, L"dummyWindow",
+        0, 0, 0, 1, 1, NULL, NULL, NULL, NULL);
+
+    HDC dummyHDC = GetDC(dummyWindow);
+
+    // Create a dummy OpenGL context to get WGL extensions
     PIXELFORMATDESCRIPTOR pixelFormatDesc = {
         .nSize = sizeof(PIXELFORMATDESCRIPTOR),
         .nVersion = 1,
@@ -1410,18 +1426,19 @@ HGLRC InitOpenGL(HWND hwnd, HDC hdc)
         .cColorBits = 32,
         .cAlphaBits = 8,
         .cDepthBits = 24,
+        .cStencilBits = 8,
         .iLayerType = PFD_MAIN_PLANE
     };
 
-    int pixelFormat = ChoosePixelFormat(hdc, &pixelFormatDesc);
-    SetPixelFormat(hdc, pixelFormat, &pixelFormatDesc);
+    int dummyPixelFormat = ChoosePixelFormat(dummyHDC, &pixelFormatDesc);
+    SetPixelFormat(dummyHDC, dummyPixelFormat, &pixelFormatDesc);
     //int pixelFormat = ChoosePixelFormat(platform.hdc, &pixelFormatDesc);
     //if (!pixelFormat) { TRACELOG(LOG_ERROR, "%s failed, error=%lu", "ChoosePixelFormat", GetLastError()); return -1; }
     //if (!SetPixelFormat(platform.hdc, pixelFormat, &pixelFormatDesc)) { TRACELOG(LOG_ERROR, "%s failed, error=%lu", "SetPixelFormat", GetLastError()); return -1; }
 
-    HGLRC tempContext = wglCreateContext(hdc);
+    HGLRC tempContext = wglCreateContext(dummyHDC);
     //if (!tempContext) { TRACELOG(LOG_ERROR, "%s failed, error=%lu", "wglCreateContext", GetLastError()); return -1; }
-    BOOL result = wglMakeCurrent(hdc, tempContext);
+    BOOL result = wglMakeCurrent(dummyHDC, tempContext);
     //if (!result) { TRACELOG(LOG_ERROR, "%s failed, error=%lu", "wglMakeCurrent", GetLastError()); return -1; }
 
     // Load WGL extension entry points
@@ -1431,8 +1448,11 @@ HGLRC InitOpenGL(HWND hwnd, HDC hdc)
     wglGetExtensionsStringARB = (PFNWGLGETEXTENSIONSSTRINGARBPROC)wglGetProcAddress("wglGetExtensionsStringARB");
 
     // Setup modern pixel format if extension is available
+    BOOL setPixelFormatSucceeded = FALSE;
     if (wglChoosePixelFormatARB)
     {
+        bool useMSAA = FLAG_IS_SET(CORE.Window.flags, FLAG_MSAA_4X_HINT);
+
         int pixelFormatAttribs[] = {
             WGL_ACCELERATION_ARB, WGL_FULL_ACCELERATION_ARB,
             WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
@@ -1440,12 +1460,14 @@ HGLRC InitOpenGL(HWND hwnd, HDC hdc)
             WGL_DOUBLE_BUFFER_ARB, GL_TRUE,
             WGL_PIXEL_TYPE_ARB, WGL_TYPE_RGBA_ARB,
             WGL_COLOR_BITS_ARB, 32,
-            //WGL_RED_BITS_ARB, 8,
-            //WGL_GREEN_BITS_ARB, 8,
-            //WGL_BLUE_BITS_ARB, 8,
-            //WGL_ALPHA_BITS_ARB, 8,
+            WGL_RED_BITS_ARB, 8,
+            WGL_GREEN_BITS_ARB, 8,
+            WGL_BLUE_BITS_ARB, 8,
+            WGL_ALPHA_BITS_ARB, 8,
             WGL_DEPTH_BITS_ARB, 24,
             WGL_STENCIL_BITS_ARB, 8,
+            WGL_SAMPLES_ARB, (useMSAA)? 4 : 0,
+            WGL_SAMPLE_BUFFERS_ARB, (int)useMSAA,
             0 // Terminator
         };
 
@@ -1455,7 +1477,23 @@ HGLRC InitOpenGL(HWND hwnd, HDC hdc)
         {
             PIXELFORMATDESCRIPTOR newPixelFormatDescriptor = { 0 };
             DescribePixelFormat(hdc, format, sizeof(newPixelFormatDescriptor), &newPixelFormatDescriptor);
-            SetPixelFormat(hdc, format, &newPixelFormatDescriptor);
+            setPixelFormatSucceeded = SetPixelFormat(hdc, format, &newPixelFormatDescriptor);
+        }
+    }
+
+    if (!setPixelFormatSucceeded)
+    {
+        // If modern pixel format selection failed, fall back to old SetPixelFormat
+        int pixelFormat = ChoosePixelFormat(hdc, &pixelFormatDesc);
+        setPixelFormatSucceeded = SetPixelFormat(hdc, pixelFormat, &pixelFormatDesc);
+
+        if (setPixelFormatSucceeded)
+        {
+            TRACELOG(LOG_WARNING, "WGL: Using legacy pixel format, MSAA not available");
+        }
+        else
+        {
+            TRACELOG(LOG_ERROR, "WGL: Unable to find a suitable pixel format with this graphics driver");
         }
     }
 
@@ -1521,10 +1559,18 @@ HGLRC InitOpenGL(HWND hwnd, HDC hdc)
         // ERROR_INVALID_PROFILE_ARB (0x2096)
         if (realContext == NULL) TRACELOG(LOG_ERROR, "GL: Error creating requested context: %lu", GetLastError());
     }
+    else
+    {
+        // If modern context extension isn't available, fall back to classic context creation
+        realContext = wglCreateContext(hdc);
+    }
 
-    // Cleanup dummy temp context
+    // Cleanup dummy temp context and window
     wglMakeCurrent(NULL, NULL);
     wglDeleteContext(tempContext);
+    ReleaseDC(dummyWindow, dummyHDC);
+    DestroyWindow(dummyWindow);
+    UnregisterClassW(dummyWindowClass.lpszClassName, dummyWindowClass.hInstance);
 
     // Activate real context
     if (realContext) wglMakeCurrent(hdc, realContext);
