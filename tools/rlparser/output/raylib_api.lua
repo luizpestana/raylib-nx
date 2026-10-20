@@ -15,7 +15,7 @@ return {
     {
       name = "RAYLIB_VERSION_MINOR",
       type = "INT",
-      value = 1,
+      value = 5,
       description = ""
     },
     {
@@ -27,7 +27,7 @@ return {
     {
       name = "RAYLIB_VERSION",
       type = "STRING",
-      value = "6.1-dev",
+      value = "6.5-dev",
       description = ""
     },
     {
@@ -3855,7 +3855,7 @@ return {
     },
     {
       name = "SetConfigFlags",
-      description = "Set up init configuration flags (view FLAGS)",
+      description = "Set init configuration flags (view FLAGS)",
       returnType = "void",
       params = {
         {type = "unsigned int", name = "flags"}

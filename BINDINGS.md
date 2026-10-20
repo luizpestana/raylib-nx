@@ -44,7 +44,7 @@ This is a set of recomendations and guidelines for binding authors, meant to hel
 | [dart-raylib](https://gitlab.com/wolfenrain/dart-raylib)                                 | 4.0              | [Dart](https://dart.dev)                                                | MIT                  |
 | [raylib_dart](https://pub.dev/packages/raylib_dart)                                      | 6.0              | [Dart](https://dart.dev)                                                | MIT                  |
 | [bindbc-raylib3](https://github.com/o3o/bindbc-raylib3)                                  | **5.0**          | [D](https://dlang.org)                                                  | BSL-1.0              |
-| [raylib-d](https://github.com/schveiguy/raylib-d)                                        | **6.0**          | [D](https://dlang.org)                                                  | Zlib                 |
+| [raylib-d](https://github.com/schveiguy/raylib-d)                                        | **6.2**          | [D](https://dlang.org)                                                  | Zlib                 |
 | [Deno-Raylib](https://github.com/JJLDonley/Deno-Raylib)                                  | **6.0**          | [Deno / TS](https://deno.land)                                          | MIT                  |
 | [rayex](https://github.com/shiryel/rayex)                                                | 5.5              | [elixir](https://elixir-lang.org)                                       | Apache-2.0           |
 | [raylib-elfscript](https://github.com/ohmtal/raylib-elfscript)                           | 6.0              | [ElfScript](https://github.com/ohmtal/ElfScript)                        | MIT                  |
@@ -83,7 +83,7 @@ This is a set of recomendations and guidelines for binding authors, meant to hel
 | [TurboRaylib](https://github.com/turborium/TurboRaylib)                                  | 4.5              | [Object Pascal](https://en.wikipedia.org/wiki/Object_Pascal)            | MIT                  |
 | [Rayberon](https://github.com/RobertFlexx/Rayberon)                                      | **6.0**          | [Oberon-2](https://en.wikipedia.org/wiki/Oberon-2)                      | MIT                  |
 | [EuRaylib](https://github.com/gAndy50/EuRaylib6)                                         | **6.0**          | [openEuphoria](https://openeuphoria.org/)                               | Zlib                 |
-| [Ray4Laz](https://github.com/GuvaCode/Ray4Laz)                                           | **6.0**          | [Free Pascal](https://en.wikipedia.org/wiki/Free_Pascal)                | Zlib                 |
+| [Ray4Laz](https://github.com/GuvaCode/Ray4Laz)                                           | **6.2**          | [Free Pascal](https://en.wikipedia.org/wiki/Free_Pascal)                | Zlib                 |
 | [Raylib.4.0.Pascal](https://github.com/sysrpl/Raylib.4.0.Pascal)                         | 4.0              | [Free Pascal](https://en.wikipedia.org/wiki/Free_Pascal)                | Zlib                 |
 | [raylib-python-cffi](https://github.com/electronstudio/raylib-python-cffi)               | **6.0**          | [Python](https://www.python.org)                                        | EPL-2.0              |
 | [raylibpyctbg](https://github.com/overdev/raylibpyctbg)                                  | 5.5              | [Python](https://www.python.org)                                        | MIT                  |
@@ -124,7 +124,7 @@ This is a set of recomendations and guidelines for binding authors, meant to hel
 | [Rayua](https://github.com/uiua-lang/rayua)                                              | **5.5**          | [Uiua](https://www.uiua.org/)                                           | **???**              |
 | [Target](https://github.com/FinnDemonCat/Target/tree/main/lib/raylib)                    | **5.5**          | [Dart](https://dart.dev/)                                               | Apache-2.0 license   |
 | [mach-raylib](https://github.com/angluca/mach-raylib)                                    | **6.x-dev**      | [Mach](https://machlang.org/)                                           | MIT                  |
-| [gcl native raylib module](https://github.com/gnuchanos/GnuchanOS/tree/main/language)    | **6.0**          | [gclang](https://github.com/gnuchanos/GnuchanOS/tree/main/language)     | GPLv3                |
+| [gcl native raylib module](https://github.com/gnuchanos/gcl/blob/main/src/Modules/gcl_raylib.c)    | **6.x-dev**          | [gcl](https://github.com/gnuchanos/gcl)     | GPLv3                |
 
 
 ### Utility Wrappers

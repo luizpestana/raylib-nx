@@ -512,7 +512,7 @@ Image LoadImageFromMemory(const char *fileType, const unsigned char *fileData, i
         if (fileData != NULL)
         {
             qoi_desc desc = { 0 };
-            image.data = qoi_decode(fileData, dataSize, &desc, (int) fileData[12]);
+            image.data = qoi_decode(fileData, dataSize, &desc, 0);   // NOTE: Using channels from file data
             image.width = desc.width;
             image.height = desc.height;
             image.format = (desc.channels == 4)? PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 : PIXELFORMAT_UNCOMPRESSED_R8G8B8;
@@ -540,7 +540,6 @@ Image LoadImageFromMemory(const char *fileType, const unsigned char *fileData, i
             image.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
             image.mipmaps = 1;
 
-            PEP_FREE(pepData);
             pep_free(&p);
         }
     }
@@ -1269,16 +1268,26 @@ void ImageCrop(Image *image, Rectangle crop)
     // Security check to avoid program crash
     if ((image->data == NULL) || (image->width == 0) || (image->height == 0)) return;
 
+    crop.x = floorf(crop.x);
+    crop.y = floorf(crop.y);
+    crop.width = floorf(crop.width);
+    crop.height = floorf(crop.height);
+
     // Security checks to validate crop rectangle
     if (crop.x < 0) { crop.width += crop.x; crop.x = 0; }
     if (crop.y < 0) { crop.height += crop.y; crop.y = 0; }
     if ((crop.x + crop.width) > image->width) crop.width = image->width - crop.x;
     if ((crop.y + crop.height) > image->height) crop.height = image->height - crop.y;
-    if ((crop.x > image->width) || (crop.y > image->height))
+    if ((crop.x > image->width) || (crop.y > image->height) || (crop.width < 1) || (crop.height < 1))
     {
         TRACELOG(LOG_WARNING, "IMAGE: Failed to crop, rectangle out of bounds");
         return;
     }
+
+    int cropX = (int)crop.x;
+    int cropY = (int)crop.y;
+    int cropWidth = (int)crop.width;
+    int cropHeight = (int)crop.height;
 
     if (image->mipmaps > 1) TRACELOG(LOG_WARNING, "Image manipulation only applied to base mipmap level");
     if (image->format >= PIXELFORMAT_COMPRESSED_DXT1_RGB) TRACELOG(LOG_WARNING, "Image manipulation not supported for compressed formats");
@@ -1286,31 +1295,31 @@ void ImageCrop(Image *image, Rectangle crop)
     {
         int bytesPerPixel = GetPixelDataSize(1, 1, image->format);
 
-        unsigned char *croppedData = (unsigned char *)RL_MALLOC((int)(crop.width*crop.height)*bytesPerPixel);
+        unsigned char *croppedData = (unsigned char *)RL_MALLOC(cropWidth*cropHeight*bytesPerPixel);
 
         // OPTION 1: Move cropped data line-by-line
-        for (int y = (int)crop.y, offsetSize = 0; y < (int)(crop.y + crop.height); y++)
+        for (int y = cropY, offsetSize = 0; y < cropY + cropHeight; y++)
         {
-            memcpy(croppedData + offsetSize, ((unsigned char *)image->data) + (y*image->width + (int)crop.x)*bytesPerPixel, (int)crop.width*bytesPerPixel);
-            offsetSize += ((int)crop.width*bytesPerPixel);
+            memcpy(croppedData + offsetSize, ((unsigned char *)image->data) + (y*image->width + cropX)*bytesPerPixel, cropWidth*bytesPerPixel);
+            offsetSize += (cropWidth*bytesPerPixel);
         }
 
         /*
         // OPTION 2: Move cropped data pixel-by-pixel or byte-by-byte
-        for (int y = (int)crop.y; y < (int)(crop.y + crop.height); y++)
+        for (int y = cropY; y < cropY + cropHeight; y++)
         {
-            for (int x = (int)crop.x; x < (int)(crop.x + crop.width); x++)
+            for (int x = cropX; x < cropX + cropWidth; x++)
             {
-                //memcpy(croppedData + ((y - (int)crop.y)*(int)crop.width + (x - (int)crop.x))*bytesPerPixel, ((unsigned char *)image->data) + (y*image->width + x)*bytesPerPixel, bytesPerPixel);
-                for (int i = 0; i < bytesPerPixel; i++) croppedData[((y - (int)crop.y)*(int)crop.width + (x - (int)crop.x))*bytesPerPixel + i] = ((unsigned char *)image->data)[(y*image->width + x)*bytesPerPixel + i];
+                //memcpy(croppedData + ((y - cropY)*cropWidth + (x - cropX))*bytesPerPixel, ((unsigned char *)image->data) + (y*image->width + x)*bytesPerPixel, bytesPerPixel);
+                for (int i = 0; i < bytesPerPixel; i++) croppedData[((y - cropY)*cropWidth + (x - cropX))*bytesPerPixel + i] = ((unsigned char *)image->data)[(y*image->width + x)*bytesPerPixel + i];
             }
         }
         */
 
         RL_FREE(image->data);
         image->data = croppedData;
-        image->width = (int)crop.width;
-        image->height = (int)crop.height;
+        image->width = cropWidth;
+        image->height = cropHeight;
     }
 }
 
@@ -5710,6 +5719,12 @@ int GetPixelDataSize(int width, int height, int format)
 {
     int dataSize = 0;       // Size in bytes
     int bpp = 0;            // Bits per pixel
+    
+    if ((width <= 0) || (height <= 0)) return dataSize;
+    
+    // TODO: Use rlGetPixelDataSize() directly instead of custom implementation?
+    // WARNING: raylib pixel format enum must be aligned with rlgl pixel format
+    //dataSize = rlGetPixelDataSize(width, height, format);
 
     switch (format)
     {
@@ -5754,9 +5769,11 @@ int GetPixelDataSize(int width, int height, int format)
             else if ((format >= PIXELFORMAT_COMPRESSED_DXT3_RGBA) && (format < PIXELFORMAT_COMPRESSED_ASTC_8x8_RGBA)) dataSize = 16;
         }
     }
-
-    // NOTE: In case required image data larger than 2GB, no memory allocated at all (NULL)
-    if (dataSize == 0) TRACELOG(LOG_WARNING, "Requested image size is larger than 2GB, it can not be allocated");
+    else
+    {
+        // NOTE: In case required image data larger than 2GB, no memory allocated at all (NULL)
+        TRACELOG(LOG_WARNING, "Requested image size is larger than 2GB, it can not be allocated");
+    }
 
     return dataSize;
 }

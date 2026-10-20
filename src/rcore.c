@@ -379,6 +379,7 @@ typedef struct CoreData {
             float axisState[MAX_GAMEPADS][MAX_GAMEPAD_AXES];                // Gamepad axes state
 
         } Gamepad;
+
     } Input;
     struct {
         double current;                     // Current time measure (seconds)
@@ -648,7 +649,6 @@ void InitWindow(int width, int height, const char *title)
     if ((title != NULL) && (title[0] != 0)) CORE.Window.title = title;
 
     // Initialize global input state
-    memset(&CORE.Input, 0, sizeof(CORE.Input)); // Reset CORE.Input structure to 0
     CORE.Input.Keyboard.exitKey = KEY_ESCAPE;
     CORE.Input.Mouse.scale = (Vector2){ 1.0f, 1.0f };
     CORE.Input.Mouse.cursor = MOUSE_CURSOR_ARROW;
@@ -710,15 +710,16 @@ void InitWindow(int width, int height, const char *title)
     #endif
 #endif
 
+    // NOTE: Should be already initialized to 0 but just in case
     CORE.Time.frameCounter = 0;
     CORE.Window.shouldClose = false;
 
     // Initialize random seed using available timer source instead of standard time() on embedded platforms
-    #ifndef PICO_RP2350
+#ifndef PICO_RP2350
     SetRandomSeed((unsigned int)time(NULL));
-    #else
+#else
     SetRandomSeed(get_rand_32());
-    #endif
+#endif
 
     TRACELOG(LOG_INFO, "SYSTEM: Working Directory: %s", GetWorkingDirectory());
 }
@@ -737,7 +738,9 @@ void CloseWindow(void)
     ClosePlatform();
     //--------------------------------------------------------------
 
-    CORE.Window.ready = false;
+    // Clear CORE data, in case new window is initialized
+    CORE = (CoreData){ 0 };
+    
     TRACELOG(LOG_INFO, "Window closed successfully");
 }
 
@@ -1592,6 +1595,7 @@ int GetFPS(void)
     #define FPS_STEP (FPS_AVERAGE_TIME_SECONDS/FPS_CAPTURE_FRAMES_COUNT)
 
     static int index = 0;
+    static unsigned int captureFramesCounted = 0;
     static float history[FPS_CAPTURE_FRAMES_COUNT] = { 0 };
     static float average = 0, last = 0;
     float fpsFrame = GetFrameTime();
@@ -1602,6 +1606,7 @@ int GetFPS(void)
         average = 0;
         last = 0;
         index = 0;
+        captureFramesCounted = 0;
 
         for (int i = 0; i < FPS_CAPTURE_FRAMES_COUNT; i++) history[i] = 0;
     }
@@ -1615,9 +1620,11 @@ int GetFPS(void)
             average -= history[index];
             history[index] = fpsFrame/FPS_CAPTURE_FRAMES_COUNT;
             average += history[index];
+
+            if (captureFramesCounted < FPS_CAPTURE_FRAMES_COUNT) captureFramesCounted += 1;
         }
 
-        fps = (int)roundf(1.0f/average);
+        if (captureFramesCounted > 0) fps = (int)roundf(captureFramesCounted/(average*FPS_CAPTURE_FRAMES_COUNT));
     }
     else fps = 0;
 #endif
@@ -1864,7 +1871,7 @@ void TraceLog(int logType, const char *text, ...)
     va_list args;
     va_start(args, text);
 
-    if (traceLog)
+    if (traceLog != NULL)
     {
         traceLog(logType, text, args);
         va_end(args);
@@ -1950,7 +1957,7 @@ unsigned char *LoadFileData(const char *fileName, int *dataSize)
 
     if (fileName != NULL)
     {
-        if (loadFileData) return loadFileData(fileName, dataSize);
+        if (loadFileData != NULL) return loadFileData(fileName, dataSize);
 
         FILE *file = fopen(fileName, "rb");
 
@@ -2014,7 +2021,7 @@ bool SaveFileData(const char *fileName, const void *data, int dataSize)
 
     if (fileName != NULL)
     {
-        if (saveFileData) return saveFileData(fileName, data, dataSize);
+        if (saveFileData != NULL) return saveFileData(fileName, data, dataSize);
 
         FILE *file = fopen(fileName, "wb");
 
@@ -2099,7 +2106,7 @@ char *LoadFileText(const char *fileName)
 
     if (fileName != NULL)
     {
-        if (loadFileText) return loadFileText(fileName);
+        if (loadFileText != NULL) return loadFileText(fileName);
 
         FILE *file = fopen(fileName, "rt");
 
@@ -2155,7 +2162,7 @@ bool SaveFileText(const char *fileName, const char *text)
 
     if (fileName != NULL)
     {
-        if (saveFileText) return saveFileText(fileName, text);
+        if (saveFileText != NULL) return saveFileText(fileName, text);
 
         FILE *file = fopen(fileName, "wt");
 
@@ -2424,7 +2431,7 @@ bool IsFileHidden(const char *filePath)
     if ((attribs != -1) && ((attribs & 0x2UL) != 0)) result = true;
 #else
     const char *basePath = strrchr(filePath, '/');
-    basePath = (basePath? basePath + 1 : filePath);
+    basePath = ((basePath != NULL)? basePath + 1 : filePath);
 
     if ((basePath[0] == '.') && (strcmp(basePath, ".") != 0) && (strcmp(basePath, "..") != 0)) result = true;
 #endif
@@ -2496,7 +2503,7 @@ const char *GetFileExtension(const char *fileName)
 {
     const char *dot = strrchr(fileName, '.');
 
-    if (!dot || (dot == fileName)) return NULL;
+    if ((dot == NULL) || (dot == fileName)) return NULL;
 
     return dot;
 }
@@ -2506,7 +2513,7 @@ static const char *strprbrk(const char *text, const char *charset)
 {
     const char *latestMatch = NULL;
 
-    for (; (text != NULL) && (text = strpbrk(text, charset)); latestMatch = text++) { }
+    for (; (text != NULL) && ((text = strpbrk(text, charset)) != NULL); latestMatch = text++) { }
 
     return latestMatch;
 }
@@ -2577,7 +2584,7 @@ const char *GetDirectoryPath(const char *filePath)
     }
 
     lastSlash = strprbrk(filePath, "\\/");
-    if (lastSlash)
+    if (lastSlash != NULL)
     {
         if (lastSlash == filePath)
         {
