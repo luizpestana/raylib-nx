@@ -423,16 +423,8 @@ Image LoadImageFromMemory(const char *fileType, const unsigned char *fileData, i
     Image image = { 0 };
 
     // Security checks for input data
-    if ((fileData == NULL) || (dataSize == 0))
-    {
-        TRACELOG(LOG_WARNING, "IMAGE: Invalid file data");
-        return image;
-    }
-    if (fileType == NULL)
-    {
-        TRACELOG(LOG_WARNING, "IMAGE: Missing file extension");
-        return image;
-    }
+    if ((fileData == NULL) || (dataSize == 0)) { TRACELOG(LOG_WARNING, "IMAGE: Invalid file data"); return image; }
+    if (fileType == NULL) { TRACELOG(LOG_WARNING, "IMAGE: Missing file extension"); return image; }
 
     if ((false)
 #if SUPPORT_FILEFORMAT_PNG
@@ -1556,13 +1548,25 @@ Image ImageTextEx(Font font, const char *text, float fontSize, float spacing, Co
     int textLength = (int)strlen(text); // Get length of text in bytes
     int textOffsetX = 0;            // Image drawing position X
     int textOffsetY = 0;            // Offset between lines (on linebreak '\n')
+    int lineIndex = 0;              // Current line index (on linebreak '\n')
 
     // NOTE: Text image is generated at font base size, later scaled to desired font size
     Vector2 imSize = MeasureTextEx(font, text, (float)font.baseSize, spacing);  // WARNING: Module required: rtext
     Vector2 textSize = MeasureTextEx(font, text, fontSize, spacing);
 
+    int lineBreakCount = 0;         // Number of line breaks ('\n') in text
+    for (int i = 0; i < textLength; i++)
+    {
+        if (text[i] == '\n') lineBreakCount++;
+    }
+
+    float lineSpacing = 0.0f;       // Line spacing, as used by MeasureTextEx()
+    if (lineBreakCount > 0) lineSpacing = (textSize.y - fontSize)/lineBreakCount - fontSize;
+
+    float lineStep = (float)font.baseSize + lineSpacing*(float)font.baseSize/fontSize;   // Line advance at base size
+
     // Create image to store text
-    imText = GenImageColor((int)imSize.x, (int)imSize.y, BLANK);
+    imText = GenImageColor((int)imSize.x, font.baseSize + (int)(lineBreakCount*lineStep), BLANK);
 
     for (int i = 0; i < textLength;)
     {
@@ -1573,9 +1577,8 @@ Image ImageTextEx(Font font, const char *text, float fontSize, float spacing, Co
 
         if (codepoint == '\n')
         {
-            // NOTE: Fixed line spacing of 1.5 line-height
-            // TODO: Support custom line spacing defined by user
-            textOffsetY += (font.baseSize + font.baseSize/2);
+            lineIndex++;
+            textOffsetY = (int)(lineIndex*lineStep);
             textOffsetX = 0;
         }
         else
@@ -1595,15 +1598,15 @@ Image ImageTextEx(Font font, const char *text, float fontSize, float spacing, Co
     }
 
     // Scale image depending on text size
-    if (textSize.y != imSize.y)
+    if (fontSize != (float)font.baseSize)
     {
-        float scaleFactor = textSize.y/imSize.y;
+        float scaleFactor = fontSize/(float)font.baseSize;
         TRACELOG(LOG_INFO, "IMAGE: Text scaled by factor: %f", scaleFactor);
 
         // Using nearest-neighbor scaling algorithm for default font
         // TODO: Support other scaling mechanism, use flag?
-        if (font.texture.id == GetFontDefault().texture.id) ImageResizeNN(&imText, (int)(imSize.x*scaleFactor), (int)(imSize.y*scaleFactor));
-        else ImageResize(&imText, (int)(imSize.x*scaleFactor), (int)(imSize.y*scaleFactor));
+        if (font.texture.id == GetFontDefault().texture.id) ImageResizeNN(&imText, (int)(imText.width*scaleFactor), (int)(imText.height*scaleFactor));
+        else ImageResize(&imText, (int)(imText.width*scaleFactor), (int)(imText.height*scaleFactor));
     }
 #else
     imText = GenImageColor(200, 60, BLACK);     // Generating placeholder black image rectangle
@@ -2913,13 +2916,13 @@ void ImageColorBrightness(Image *image, int brightness)
         int cG = pixels[i].g + brightness;
         int cB = pixels[i].b + brightness;
 
-        if (cR < 0) cR = 1;
+        if (cR < 0) cR = 0;
         if (cR > 255) cR = 255;
 
-        if (cG < 0) cG = 1;
+        if (cG < 0) cG = 0;
         if (cG > 255) cG = 255;
 
-        if (cB < 0) cB = 1;
+        if (cB < 0) cB = 0;
         if (cB > 255) cB = 255;
 
         pixels[i].r = (unsigned char)cR;
@@ -3020,9 +3023,9 @@ Color *LoadImageColors(Image image)
                 {
                     unsigned short pixel = ((unsigned short *)image.data)[i];
 
-                    pixels[i].r = (unsigned char)((float)((pixel & 0b1111100000000000) >> 11)*(255/31));
-                    pixels[i].g = (unsigned char)((float)((pixel & 0b0000011111000000) >> 6)*(255/31));
-                    pixels[i].b = (unsigned char)((float)((pixel & 0b0000000000111110) >> 1)*(255/31));
+                    pixels[i].r = (unsigned char)((float)((pixel & 0b1111100000000000) >> 11)*255.0f/31);
+                    pixels[i].g = (unsigned char)((float)((pixel & 0b0000011111000000) >> 6)*255.0f/31);
+                    pixels[i].b = (unsigned char)((float)((pixel & 0b0000000000111110) >> 1)*255.0f/31);
                     pixels[i].a = (unsigned char)((pixel & 0b0000000000000001)*255);
 
                 } break;
@@ -3030,9 +3033,9 @@ Color *LoadImageColors(Image image)
                 {
                     unsigned short pixel = ((unsigned short *)image.data)[i];
 
-                    pixels[i].r = (unsigned char)((float)((pixel & 0b1111100000000000) >> 11)*(255/31));
-                    pixels[i].g = (unsigned char)((float)((pixel & 0b0000011111100000) >> 5)*(255/63));
-                    pixels[i].b = (unsigned char)((float)(pixel & 0b0000000000011111)*(255/31));
+                    pixels[i].r = (unsigned char)((float)((pixel & 0b1111100000000000) >> 11)*255.0f/31);
+                    pixels[i].g = (unsigned char)((float)((pixel & 0b0000011111100000) >> 5)*255.0f/63);
+                    pixels[i].b = (unsigned char)((float)(pixel & 0b0000000000011111)*255.0f/31);
                     pixels[i].a = 255;
 
                 } break;
@@ -3264,9 +3267,9 @@ Color GetImageColor(Image image, int x, int y)
             {
                 unsigned short pixel = ((unsigned short *)image.data)[y*image.width + x];
 
-                color.r = (unsigned char)((float)((pixel & 0b1111100000000000) >> 11)*(255/31));
-                color.g = (unsigned char)((float)((pixel & 0b0000011111000000) >> 6)*(255/31));
-                color.b = (unsigned char)((float)((pixel & 0b0000000000111110) >> 1)*(255/31));
+                color.r = (unsigned char)((float)((pixel & 0b1111100000000000) >> 11)*255.0f/31);
+                color.g = (unsigned char)((float)((pixel & 0b0000011111000000) >> 6)*255.0f/31);
+                color.b = (unsigned char)((float)((pixel & 0b0000000000111110) >> 1)*255.0f/31);
                 color.a = (unsigned char)((pixel & 0b0000000000000001)*255);
 
             } break;
@@ -3274,9 +3277,9 @@ Color GetImageColor(Image image, int x, int y)
             {
                 unsigned short pixel = ((unsigned short *)image.data)[y*image.width + x];
 
-                color.r = (unsigned char)((float)((pixel & 0b1111100000000000) >> 11)*(255/31));
-                color.g = (unsigned char)((float)((pixel & 0b0000011111100000) >> 5)*(255/63));
-                color.b = (unsigned char)((float)(pixel & 0b0000000000011111)*(255/31));
+                color.r = (unsigned char)((float)((pixel & 0b1111100000000000) >> 11)*255.0f/31);
+                color.g = (unsigned char)((float)((pixel & 0b0000011111100000) >> 5)*255.0f/63);
+                color.b = (unsigned char)((float)(pixel & 0b0000000000011111)*255.0f/31);
                 color.a = 255;
 
             } break;
